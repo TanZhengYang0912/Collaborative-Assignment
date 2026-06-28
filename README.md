@@ -55,3 +55,20 @@ based on end-user input or request.
 o The data processing – to handle data storage
 • Depending on the project, data can be stored in any storage format (text file, device memory,
 etc) deemed suitable. Usage of DBMS (eg, MySQL, Firebase, etc.) is not compulsory.
+
+
+TEAM MEMBER IDEA:
+Tan Chun Jie
+EcoTrip Tracker is an application designed to solve the lack of verified eco-tourism options in Malaysia by combining a GPS-based directory of certified eco-friendly businesses, a route planner that compares CO2 emissions across transport modes, and a gamified reward system that incentivizes tourists to make sustainable, low-carbon choices.  
+
+LIAN THING TOH
+Heritage Guardian is a digital educational platform aimed at helping tourists explore and understand Malaysia’s cultural heritage through centralized historical information, on-site QR code scanning, and interactive learning features like quizzes.  
+
+YIK QI KHOR
+This idea focuses on developing a specialized Malaysian language translator application designed to help tourists overcome local communication barriers, thereby facilitating smoother interactions and enhancing their overall travel experience in the country.
+
+Tan Zheng Yang
+This working holiday platform connects travelers with local employers and conservation sites (such as sea turtle sanctuaries), allowing tourists to earn funds to support their travels while immersing themselves in local culture and directly contributing to the local economy.  
+
+Joshua Lau Hao Jie
+Targeting SDG 12, this route optimization tool focuses strictly on minimizing vehicle fuel consumption by analyzing speed limits, traffic density, and intersection wait times to provide the most fuel-efficient alternative routes, prioritizing eco-friendly driving over travel time or toll costs for heavy road users like Grab drivers. 
