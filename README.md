@@ -70,5 +70,8 @@ This idea focuses on developing a specialized Malaysian language translator appl
 Tan Zheng Yang
 This working holiday platform connects travelers with local employers and conservation sites (such as sea turtle sanctuaries), allowing tourists to earn funds to support their travels while immersing themselves in local culture and directly contributing to the local economy.  
 
+Ng Chi Hao
+FoodHunter
+
 Joshua Lau Hao Jie
 Targeting SDG 12, this route optimization tool focuses strictly on minimizing vehicle fuel consumption by analyzing speed limits, traffic density, and intersection wait times to provide the most fuel-efficient alternative routes, prioritizing eco-friendly driving over travel time or toll costs for heavy road users like Grab drivers. 
