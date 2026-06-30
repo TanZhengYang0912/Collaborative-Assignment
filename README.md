@@ -20,7 +20,7 @@ A self-pickup and dine-in restaurant discovery app with in-app map, route planni
 - Restaurant markers sorted by Haversine distance
 - Real route polyline, distance, and ETA via Google Directions API
 - Day/Night map mode — auto-detects OS preference, manual toggle available
-- Night style is hardcoded in `App.jsx` — no configuration needed
+- Night style is hardcoded in `MapPage.jsx` — no configuration needed
 
 ---
 
@@ -96,7 +96,6 @@ PORT=4000
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Enable **Geocoding API** and **Directions API**
 3. Create an API key under **APIs & Services → Credentials**
-4. (Recommended) Restrict key to server IPs only
 
 **How to get `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`:**
 - Ask the project owner (Tan Zheng Yang) — the service key is never committed to the repo
@@ -113,7 +112,7 @@ VITE_API_BASE=http://localhost:4000
 **How to get `VITE_MAPS_BROWSER_KEY`:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Enable **Maps JavaScript API**
-3. Create an API key and restrict it to **HTTP referrers** (your localhost or domain)
+3. Create an API key and restrict it to **HTTP referrers**
 
 > The frontend does **not** need Supabase keys. All database access goes through the backend.
 
@@ -178,20 +177,28 @@ CREATE POLICY "Allow backend insert" ON restaurants FOR INSERT WITH CHECK (true)
 ```
 Collaborative-Assignment/
 ├── backend/
-│   ├── server.js       # Express routes — Geocoding, Proximity, Directions
-│   ├── supabase.js     # Supabase client (reads SUPABASE_URL + SERVICE_KEY)
-│   ├── haversine.js    # Haversine distance formula
-│   ├── .env            # Real keys — never committed
-│   └── .env.example    # Template for teammates
+│   ├── server.js           # Entry point — mounts all route modules
+│   ├── routes/
+│   │   ├── map.js          # Map module (Tan Zheng Yang) — restaurants, route
+│   │   ├── auth.js         # Auth module (Joshua) — login, register
+│   │   └── vendors.js      # Vendors module (Toh Lian Thing) — vendor routes
+│   ├── supabase.js         # Supabase client
+│   ├── haversine.js        # Haversine distance formula
+│   ├── .env                # Real keys — never committed
+│   └── .env.example        # Template for teammates
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                     # Main map — night style hardcoded here
-│   │   ├── api.js                      # fetch wrappers for backend endpoints
+│   │   ├── App.jsx         # Router only — wires /map, /login, /vendors
+│   │   ├── api.js          # fetch wrappers for backend endpoints
+│   │   ├── pages/
+│   │   │   ├── MapPage.jsx      # Map module (Tan Zheng Yang) — full map UI
+│   │   │   ├── LoginPage.jsx    # Auth module (Joshua) — login/register UI
+│   │   │   └── VendorsPage.jsx  # Vendors module (Toh Lian Thing) — vendor UI
 │   │   └── components/
-│   │       ├── RestaurantMarkers.jsx   # Custom bowl+chopsticks SVG markers
-│   │       ├── RoutePolyline.jsx       # Two-layer polyline (visible night + day)
+│   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
+│   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
 │   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle
-│   ├── .env            # Real keys — never committed
-│   └── .env.example    # Template for teammates
+│   ├── .env                # Real keys — never committed
+│   └── .env.example        # Template for teammates
 └── README.md
 ```
