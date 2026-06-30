@@ -85,36 +85,23 @@ Then open a Pull Request on GitHub to merge into `main`.
 
 ### `backend/.env`
 
-```
-GOOGLE_API_KEY=         # Server-side key — Geocoding API + Directions API
-SUPABASE_URL=           # https://your-project-id.supabase.co
-SUPABASE_SERVICE_KEY=   # Secret key — ask the project owner (Tan Zheng Yang)
-PORT=4000
-```
-
-**How to get `GOOGLE_API_KEY`:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Enable **Geocoding API** and **Directions API**
-3. Create an API key under **APIs & Services → Credentials**
-
-**How to get `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`:**
-- Ask the project owner (Tan Zheng Yang) — the service key is never committed to the repo
+| Variable | Description | How to get |
+|---|---|---|
+| `GOOGLE_API_KEY` | Server-side key for Geocoding API + Directions API | Ask Tan Zheng Yang |
+| `SUPABASE_URL` | Supabase project URL | Ask Tan Zheng Yang |
+| `SUPABASE_SERVICE_KEY` | Supabase secret key (never committed) | Ask Tan Zheng Yang |
+| `PORT` | Server port (default 4000) | Leave as `4000` |
 
 ---
 
 ### `frontend/.env`
 
-```
-VITE_MAPS_BROWSER_KEY=  # Browser key — Maps JavaScript API only
-VITE_API_BASE=http://localhost:4000
-```
+| Variable | Description | How to get |
+|---|---|---|
+| `VITE_MAPS_BROWSER_KEY` | Google Maps browser key | Ask Tan Zheng Yang |
+| `VITE_API_BASE` | Backend URL | Leave as `http://localhost:4000` |
 
-**How to get `VITE_MAPS_BROWSER_KEY`:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Enable **Maps JavaScript API**
-3. Create an API key and restrict it to **HTTP referrers**
-
-> The frontend does **not** need Supabase keys. All database access goes through the backend.
+> The frontend does **not** need Supabase keys — all database access goes through the backend.
 
 ---
 
