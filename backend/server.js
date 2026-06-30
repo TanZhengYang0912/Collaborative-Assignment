@@ -1,9 +1,11 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import mapRoutes    from "./routes/map.js";
-import authRoutes   from "./routes/auth.js";
-import vendorRoutes from "./routes/vendors.js";
+import mapRoutes        from "./routes/map.js";
+import authRoutes       from "./routes/auth.js";
+import vendorRoutes     from "./routes/vendors.js";
+import aiRoutes         from "./routes/ai.js";
+import engagementRoutes from "./routes/engagement.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,6 +16,8 @@ app.use(express.json());
 app.use("/api", mapRoutes);
 app.use("/api", authRoutes);
 app.use("/api", vendorRoutes);
+app.use("/api", aiRoutes);
+app.use("/api", engagementRoutes);
 
 app.listen(PORT, () => {
   console.log(`✅  TrueBites backend running on http://localhost:${PORT}`);

@@ -177,28 +177,32 @@ CREATE POLICY "Allow backend insert" ON restaurants FOR INSERT WITH CHECK (true)
 ```
 Collaborative-Assignment/
 ├── backend/
-│   ├── server.js           # Entry point — mounts all route modules
+│   ├── server.js               # Entry point — mounts all route modules
 │   ├── routes/
-│   │   ├── map.js          # Map module (Tan Zheng Yang) — restaurants, route
-│   │   ├── auth.js         # Auth module (Joshua) — login, register
-│   │   └── vendors.js      # Vendors module (Toh Lian Thing) — vendor routes
-│   ├── supabase.js         # Supabase client
-│   ├── haversine.js        # Haversine distance formula
-│   ├── .env                # Real keys — never committed
-│   └── .env.example        # Template for teammates
+│   │   ├── map.js              # Map module        (Tan Zheng Yang) — restaurants, route
+│   │   ├── auth.js             # Auth module        (Joshua)         — login, register
+│   │   ├── vendors.js          # Vendors module     (Toh Lian Thing) — vendor routes
+│   │   ├── ai.js               # AI module          (Tan Chun Jie)   — video URL, transcribe, summarize, extract
+│   │   └── engagement.js       # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
+│   ├── supabase.js             # Supabase client
+│   ├── haversine.js            # Haversine distance formula
+│   ├── .env                    # Real keys — never committed
+│   └── .env.example            # Template for teammates
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx         # Router only — wires /map, /login, /vendors
-│   │   ├── api.js          # fetch wrappers for backend endpoints
+│   │   ├── App.jsx             # Router only — wires all pages
+│   │   ├── api.js              # fetch wrappers for backend endpoints
 │   │   ├── pages/
-│   │   │   ├── MapPage.jsx      # Map module (Tan Zheng Yang) — full map UI
-│   │   │   ├── LoginPage.jsx    # Auth module (Joshua) — login/register UI
-│   │   │   └── VendorsPage.jsx  # Vendors module (Toh Lian Thing) — vendor UI
+│   │   │   ├── MapPage.jsx         # Map module        (Tan Zheng Yang) — full map UI
+│   │   │   ├── LoginPage.jsx       # Auth module        (Joshua)         — login/register UI
+│   │   │   ├── VendorsPage.jsx     # Vendors module     (Toh Lian Thing) — vendor UI
+│   │   │   ├── AIPage.jsx          # AI module          (Tan Chun Jie)   — video submit + results
+│   │   │   └── EngagementPage.jsx  # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
 │   │   └── components/
 │   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
 │   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
 │   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle
-│   ├── .env                # Real keys — never committed
-│   └── .env.example        # Template for teammates
+│   ├── .env                    # Real keys — never committed
+│   └── .env.example            # Template for teammates
 └── README.md
 ```
