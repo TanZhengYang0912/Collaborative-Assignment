@@ -2,6 +2,17 @@
 
 A self-pickup and dine-in restaurant discovery app with in-app map, route planning, and day/night mode.
 
+## Contributors
+
+| Module | Member | Responsibility |
+|---|---|---|
+| Map/Navigation — Backend | Tan Zheng Yang | Express API, Google Geocoding API, Haversine proximity sort, Google Directions API, Supabase integration |
+| Map/Navigation — Frontend | Ng Chi Hao | Google Maps UI, restaurant markers, route polyline, RoutePanel, day/night mode |
+| Auth | Joshua | Login, register, session management |
+| Vendors | Toh Lian Thing | Vendor listings and management |
+| AI Content Processing | Tan Chun Jie | Video URL submission, speech-to-text, summarization, info extraction |
+| Engagement & Bookmarking | Khor Yik Qi | Wishlist folders, star ratings, reviews, photo upload, helpful likes |
+
 ## Tech Stack
 
 | Layer | Technology | Responsibility |
