@@ -6,80 +6,142 @@ A self-pickup and dine-in restaurant discovery app with in-app map, route planni
 
 | Layer | Technology | Responsibility |
 |---|---|---|
-| Frontend UI | React + Vite | Responsive map interface and restaurant listings |
-| Map Engine | Google Maps JavaScript SDK (`@react-google-maps/api`) | Renders restaurant markers, real-time route polylines, and day/night map style switching directly within the app |
-| Backend | Node.js + Express.js | Route processing, geocoding, proximity sorting |
-| Database | Supabase (PostgreSQL + PostGIS) | Stores restaurant locations with spatial indexing |
-| Proximity Search | Haversine Formula | Fast proximity-based restaurant sorting without external API calls |
-| Geocoding | Google Geocoding API | Converts restaurant addresses to coordinates (one-time on insert) |
+| Frontend | React + Vite | Map UI, restaurant markers, route display |
+| Map Engine | Google Maps JS SDK (`@react-google-maps/api`) | In-app map, polylines, day/night style |
+| Backend | Node.js + Express | Geocoding, proximity sort, Directions API |
+| Database | Supabase (PostgreSQL + PostGIS) | Restaurant locations with spatial indexing |
+| Proximity Sort | Haversine Formula | Sort restaurants by distance — no API cost |
+| Geocoding | Google Geocoding API | Address → coordinates (once on insert) |
 | Route Planning | Google Directions API | Real road distance, ETA, and route polyline |
 
 ## Features
 
-- In-app map with restaurant pins sorted by distance (Haversine)
-- Real route polyline drawn on map (Google Directions API)
-- Real distance and ETA from Google Directions API
-- Day/Night map mode — auto-detects system preference, manual toggle available
-- Night style is hardcoded in the app — teammates do not need to configure anything for it to work
+- In-app navigation — no redirect to native Maps app
+- Restaurant markers sorted by Haversine distance
+- Real route polyline, distance, and ETA via Google Directions API
+- Day/Night map mode — auto-detects OS preference, manual toggle available
+- Night style is hardcoded in `MapPage.jsx` — no configuration needed
 
-## Project Structure
+---
 
-```
-Mapping/
-├── backend/          # Node.js + Express API server
-│   ├── server.js     # Main server — Geocoding, Proximity, Directions routes
-│   ├── supabase.js   # Supabase client
-│   ├── haversine.js  # Haversine distance formula
-│   ├── .env          # Your real keys (never committed)
-│   └── .env.example  # Template for teammates
-├── frontend/         # React + Vite app
-│   ├── src/
-│   │   ├── App.jsx   # Main map component with day/night styles
-│   │   └── components/
-│   ├── .env          # Your real keys (never committed)
-│   └── .env.example  # Template for teammates
-└── README.md
-```
-
-## Getting Started (for teammates)
+## Team Workflow (for all teammates)
 
 ### 1. Clone the repo
 
 ```bash
-git clone <repo-url>
-cd Mapping
+git clone https://github.com/TanZhengYang0912/Collaborative-Assignment.git
+cd Collaborative-Assignment
 ```
 
-### 2. Set up environment variables
+### 2. Create your own feature branch from main
 
 ```bash
+git checkout main
+git pull origin main
+git checkout -b feature/your-module-name
+```
+
+Each person works on their own branch. Never commit directly to `main`.
+
+### 3. Set up environment variables
+
+```bash
+# Copy the templates
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Fill in your own keys in both `.env` files (see below).
+Then fill in the values — see the sections below.
 
-### 3. Get a Google API Key
+### 4. Install dependencies and start the app
 
+```bash
+# Terminal 1 — Backend
+cd backend
+npm install
+npm run dev
+# Runs at http://localhost:4000
+
+# Terminal 2 — Frontend
+cd frontend
+npm install
+npm run dev
+# Runs at http://localhost:5173
+```
+
+### 5. When your feature is ready, push and open a PR
+
+```bash
+git add .
+git commit -m "feat: describe your feature"
+git push origin feature/your-module-name
+```
+
+Then open a Pull Request on GitHub to merge into `main`.
+
+---
+
+## Environment Variables
+
+### `backend/.env`
+
+```
+GOOGLE_API_KEY=         # Server-side key — Geocoding API + Directions API
+SUPABASE_URL=           # https://your-project-id.supabase.co
+SUPABASE_SERVICE_KEY=   # Secret key — ask the project owner (Tan Zheng Yang)
+PORT=4000
+```
+
+**How to get `GOOGLE_API_KEY`:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project and enable billing
-3. Go to **APIs & Services → Library** and enable:
-   - Maps JavaScript API
-   - Geocoding API
-   - Directions API
-4. Go to **APIs & Services → Credentials → Create API Key**
-5. Copy the key into both `.env` files
+2. Enable **Geocoding API** and **Directions API**
+3. Create an API key under **APIs & Services → Credentials**
 
-### 4. Get Supabase keys
+**How to get `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`:**
+- Ask the project owner (Tan Zheng Yang) — the service key is never committed to the repo
 
-1. Go to [Supabase](https://supabase.com) and open the project
-2. Go to **Settings → API**
-3. Copy **Project URL** and **Publishable key** into `frontend/.env`
-4. Ask the project owner for the **Secret key** for `backend/.env`
+---
 
-### 5. Set up the database (first time only)
+### `frontend/.env`
 
-Run this in **Supabase SQL Editor**:
+```
+VITE_MAPS_BROWSER_KEY=  # Browser key — Maps JavaScript API only
+VITE_API_BASE=http://localhost:4000
+```
+
+**How to get `VITE_MAPS_BROWSER_KEY`:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Enable **Maps JavaScript API**
+3. Create an API key and restrict it to **HTTP referrers**
+
+> The frontend does **not** need Supabase keys. All database access goes through the backend.
+
+---
+
+## Adding Restaurants to Supabase
+
+Only the project owner needs to do this. Restaurants are stored permanently — geocoding runs once on insert.
+
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri http://localhost:4000/api/restaurants `
+  -Method POST `
+  -ContentType 'application/json' `
+  -Body '{"name": "Jonker 88", "address": "88 Jalan Hang Jebat, Melaka"}'
+```
+
+**Mac / Linux:**
+```bash
+curl -X POST http://localhost:4000/api/restaurants \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Jonker 88", "address": "88 Jalan Hang Jebat, Melaka"}'
+```
+
+---
+
+## Database Setup (first time only)
+
+Run this once in **Supabase → SQL Editor**:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS postgis;
@@ -98,38 +160,45 @@ CREATE POLICY "Allow public read" ON restaurants FOR SELECT USING (true);
 CREATE POLICY "Allow backend insert" ON restaurants FOR INSERT WITH CHECK (true);
 ```
 
-### 6. Start the app
-
-```bash
-# Terminal 1 — Backend
-cd backend
-npm install
-npm run dev
-# Running at http://localhost:4000
-
-# Terminal 2 — Frontend
-cd frontend
-npm install
-npm run dev
-# Running at http://localhost:5175
-```
-
-### 7. Add a restaurant (test)
-
-```bash
-curl -X POST http://localhost:4000/api/restaurants \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Jonker 88", "address": "88 Jalan Hang Jebat, Melaka"}'
-```
+---
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/restaurants` | Add a restaurant (triggers Geocoding API) |
-| GET | `/api/restaurants/nearby?lat=&lng=` | Get restaurants sorted by distance |
-| GET | `/api/route?fromLat=&fromLng=&toLat=&toLng=` | Get real route, distance, and ETA |
+| `POST` | `/api/restaurants` | Add restaurant (geocodes address, stores in Supabase) |
+| `GET` | `/api/restaurants/nearby?lat=&lng=` | Return nearest restaurants sorted by Haversine |
+| `GET` | `/api/route?fromLat=&fromLng=&toLat=&toLng=` | Return road distance, ETA, and route polyline |
 
-## Day/Night Map Mode
+---
 
-The night style is fully hardcoded in `frontend/src/App.jsx` — **teammates do not need to change any settings or configuration for it to work.** The app auto-detects the system dark/light preference on load, and a toggle button is available for manual switching.
+## Project Structure
+
+```
+Collaborative-Assignment/
+├── backend/
+│   ├── server.js           # Entry point — mounts all route modules
+│   ├── routes/
+│   │   ├── map.js          # Map module (Tan Zheng Yang) — restaurants, route
+│   │   ├── auth.js         # Auth module (Joshua) — login, register
+│   │   └── vendors.js      # Vendors module (Toh Lian Thing) — vendor routes
+│   ├── supabase.js         # Supabase client
+│   ├── haversine.js        # Haversine distance formula
+│   ├── .env                # Real keys — never committed
+│   └── .env.example        # Template for teammates
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx         # Router only — wires /map, /login, /vendors
+│   │   ├── api.js          # fetch wrappers for backend endpoints
+│   │   ├── pages/
+│   │   │   ├── MapPage.jsx      # Map module (Tan Zheng Yang) — full map UI
+│   │   │   ├── LoginPage.jsx    # Auth module (Joshua) — login/register UI
+│   │   │   └── VendorsPage.jsx  # Vendors module (Toh Lian Thing) — vendor UI
+│   │   └── components/
+│   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
+│   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
+│   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle
+│   ├── .env                # Real keys — never committed
+│   └── .env.example        # Template for teammates
+└── README.md
+```
