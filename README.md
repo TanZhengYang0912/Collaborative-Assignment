@@ -1,4 +1,4 @@
-# TrueBites — Restaurant Navigation App
+# TrueBites — Restaurant Navigation
 
 A self-pickup and dine-in restaurant discovery app with in-app map, route planning, and day/night mode.
 
@@ -12,6 +12,9 @@ A self-pickup and dine-in restaurant discovery app with in-app map, route planni
 | Vendors | Toh Lian Thing | Vendor listings and management |
 | AI Content Processing | Tan Chun Jie | Video URL submission, speech-to-text, summarization, info extraction |
 | Engagement & Bookmarking | Khor Yik Qi | Wishlist folders, star ratings, reviews, photo upload, helpful likes |
+
+## Member contribution log
+JOSHUA - I have added a frontend for login page. I just need Tan Zheng Yang's Supabase access to do backend.
 
 ## Tech Stack
 
