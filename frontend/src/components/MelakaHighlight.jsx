@@ -23,18 +23,14 @@ export default function MelakaHighlight() {
       map,
     });
 
-    // Frame the view on Melaka + keep the user roughly within the state
+    // Frame the INITIAL view on Melaka, but allow free panning/zoom anywhere
+    // (users may travel in from other states).
     const bounds = new google.maps.LatLngBounds();
     boundary.rings.forEach((r) => r.forEach((p) => bounds.extend(p)));
     map.fitBounds(bounds);
-    map.setOptions({
-      restriction: { latLngBounds: bounds.toJSON(), strictBounds: false },
-      minZoom: 10,
-    });
 
     return () => {
       region.setMap(null);
-      map.setOptions({ restriction: null });
     };
   }, [map]);
 
