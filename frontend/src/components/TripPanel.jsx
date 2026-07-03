@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+const NAV_MODES = [
+  { mode: "DRIVING",     label: "Car",         icon: "🚗",  color: "#1d72e8" },
+  { mode: "TWO_WHEELER", label: "Motorcycle",  icon: "🏍️", color: "#e87c1d" },
+  { mode: "TRANSIT",     label: "Transit",     icon: "🚌",  color: "#1da84b" },
+  { mode: "WALKING",     label: "Walking",     icon: "🚶",  color: "#8e44ad" },
+];
+
 const C = {
   card: "#FFFFFF",
   accent: "#D85A30",
@@ -30,8 +37,10 @@ const panel = {
 export default function TripPanel({
   trip, summary, loading,
   onReorder, onOptimize, onClear, onRemove,
+  travelMode, onTravelMode,
 }) {
   const [dragIdx, setDragIdx] = useState(null);
+  const [showNav, setShowNav] = useState(false);
 
   function handleDrop(i) {
     if (dragIdx === null || dragIdx === i) return;
@@ -91,6 +100,39 @@ export default function TripPanel({
           )}
 
           <button onClick={onOptimize} style={btn(C.accent, "#fff")}>↺ Suggest best order</button>
+
+          <button
+            onClick={() => setShowNav((v) => !v)}
+            disabled={trip.length < 2}
+            style={btn("#1d72e8", "#fff")}
+          >
+            🧭 Navigate
+          </button>
+          {showNav && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 4, marginBottom: 4 }}>
+              {NAV_MODES.map(({ mode, label, icon, color }) => {
+                const active = travelMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => onTravelMode(active ? null : mode)}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      padding: "8px 4px", borderRadius: 8, fontSize: 11, gap: 3,
+                      background: active ? color : C.cream,
+                      color: active ? "#fff" : C.text,
+                      border: `1.5px solid ${active ? color : C.border}`,
+                      cursor: "pointer", fontFamily: "system-ui",
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>{icon}</span>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <button onClick={onClear} style={btn("#eee", C.text)}>Clear trip</button>
         </>
       )}

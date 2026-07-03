@@ -40,12 +40,12 @@ router.post("/restaurants", async (req, res) => {
   const { lat, lng } = geoData.results[0].geometry.location;
 
   const { data, error } = await supabase
-    .from("restaurants")
+    .from("vendors")
     .insert({
-      name,
+      vendor_name: name,
       address,
-      lat,
-      lng,
+      latitude: lat,
+      longitude: lng,
       location: `SRID=4326;POINT(${lng} ${lat})`,
     })
     .select()
@@ -76,19 +76,22 @@ router.get("/restaurants/nearby", async (req, res) => {
   const userLng = parseFloat(lng);
 
   const { data: restaurants, error } = await supabase
-    .from("restaurants")
-    .select("id, name, address, lat, lng");
+    .from("vendors")
+    .select("id, vendor_name, address, latitude, longitude");
 
   if (error) {
     return res.status(500).json({ error: "database query failed", details: error.message });
   }
 
   const sorted = restaurants
-    .filter((r) => r.lat != null && r.lng != null)
+    .filter((r) => r.latitude != null && r.longitude != null)
     .map((r) => {
-      const distKm = haversine(userLat, userLng, r.lat, r.lng);
+      const distKm = haversine(userLat, userLng, r.latitude, r.longitude);
       return {
         ...r,
+        name: r.vendor_name,
+        lat: r.latitude,
+        lng: r.longitude,
         distKm: parseFloat(distKm.toFixed(2)),
         roughEtaDriving: Math.round((distKm / 40) * 60),
         roughEtaWalking: Math.round((distKm / 5) * 60),
