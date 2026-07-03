@@ -7,7 +7,7 @@ export async function getRestaurants(userLat, userLng) {
   const r = await fetch(`${BASE}/api/restaurants/nearby?${params}`);
   if (!r.ok) throw new Error(await r.text());
   const data = await r.json();
-  return data.map((v) => ({ ...v, latitude: v.lat, longitude: v.lng }));
+  return data;
 }
 
 // Real road route (Google Directions via backend). Returns { distance, duration, path }.

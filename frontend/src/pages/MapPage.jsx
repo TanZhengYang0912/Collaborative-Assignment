@@ -5,6 +5,7 @@ import VendorMarkers from "../components/VendorMarkers";
 import MelakaHighlight from "../components/MelakaHighlight";
 import TripPanel from "../components/TripPanel";
 import TripPolyline from "../components/TripPolyline";
+import DirectionsRenderer from "../components/DirectionsRenderer";
 import Dashboard from "../components/Dashboard";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
@@ -22,6 +23,17 @@ function FocusOnVendor({ vendor }) {
   return null;
 }
 
+function FocusOnUser({ pos }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && pos) {
+      map.panTo(pos);
+      map.setZoom(14);
+    }
+  }, [map, pos]);
+  return null;
+}
+
 export default function MapPage() {
   const [view, setView] = useState("dashboard");     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
@@ -29,10 +41,14 @@ export default function MapPage() {
   const [focusVendor, setFocusVendor] = useState(null);
   const [selected, setSelected] = useState(null);
   const [userPos, setUserPos] = useState(null);
+  const [locateTarget, setLocateTarget] = useState(null);
 
   const [trip, setTrip] = useState([]);              // unified draggable stops
   const [tripData, setTripData] = useState(null);
   const [tripLoading, setTripLoading] = useState(false);
+  const [travelMode, setTravelMode] = useState(null);   // null | "DRIVING" | "TWO_WHEELER" | "TRANSIT" | "WALKING"
+  const [dirSummary, setDirSummary] = useState(null);
+  const [isDark, setIsDark] = useState(false);
 
   // Load vendors (Supabase, sorted from Melaka centre as a default reference).
   useEffect(() => {
@@ -80,7 +96,7 @@ export default function MapPage() {
   }
   function reorderTrip(newList) { setTrip(newList); planTrip(newList, false); }
   function removeStop(id) { const list = trip.filter((s) => s.id !== id); setTrip(list); planTrip(list, false); }
-  function clearTrip() { setTrip([]); setTripData(null); }
+  function clearTrip() { setTrip([]); setTripData(null); setTravelMode(null); setDirSummary(null); }
 
   function toggleBookmark(id) {
     setBookmarks((prev) => {
@@ -92,8 +108,15 @@ export default function MapPage() {
 
   function locateMe() {
     navigator.geolocation.getCurrentPosition(
-      (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => setUserPos(MELAKA_CENTER)
+      (p) => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setUserPos(pos);
+        setLocateTarget(pos);
+      },
+      () => {
+        setUserPos(MELAKA_CENTER);
+        setLocateTarget(MELAKA_CENTER);
+      }
     );
   }
 
@@ -139,11 +162,13 @@ export default function MapPage() {
           defaultCenter={MELAKA_CENTER}
           defaultZoom={13}
           mapId={MAP_ID}
+          colorScheme={isDark ? "DARK" : "LIGHT"}
           gestureHandling="greedy"
           style={{ width: "100%", height: "100%" }}
         >
           <MelakaHighlight />
           <FocusOnVendor vendor={focusVendor} />
+          <FocusOnUser pos={locateTarget} />
           <VendorMarkers
             vendors={vendors}
             userPos={userPos}
@@ -152,7 +177,10 @@ export default function MapPage() {
             tripOrder={vendorStopOrder}
             userStopNumber={meIndex >= 0 ? meIndex + 1 : null}
           />
-          {tripData?.path && <TripPolyline path={tripData.path} />}
+          {travelMode
+            ? <DirectionsRenderer stops={trip} travelMode={travelMode} onSummary={setDirSummary} />
+            : tripData?.path && <TripPolyline path={tripData.path} />
+          }
         </GMap>
 
         <button
@@ -162,14 +190,41 @@ export default function MapPage() {
           ← Back to vendors
         </button>
 
+        <button
+          onClick={() => setIsDark((v) => !v)}
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            position: "absolute", top: 90, left: 10, zIndex: 10,
+            background: isDark ? "#1f1f1f" : "#fff",
+            border: `1px solid ${isDark ? "#444" : "#ccc"}`,
+            borderRadius: 6, padding: "4px 10px",
+            cursor: "pointer", fontFamily: "system-ui", fontSize: 12,
+            color: isDark ? "#fff" : "#333",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            display: "flex", alignItems: "center", gap: 5,
+          }}
+        >
+          {isDark ? "☀️ Light" : "🌙 Dark"}
+        </button>
+
+        <button
+          onClick={locateMe}
+          title="Get current location"
+          style={{ position: "absolute", bottom: 180, right: 10, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", fontSize: 18 }}
+        >
+          📍
+        </button>
+
         <TripPanel
           trip={trip}
-          summary={tripData}
+          summary={travelMode ? dirSummary : tripData}
           loading={tripLoading}
           onReorder={reorderTrip}
           onOptimize={() => planTrip(trip, true)}
           onClear={clearTrip}
           onRemove={removeStop}
+          travelMode={travelMode}
+          onTravelMode={setTravelMode}
         />
       </div>
     </APIProvider>

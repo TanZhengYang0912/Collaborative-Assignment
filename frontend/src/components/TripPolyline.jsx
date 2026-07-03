@@ -10,8 +10,8 @@ export default function TripPolyline({ path }) {
 
     const line = new google.maps.Polyline({
       path,
-      strokeColor: "#D85A30", // warm orange to match the theme
-      strokeOpacity: 0.95,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.9,
       strokeWeight: 5,
       map,
     });
