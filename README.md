@@ -1,209 +1,269 @@
-# TrueBites — Restaurant Navigation
+# 🍜 Food Influencer Content Analyzer
 
-A self-pickup and dine-in restaurant discovery app with in-app map, route planning, and day/night mode.
+A web application that automatically downloads, transcribes, and summarizes food influencer videos from TikTok and YouTube using AI. Built for Malaysian food content analysis.
 
-## Contributors
+## ✨ Features
 
-| Module | Member | Responsibility |
-|---|---|---|
-| Map/Navigation — Backend | Tan Zheng Yang | Express API, Google Geocoding API, Haversine proximity sort, Google Directions API, Supabase integration |
-| Map/Navigation — Frontend | Ng Chi Hao | Google Maps UI, restaurant markers, route polyline, RoutePanel, day/night mode |
-| Auth | Joshua | Login, register, session management |
-| Vendors | Toh Lian Thing | Vendor listings and management |
-| AI Content Processing | Tan Chun Jie | Video URL submission, speech-to-text, summarization, info extraction |
-| Engagement & Bookmarking | Khor Yik Qi | Wishlist folders, star ratings, reviews, photo upload, helpful likes |
-
-## Member contribution log
-JOSHUA - I have added a frontend for login page. I just need Tan Zheng Yang's Supabase access to do backend.
-
-## Tech Stack
-
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Frontend | React + Vite | Map UI, restaurant markers, route display |
-| Map Engine | Google Maps JS SDK (`@react-google-maps/api`) | In-app map, polylines, day/night style |
-| Backend | Node.js + Express | Geocoding, proximity sort, Directions API |
-| Database | Supabase (PostgreSQL + PostGIS) | Restaurant locations with spatial indexing |
-| Proximity Sort | Haversine Formula | Sort restaurants by distance — no API cost |
-| Geocoding | Google Geocoding API | Address → coordinates (once on insert) |
-| Route Planning | Google Directions API | Real road distance, ETA, and route polyline |
-
-## Features
-
-- In-app navigation — no redirect to native Maps app
-- Restaurant markers sorted by Haversine distance
-- Real route polyline, distance, and ETA via Google Directions API
-- Day/Night map mode — auto-detects OS preference, manual toggle available
-- Night style is hardcoded in `MapPage.jsx` — no configuration needed
+- 🎬 **Download** videos from TikTok and YouTube
+- 🎙️ **Transcribe** audio using OpenAI Whisper (supports Malay, English, Chinese)
+- 🤖 **Summarize** content using Groq AI (llama-3.1-8b-instant) — free & fast
+- 📊 **Extract** structured info: eatery name, location, rating, price, must-try dishes
+- 📦 **Batch processing** — scrape a creator's profile and process up to 50 videos at once
+- 🗺️ **Malacca filter** — flags eateries located in Malacca/Melaka
 
 ---
 
-## Team Workflow (for all teammates)
+## 🛠️ Tech Stack
 
-### 1. Clone the repo
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React + Vite |
+| Backend | FastAPI (Python) |
+| Speech-to-Text | OpenAI Whisper (runs locally) |
+| AI Summarization | Groq API — llama-3.1-8b-instant (cloud, free) |
+| Video Download | yt-dlp |
 
+---
+
+## 📋 Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- **Python 3.10+**
+- **Node.js 18+** and **npm**
+- **ffmpeg** (required by Whisper for audio processing)
+- **Groq API Key** (free) — get it at [console.groq.com](https://console.groq.com)
+
+---
+
+## 🚀 Installation
+
+### Step 1 — Install ffmpeg
+
+ffmpeg is required for audio processing.
+
+#### macOS
 ```bash
-git clone https://github.com/TanZhengYang0912/Collaborative-Assignment.git
-cd Collaborative-Assignment
+# Using Homebrew (recommended)
+brew install ffmpeg
+
+# Verify installation
+ffmpeg -version
 ```
 
-### 2. Create your own feature branch from main
+> If you don't have Homebrew, install it first:
+> ```bash
+> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+> ```
 
+#### Windows
+1. Download ffmpeg from [ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+2. Extract the zip file (e.g., to `C:\ffmpeg`)
+3. Add to PATH:
+   - Open **Start** → search **"Environment Variables"**
+   - Click **"Edit the system environment variables"**
+   - Click **"Environment Variables"**
+   - Under **System Variables**, find **Path** → click **Edit**
+   - Click **New** → add `C:\ffmpeg\bin`
+   - Click **OK** on all dialogs
+4. Verify in a new terminal:
+   ```cmd
+   ffmpeg -version
+   ```
+
+---
+
+### Step 2 — Get a Free Groq API Key
+
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up / log in (Google account works)
+3. Click **"API Keys"** in the left sidebar
+4. Click **"Create API Key"**
+5. Copy the key — you will need it in Step 4
+
+---
+
+### Step 3 — Set Up the Backend
+
+#### macOS
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feature/your-module-name
+cd aiContent/backend
+
+# Create a virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-Each person works on their own branch. Never commit directly to `main`.
+#### Windows
+```cmd
+cd aiContent\backend
 
-### 3. Set up environment variables
+# Create a virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate
 
-```bash
-# Copy the templates
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-Then fill in the values — see the sections below.
+---
 
-### 4. Install dependencies and start the app
+### Step 4 — Configure Environment Variables
 
+#### macOS
 ```bash
-# Terminal 1 — Backend
-cd backend
+cp .env.example .env
+nano .env
+```
+
+#### Windows
+```cmd
+copy .env.example .env
+notepad .env
+```
+
+Add your Groq API key:
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+---
+
+### Step 5 — Set Up the Frontend
+
+#### macOS & Windows
+```bash
+cd aiContent/frontend
 npm install
-npm run dev
-# Runs at http://localhost:4000
-
-# Terminal 2 — Frontend
-cd frontend
-npm install
-npm run dev
-# Runs at http://localhost:5173
 ```
 
-### 5. When your feature is ready, push and open a PR
+---
 
+## Running the Application
+
+You need **two terminals** running simultaneously.
+
+### Terminal 1 — Backend
+
+#### macOS
 ```bash
-git add .
-git commit -m "feat: describe your feature"
-git push origin feature/your-module-name
+cd aiContent/backend
+source venv/bin/activate
+python main.py
 ```
 
-Then open a Pull Request on GitHub to merge into `main`.
-
----
-
-## Environment Variables
-
-### `backend/.env`
-
-| Variable | Description | How to get |
-|---|---|---|
-| `GOOGLE_API_KEY` | Server-side key for Geocoding API + Directions API | Ask Tan Zheng Yang |
-| `SUPABASE_URL` | Supabase project URL | Ask Tan Zheng Yang |
-| `SUPABASE_SERVICE_KEY` | Supabase secret key (never committed) | Ask Tan Zheng Yang |
-| `PORT` | Server port (default 4000) | Leave as `4000` |
-
----
-
-### `frontend/.env`
-
-| Variable | Description | How to get |
-|---|---|---|
-| `VITE_MAPS_BROWSER_KEY` | Google Maps browser key | Ask Tan Zheng Yang |
-| `VITE_API_BASE` | Backend URL | Leave as `http://localhost:4000` |
-
-> The frontend does **not** need Supabase keys — all database access goes through the backend.
-
----
-
-## Adding Restaurants to Supabase
-
-Only the project owner needs to do this. Restaurants are stored permanently — geocoding runs once on insert.
-
-**Windows (PowerShell):**
-```powershell
-Invoke-WebRequest -Uri http://localhost:4000/api/restaurants `
-  -Method POST `
-  -ContentType 'application/json' `
-  -Body '{"name": "Jonker 88", "address": "88 Jalan Hang Jebat, Melaka"}'
+#### Windows
+```cmd
+cd aiContent\backend
+venv\Scripts\activate
+python main.py
 ```
 
-**Mac / Linux:**
+Backend: `http://localhost:8000`  
+API docs: `http://localhost:8000/docs`
+
+> **Auto-reload is built in** — the server will automatically restart whenever you save any `.py` file. No need to manually restart.
+
+### Terminal 2 — Frontend
+
+#### macOS & Windows
 ```bash
-curl -X POST http://localhost:4000/api/restaurants \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Jonker 88", "address": "88 Jalan Hang Jebat, Melaka"}'
+cd aiContent/frontend
+npm run dev
+```
+
+Open: **`http://localhost:5173`**
+
+---
+
+## 📖 Usage
+
+1. Open `http://localhost:5173` in your browser
+2. **Single video**: Paste a TikTok or YouTube video URL → click **Process**
+3. **Batch mode**: Paste a TikTok/YouTube profile URL → select videos → click **Batch Process**
+4. Wait for processing (download → transcribe → summarize → extract)
+5. View transcript, AI summary, and structured extraction results
+
+---
+
+## 📁 Project Structure
+
+```
+aiContent/
+├── backend/
+│   ├── main.py               # FastAPI app entry point
+│   ├── requirements.txt      # Python dependencies
+│   ├── .env                  # Environment variables (not committed)
+│   ├── .env.example          # Environment template
+│   ├── routes/
+│   │   └── process.py        # API endpoints
+│   ├── services/
+│   │   ├── downloader.py     # yt-dlp video/audio downloader
+│   │   ├── transcriber.py    # OpenAI Whisper transcription
+│   │   ├── summarizer.py     # Groq AI summarization
+│   │   └── extractor.py      # Structured info extraction
+│   └── outputs/              # Job results stored here
+└── frontend/
+    ├── src/
+    │   ├── App.jsx            # Main app component
+    │   ├── components/        # UI components
+    │   └── index.css          # Global styles
+    └── package.json
 ```
 
 ---
 
-## Database Setup (first time only)
-
-Run this once in **Supabase → SQL Editor**:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-
-CREATE TABLE restaurants (
-  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name        TEXT NOT NULL,
-  address     TEXT NOT NULL,
-  lat         DOUBLE PRECISION,
-  lng         DOUBLE PRECISION,
-  location    GEOGRAPHY(Point, 4326),
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE POLICY "Allow public read" ON restaurants FOR SELECT USING (true);
-CREATE POLICY "Allow backend insert" ON restaurants FOR INSERT WITH CHECK (true);
-```
-
----
-
-## API Endpoints
+## 🔑 API Endpoints
 
 | Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/restaurants` | Add restaurant (geocodes address, stores in Supabase) |
-| `GET` | `/api/restaurants/nearby?lat=&lng=` | Return nearest restaurants sorted by Haversine |
-| `GET` | `/api/route?fromLat=&fromLng=&toLat=&toLng=` | Return road distance, ETA, and route polyline |
+|--------|----------|-------------|
+| GET | /health | Health check |
+| POST | /api/validate-url | Validate a TikTok/YouTube URL |
+| POST | /api/process | Start processing a single video |
+| GET | /api/status/{job_id} | Poll job status |
+| GET | /api/results/{job_id} | Get completed job results |
+| POST | /api/scrape-profile | Scrape video list from a profile |
+| POST | /api/batch-process | Start batch processing (up to 50 videos) |
+| GET | /api/batch-status/{batch_id} | Poll batch status |
 
 ---
 
-## Project Structure
+## Notes
 
+- **First run**: Whisper will auto-download the model (~150MB) on first use.
+- **TikTok limitations**: Some TikTok videos may be restricted by privacy settings.
+- **Groq free tier**: 14,400 requests/day and 30 requests/minute — sufficient for normal use.
+- **Auto-reload**: The backend (`python main.py`) watches for file changes and reloads automatically during development.
+- **AI Model**: Uses `llama-3.1-8b-instant` on Groq — lightweight, fast, and free.
+- **Keep `.env` private**: Never commit your `.env` file or share your API key publicly.
+
+---
+
+## 🐛 Troubleshooting
+
+### ffmpeg not found
+Make sure ffmpeg is installed and in your system PATH. Re-open your terminal after installing.
+
+### GROQ_API_KEY not working
+- Confirm the `.env` file is inside the `backend/` folder
+- Confirm no extra spaces around the `=` sign
+- Regenerate a new key at [console.groq.com](https://console.groq.com)
+
+### Port already in use
+
+macOS:
+```bash
+lsof -ti:8000 | xargs kill
 ```
-Collaborative-Assignment/
-├── backend/
-│   ├── server.js               # Entry point — mounts all route modules
-│   ├── routes/
-│   │   ├── map.js              # Map module        (Tan Zheng Yang) — restaurants, route
-│   │   ├── auth.js             # Auth module        (Joshua)         — login, register
-│   │   ├── vendors.js          # Vendors module     (Toh Lian Thing) — vendor routes
-│   │   ├── ai.js               # AI module          (Tan Chun Jie)   — video URL, transcribe, summarize, extract
-│   │   └── engagement.js       # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
-│   ├── supabase.js             # Supabase client
-│   ├── haversine.js            # Haversine distance formula
-│   ├── .env                    # Real keys — never committed
-│   └── .env.example            # Template for teammates
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx             # Router only — wires all pages
-│   │   ├── api.js              # fetch wrappers for backend endpoints
-│   │   ├── pages/
-│   │   │   ├── MapPage.jsx         # Map module        (Tan Zheng Yang) — full map UI
-│   │   │   ├── LoginPage.jsx       # Auth module        (Joshua)         — login/register UI
-│   │   │   ├── VendorsPage.jsx     # Vendors module     (Toh Lian Thing) — vendor UI
-│   │   │   ├── AIPage.jsx          # AI module          (Tan Chun Jie)   — video submit + results
-│   │   │   └── EngagementPage.jsx  # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
-│   │   └── components/
-│   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
-│   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
-│   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle
-│   ├── .env                    # Real keys — never committed
-│   └── .env.example            # Template for teammates
-└── README.md
+
+Windows:
+```cmd
+netstat -ano | findstr :8000
+taskkill /PID <PID_NUMBER> /F
 ```
+
+### Python ModuleNotFoundError
+Make sure your virtual environment is activated before running uvicorn.

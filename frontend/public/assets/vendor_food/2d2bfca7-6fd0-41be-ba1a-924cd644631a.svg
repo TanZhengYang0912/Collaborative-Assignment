@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Popitra Jelly">
+  <title>Popitra Jelly</title>
+  <defs>
+    <filter id="fcd7aa84a" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="0"/>
+      <feColorMatrix type="saturate" values="0.90"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncG type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncB type="linear" slope="1.11" intercept="-0.055"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.94"/>
+        <feFuncG type="linear" slope="0.94"/>
+        <feFuncB type="linear" slope="0.94"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.17"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/05-cendol-coconut-shake.png" x="-78" y="-77" width="887" height="666" preserveAspectRatio="none" filter="url(#fcd7aa84a)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

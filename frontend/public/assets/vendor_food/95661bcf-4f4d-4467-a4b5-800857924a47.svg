@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Masakan Panas">
+  <title>Masakan Panas</title>
+  <defs>
+    <filter id="f68f0d389" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="3"/>
+      <feColorMatrix type="saturate" values="0.98"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.94" intercept="0.030"/>
+        <feFuncG type="linear" slope="0.94" intercept="0.030"/>
+        <feFuncB type="linear" slope="0.94" intercept="0.030"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.93"/>
+        <feFuncG type="linear" slope="0.93"/>
+        <feFuncB type="linear" slope="0.93"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.12"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/04-claypot-noodle.png" x="-87" y="-55" width="777" height="583" preserveAspectRatio="none" filter="url(#f68f0d389)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

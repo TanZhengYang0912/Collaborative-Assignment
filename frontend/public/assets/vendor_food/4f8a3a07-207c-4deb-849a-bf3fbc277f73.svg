@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Juragan Nidam">
+  <title>Juragan Nidam</title>
+  <defs>
+    <filter id="f3fe1aa56" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="1"/>
+      <feColorMatrix type="saturate" values="1.04"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.07" intercept="-0.035"/>
+        <feFuncG type="linear" slope="1.07" intercept="-0.035"/>
+        <feFuncB type="linear" slope="1.07" intercept="-0.035"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.03"/>
+        <feFuncG type="linear" slope="1.03"/>
+        <feFuncB type="linear" slope="1.03"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.10"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/09-nyonya-heritage-meal.png" x="-199" y="-74" width="937" height="703" preserveAspectRatio="none" filter="url(#f3fe1aa56)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

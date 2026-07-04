@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Albaik Burger">
+  <title>Albaik Burger</title>
+  <defs>
+    <filter id="fa759de1c" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="5"/>
+      <feColorMatrix type="saturate" values="1.07"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.06" intercept="-0.030"/>
+        <feFuncG type="linear" slope="1.06" intercept="-0.030"/>
+        <feFuncB type="linear" slope="1.06" intercept="-0.030"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.92"/>
+        <feFuncG type="linear" slope="0.92"/>
+        <feFuncB type="linear" slope="0.92"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/04-claypot-noodle.png" x="-31" y="-35" width="786" height="590" preserveAspectRatio="none" filter="url(#fa759de1c)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.055"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

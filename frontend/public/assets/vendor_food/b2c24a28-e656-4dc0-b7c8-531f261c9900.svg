@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Nasi Krabu Antara Bangsa">
+  <title>Nasi Krabu Antara Bangsa</title>
+  <defs>
+    <filter id="f350d803" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-2"/>
+      <feColorMatrix type="saturate" values="1.18"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncG type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncB type="linear" slope="0.95" intercept="0.025"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.96"/>
+        <feFuncG type="linear" slope="0.96"/>
+        <feFuncB type="linear" slope="0.96"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.13"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/05-cendol-coconut-shake.png" x="-229" y="-58" width="795" height="596" preserveAspectRatio="none" filter="url(#f350d803)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

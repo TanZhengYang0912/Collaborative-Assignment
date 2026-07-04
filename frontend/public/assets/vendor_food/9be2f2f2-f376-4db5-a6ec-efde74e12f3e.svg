@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Glamping Campsite Steamboat Restaurant">
+  <title>Glamping Campsite Steamboat Restaurant</title>
+  <defs>
+    <filter id="f2cc7b1be" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="6"/>
+      <feColorMatrix type="saturate" values="1.17"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.99" intercept="0.005"/>
+        <feFuncG type="linear" slope="0.99" intercept="0.005"/>
+        <feFuncB type="linear" slope="0.99" intercept="0.005"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.93"/>
+        <feFuncG type="linear" slope="0.93"/>
+        <feFuncB type="linear" slope="0.93"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/08-fusion-green-plate.png" x="-244" y="-34" width="876" height="657" preserveAspectRatio="none" filter="url(#f2cc7b1be)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

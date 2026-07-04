@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Sandwich Gadis Bertopi">
+  <title>Sandwich Gadis Bertopi</title>
+  <defs>
+    <filter id="faed8d868" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-5"/>
+      <feColorMatrix type="saturate" values="1.07"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.09" intercept="-0.045"/>
+        <feFuncG type="linear" slope="1.09" intercept="-0.045"/>
+        <feFuncB type="linear" slope="1.09" intercept="-0.045"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.96"/>
+        <feFuncG type="linear" slope="0.96"/>
+        <feFuncB type="linear" slope="0.96"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.13"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/10-coconut-shake-stall.png" x="-254" y="-62" width="834" height="625" preserveAspectRatio="none" filter="url(#faed8d868)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Chef Wan'S Cafe">
+  <title>Chef Wan'S Cafe</title>
+  <defs>
+    <filter id="f2af9a160" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="6"/>
+      <feColorMatrix type="saturate" values="0.92"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncG type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncB type="linear" slope="0.93" intercept="0.035"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.97"/>
+        <feFuncG type="linear" slope="0.97"/>
+        <feFuncB type="linear" slope="0.97"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.13"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/10-coconut-shake-stall.png" x="-247" y="-79" width="866" height="649" preserveAspectRatio="none" filter="url(#f2af9a160)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.055"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

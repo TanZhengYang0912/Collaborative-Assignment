@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Steak House Klebang">
+  <title>Steak House Klebang</title>
+  <defs>
+    <filter id="f19ee72fe" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-4"/>
+      <feColorMatrix type="saturate" values="0.97"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncG type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncB type="linear" slope="1.11" intercept="-0.055"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.01"/>
+        <feFuncG type="linear" slope="1.01"/>
+        <feFuncB type="linear" slope="1.01"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/05-cendol-coconut-shake.png" x="-190" y="-65" width="777" height="583" preserveAspectRatio="none" filter="url(#f19ee72fe)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.055"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

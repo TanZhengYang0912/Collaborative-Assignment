@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Nasi Ayam Mitc">
+  <title>Nasi Ayam Mitc</title>
+  <defs>
+    <filter id="fd77cdfc5" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-2"/>
+      <feColorMatrix type="saturate" values="0.96"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.96" intercept="0.020"/>
+        <feFuncG type="linear" slope="0.96" intercept="0.020"/>
+        <feFuncB type="linear" slope="0.96" intercept="0.020"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.00"/>
+        <feFuncG type="linear" slope="1.00"/>
+        <feFuncB type="linear" slope="1.00"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.16"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/03-kuih-assortment.png" x="-17" y="-52" width="786" height="590" preserveAspectRatio="none" filter="url(#fd77cdfc5)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.025"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>
