@@ -15,7 +15,7 @@ import { parse } from "csv-parse/sync";
 import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────────────────────────────
 const CSV_PATH   = process.env.CSV_PATH
   ? path.resolve(process.env.CSV_PATH)
   : process.argv[2]
@@ -30,7 +30,7 @@ const supabase    = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_
 
 if (!GOOGLE_KEY) { console.error("❌  GOOGLE_API_KEY missing in .env"); process.exit(1); }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────────────────
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function geocode(vendorName, address) {
@@ -44,7 +44,6 @@ async function geocode(vendorName, address) {
   const result   = data.results[0];
   const loc      = result.geometry.location;
 
-  // Verify result is in Melaka / Malacca
   const inMelaka = result.formatted_address.toLowerCase().includes("melaka") ||
                    result.formatted_address.toLowerCase().includes("malacca");
 
@@ -57,14 +56,14 @@ async function geocode(vendorName, address) {
   };
 }
 
-// ── Load / save progress log ──────────────────────────────────────────────────
+// ── Load / save progress log ────────────────────────────────────────────────────────────
 function loadLog() {
   if (fs.existsSync(LOG_PATH)) return JSON.parse(fs.readFileSync(LOG_PATH, "utf8"));
-  return { done: [] };  // array of vendor_names already processed
+  return { done: [] };
 }
 function saveLog(log) { fs.writeFileSync(LOG_PATH, JSON.stringify(log, null, 2)); }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────────────
 async function main() {
   const csv  = fs.readFileSync(CSV_PATH, "utf8");
   const rows = parse(csv, { columns: true, skip_empty_lines: true, trim: true });
@@ -115,22 +114,18 @@ async function main() {
       });
     }
 
-    // Mark as done
     log.done.push(name);
 
-    // Upsert batch
     if (upsertBuf.length >= BATCH_SIZE) {
       await flushBatch(upsertBuf);
       upsertBuf.length = 0;
     }
 
-    // Save progress every 10 rows
     if ((i + 1) % 10 === 0) saveLog(log);
 
     await sleep(DELAY_MS);
   }
 
-  // Final flush
   if (upsertBuf.length) await flushBatch(upsertBuf);
   saveLog(log);
 
