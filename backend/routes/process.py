@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import StreamingResponse
+import io
 from pydantic import BaseModel
 from typing import Optional
 
@@ -393,3 +395,74 @@ async def api_results(job_id: str):
     if job["status"] != "completed":
         raise HTTPException(status_code=202, detail="Job not yet completed")
     return job
+
+
+@router.get("/export-csv/{job_id}")
+async def api_export_csv(job_id: str):
+    """Export extracted eatery data as a UTF-8 CSV file (server-side, bypasses browser blob restrictions)."""
+    if job_id not in jobs:
+        job_file = OUTPUTS_DIR / job_id / "status.json"
+        if job_file.exists():
+            with open(job_file, "r", encoding="utf-8") as f:
+                job = json.load(f)
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
+    else:
+        job = jobs[job_id]
+
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Job not yet completed")
+
+    extracted = job.get("extracted") or {}
+
+    headers = [
+        "vendor_name", "address", "city", "state", "country",
+        "latitude", "longitude", "cuisine_types", "signature_dishes",
+        "price_range", "sentiment_score", "average_rating", "review_count",
+        "ai_review_summary", "operating_hours_raw", "source_video_url",
+        "source_platform", "last_updated",
+    ]
+
+    dishes   = ", ".join(extracted.get("signature_dishes", []) or [])
+    cuisines = ", ".join(extracted.get("cuisine_types", []) or [])
+    platform = "TikTok" if "tiktok" in (job.get("url") or "").lower() else "YouTube"
+
+    def _esc(v):
+        if v is None:
+            return '""'
+        return '"' + str(v).replace('"', '""') + '"'
+
+    row = [
+        _esc(extracted.get("vendor_name", "")),
+        _esc(extracted.get("address", "")),
+        _esc(extracted.get("city", "")),
+        _esc(extracted.get("state", "")),
+        _esc(extracted.get("country", "Malaysia")),
+        _esc(""),  # latitude
+        _esc(""),  # longitude
+        _esc(cuisines),
+        _esc(dishes),
+        _esc(extracted.get("price_range", "")),
+        _esc(extracted.get("sentiment_score", "")),
+        _esc(""),  # average_rating
+        _esc(""),  # review_count
+        _esc(job.get("summary", "")),
+        _esc(extracted.get("operating_hours_raw", "")),
+        _esc(job.get("url", "")),
+        _esc(platform),
+        _esc(datetime.now().isoformat()),
+    ]
+
+    csv_content = ",".join(headers) + "\n" + ",".join(row) + "\n"
+    # UTF-8 BOM so Excel opens it correctly
+    bom = b"\xef\xbb\xbf"
+    output = bom + csv_content.encode("utf-8")
+
+    vendor_safe = "".join(c if c.isalnum() else "_" for c in (extracted.get("vendor_name") or "vendor"))
+    filename = f"{vendor_safe}.csv"
+
+    return StreamingResponse(
+        io.BytesIO(output),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

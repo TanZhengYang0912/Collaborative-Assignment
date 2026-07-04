@@ -2,11 +2,29 @@ import subprocess
 import os
 import re
 import json
+import shutil
 from pathlib import Path
 
 
 OUTPUTS_DIR = Path(__file__).parent.parent / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
+
+# Locate ffmpeg/ffprobe — check PATH first, then common Windows install locations
+def _find_exe(name: str) -> str:
+    found = shutil.which(name)
+    if found:
+        return found
+    # WinGet installs ffmpeg here but doesn't always update the active PATH
+    winget_bin = (
+        Path(os.environ.get("LOCALAPPDATA", ""))
+        / "Microsoft" / "WinGet" / "Packages"
+    )
+    for candidate in winget_bin.glob(f"Gyan.FFmpeg*/**/bin/{name}.exe"):
+        return str(candidate)
+    return name  # last resort: let subprocess raise FileNotFoundError
+
+FFMPEG  = _find_exe("ffmpeg")
+FFPROBE = _find_exe("ffprobe")
 
 
 def sanitize_filename(name: str) -> str:
@@ -17,7 +35,7 @@ def _has_audio_stream(file_path: Path) -> bool:
     """Return True if the file has at least one audio stream."""
     result = subprocess.run(
         [
-            "ffprobe", "-v", "quiet",
+            FFPROBE, "-v", "quiet",
             "-select_streams", "a",          # audio streams only
             "-show_entries", "stream=codec_type",
             "-of", "csv=p=0",
@@ -133,7 +151,7 @@ def download_audio(url: str, job_id: str) -> dict:
 
     # ── Convert to MP3 with ffmpeg directly ───────────────────────────────────
     cmd_ff = [
-        "ffmpeg",
+        FFMPEG,
         "-y",                           # overwrite output
         "-i", str(downloaded_file),     # input: downloaded container
         "-vn",                          # discard video (watermark irrelevant)
