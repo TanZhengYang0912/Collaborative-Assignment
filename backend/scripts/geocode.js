@@ -2,11 +2,11 @@
  * Batch geocode Vendor_Melaka.csv → fill address + lat/lng → upsert into Supabase
  *
  * Usage:
- *   node scripts/geocode.js
+ *   node scripts/geocode.js <path-to-csv>
+ *   CSV_PATH=../data/Vendor_Melaka.csv node scripts/geocode.js
  *
  * Requirements:
  *   - backend/.env must have GOOGLE_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
- *   - CSV path set in CSV_PATH below
  */
 
 import fs from "fs";
@@ -16,7 +16,11 @@ import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const CSV_PATH   = path.resolve("C:/Users/tanzh/Desktop/Daniel/Tarumt Uni/Y3/Collab/Assignment/data/Vendor_Melaka.csv");
+const CSV_PATH   = process.env.CSV_PATH
+  ? path.resolve(process.env.CSV_PATH)
+  : process.argv[2]
+    ? path.resolve(process.argv[2])
+    : path.resolve("C:/Users/tanzh/Desktop/Daniel/Tarumt Uni/Y3/Collab/Assignment/data/Vendor_Melaka.csv");
 const DELAY_MS   = 120;   // ~8 req/s — well within Google's free-tier limit
 const BATCH_SIZE = 50;    // upsert rows in batches of 50
 const LOG_PATH   = path.resolve("scripts/geocode_log.json");
