@@ -51,7 +51,6 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             ref={(marker) => setMarkerRef(marker, v.id)}
             onClick={() => { setOpenId(v.id); onSelect(v); }}
           >
-            {/* In a trip → orange pin with its stop number; otherwise a food pin */}
             <Pin
               background={stopNum ? "#D85A30" : "#2a9d8f"}
               glyphColor="#fff"
