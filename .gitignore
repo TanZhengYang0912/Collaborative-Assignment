@@ -24,3 +24,6 @@ Thumbs.db
 
 # Coverage
 coverage/
+
+# Migration script progress — local only
+backend/scripts/geocode_log.json
