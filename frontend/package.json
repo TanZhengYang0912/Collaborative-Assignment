@@ -19,7 +19,22 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.0"
+=======
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0"
+  },
+  "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
+    "@react-google-maps/api": "^2.20.8",
+    "@supabase/supabase-js": "^2.110.0",
+    "@vis.gl/react-google-maps": "^1.9.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1"
+>>>>>>> 9c7e8808 (Latest-Combined)
   }
 }
