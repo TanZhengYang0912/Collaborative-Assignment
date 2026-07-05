@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const API_BASE = 'http://localhost:8000/api';
+
 function getSentimentEmoji(sentimentScore) {
   if (!sentimentScore) return '⭐';
   const score = parseFloat(sentimentScore);
@@ -14,6 +16,9 @@ export default function BatchResultsStep({ batchData, onReset }) {
   const [expandedRow, setExpandedRow] = useState(null);
   // Per-job manual overrides for fields the AI left blank
   const [overrides, setOverrides] = useState({});
+  // Per-job "address input is open" toggle
+  const [editingAddress, setEditingAddress] = useState({});
+  const [saveState, setSaveState] = useState({ saving: false, result: null });
 
   const getField = (job, field) => {
     const ext = job.extracted || {};
@@ -70,6 +75,35 @@ export default function BatchResultsStep({ batchData, onReset }) {
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
     });
     return [headers.join(','), ...rows].join('\n');
+  };
+
+  const malaccaJobs = completedJobs.filter(j => (j.extracted || {}).is_in_malacca === true);
+
+  const handleSaveToDatabase = async () => {
+    if (malaccaJobs.length === 0) return;
+    setSaveState({ saving: true, result: null });
+    try {
+      const payload = {
+        vendors: malaccaJobs.map(job => ({
+          job_id: job.job_id,
+          vendor_name: overrides[job.job_id]?.vendor_name,
+          address: overrides[job.job_id]?.address,
+          city: overrides[job.job_id]?.city,
+          state: overrides[job.job_id]?.state,
+          price_range: overrides[job.job_id]?.price_range,
+          operating_hours_raw: overrides[job.job_id]?.operating_hours_raw,
+        })),
+      };
+      const res = await fetch(`${API_BASE}/save-to-database`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setSaveState({ saving: false, result: data });
+    } catch (e) {
+      setSaveState({ saving: false, result: { saved: [], failed: [{ reason: e.message }] } });
+    }
   };
 
   const handleDownloadCSV = () => {
@@ -152,7 +186,35 @@ export default function BatchResultsStep({ batchData, onReset }) {
                       {isMalacca && <span style={{ marginLeft: 6, fontSize: 10, padding: '2px 6px', background: 'var(--success)', color: '#000', borderRadius: 4, fontWeight: 700 }}>📍 MLK</span>}
                     </td>
                     <td style={{ wordBreak: 'break-word' }}>
-                      {ext.address || '-'}
+                      {editingAddress[job.job_id] ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          value={getField(job, 'address')}
+                          onChange={e => setField(job.job_id, 'address', e.target.value)}
+                          onBlur={() => setEditingAddress(prev => ({ ...prev, [job.job_id]: false }))}
+                          style={{
+                            width: '100%',
+                            padding: '3px 6px',
+                            borderRadius: 6,
+                            border: '1px solid var(--border)',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: 'var(--text-primary)',
+                            fontSize: 12,
+                          }}
+                        />
+                      ) : (
+                        <span>
+                          {getField(job, 'address') || '-'}
+                          <button
+                            onClick={() => setEditingAddress(prev => ({ ...prev, [job.job_id]: true }))}
+                            title="Edit address"
+                            style={{ marginLeft: 6, fontSize: 11, background: 'none', border: 'none', color: 'var(--accent-secondary)', cursor: 'pointer', padding: 0 }}
+                          >
+                            ✏️
+                          </button>
+                        </span>
+                      )}
                       {ext.city && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ext.city}</div>}
                     </td>
                     <td>
@@ -298,16 +360,35 @@ export default function BatchResultsStep({ batchData, onReset }) {
         </button>
         <div className="action-bar-right">
           <div className="tooltip-wrap">
-            <button className="btn btn-disabled" disabled>
-              🗄️ Save to Database
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveToDatabase}
+              disabled={saveState.saving || malaccaJobs.length === 0}
+            >
+              {saveState.saving ? '⏳ Saving...' : `🗄️ Save to Database (${malaccaJobs.length})`}
             </button>
-            <div className="tooltip">Only Malacca locations will be saved to the database (Coming soon)</div>
+            <div className="tooltip">Only Malacca locations are saved to the database</div>
           </div>
           <button className="btn btn-primary" onClick={onReset}>
             ➕ Process Another
           </button>
         </div>
       </div>
+
+      {saveState.result && (
+        <div style={{ marginTop: 12, fontSize: 13 }}>
+          {saveState.result.saved.length > 0 && (
+            <div style={{ color: 'var(--success)' }}>
+              ✅ Saved {saveState.result.saved.length} vendor(s) to the database.
+            </div>
+          )}
+          {saveState.result.failed.length > 0 && (
+            <div style={{ color: '#f87171', marginTop: 4 }}>
+              ⚠️ {saveState.result.failed.length} failed: {saveState.result.failed.map(f => f.reason).join('; ')}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

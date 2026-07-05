@@ -23,12 +23,11 @@ export default function MelakaHighlight() {
       map,
     });
 
-    // Frame the INITIAL view on Melaka, but allow free panning/zoom anywhere
-    // (users may travel in from other states).
-    const bounds = new google.maps.LatLngBounds();
-    boundary.rings.forEach((r) => r.forEach((p) => bounds.extend(p)));
-    map.fitBounds(bounds);
-
+    // No fitBounds here — every way of entering map view already sets its own
+    // deliberate camera target (FocusOnVendor for a single pick, FocusOnUser
+    // for the "nearest 10" Map tab). Since the whole map tree remounts every
+    // time you come back from Dashboard, this used to re-fire on every visit
+    // and stomp on whichever of those had just focused the camera.
     return () => {
       region.setMap(null);
     };

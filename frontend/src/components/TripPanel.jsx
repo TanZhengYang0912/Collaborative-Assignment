@@ -19,7 +19,7 @@ const C = {
 
 const panel = {
   position: "absolute",
-  top: 64,
+  top: 108,
   right: 16,
   width: 260,
   maxHeight: "70vh",
@@ -36,7 +36,7 @@ const panel = {
 // draggable stop — nothing is locked as start or end.
 export default function TripPanel({
   trip, summary, loading,
-  onReorder, onOptimize, onClear, onRemove,
+  onReorder, onClear, onRemove,
   travelMode, onTravelMode,
 }) {
   const [dragIdx, setDragIdx] = useState(null);
@@ -98,8 +98,6 @@ export default function TripPanel({
               🛣 {summary.distance} · ⏱ {summary.duration}
             </div>
           )}
-
-          <button onClick={onOptimize} style={btn(C.accent, "#fff")}>↺ Suggest best order</button>
 
           <button
             onClick={() => setShowNav((v) => !v)}

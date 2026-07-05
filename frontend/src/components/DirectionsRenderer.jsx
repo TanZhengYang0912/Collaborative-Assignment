@@ -9,7 +9,11 @@ export default function DirectionsRenderer({ stops, travelMode, onSummary }) {
     if (!map) return;
 
     if (!rendererRef.current) {
-      rendererRef.current = new google.maps.DirectionsRenderer({ suppressMarkers: true });
+      // preserveViewport: true — don't let the renderer auto zoom-to-fit the
+      // whole route (that's what showed all of KL→Melaka on screen). Once
+      // navigation starts we instead keep the camera locked on the user's
+      // current position, the same way turn-by-turn nav apps behave.
+      rendererRef.current = new google.maps.DirectionsRenderer({ suppressMarkers: true, preserveViewport: true });
     }
 
     if (!stops || stops.length < 2 || !travelMode) {
@@ -32,6 +36,11 @@ export default function DirectionsRenderer({ stops, travelMode, onSummary }) {
           return;
         }
         rendererRef.current?.setDirections(result);
+        // Focus on the user's current position (always stops[0]) instead of
+        // leaving the camera wherever it was — matches how Google Maps
+        // centers on you once you start navigating.
+        map.panTo({ lat: stops[0].lat, lng: stops[0].lng });
+        map.setZoom(17);
         const legs  = result.routes[0].legs;
         const dist  = legs.reduce((a, l) => a + l.distance.value, 0);
         const dur   = legs.reduce((a, l) => a + l.duration.value, 0);

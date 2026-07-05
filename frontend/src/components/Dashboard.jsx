@@ -15,7 +15,7 @@ const C = {
 
 // The user dashboard (home). Top-bar layout, three tabs. Vendors come from
 // Supabase: { id, name, address, latitude, longitude }.
-export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenVendor }) {
+export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenVendor, onOpenMap }) {
   const [tab, setTab] = useState("vendors");
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
@@ -60,8 +60,9 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
           ["vendors", "Vendors"],
           ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
           ["reviews", "My reviews"],
+          ["map", "Map"],
         ].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)}
+          <button key={key} onClick={() => (key === "map" ? onOpenMap() : setTab(key))}
             style={{ background: "none", border: "none", cursor: "pointer", padding: "12px 2px", fontSize: 14, color: tab === key ? C.accentDark : C.muted, borderBottom: tab === key ? `2px solid ${C.accent}` : "2px solid transparent" }}>
             {label}
           </button>

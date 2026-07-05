@@ -14,6 +14,7 @@ from services.downloader import download_audio, validate_url, scrape_profile
 from services.transcriber import transcribe_audio
 from services.summarizer import summarize_transcript
 from services.extractor import extract_info
+from services.supabase_client import geocode_address, upsert_vendor
 
 router = APIRouter()
 
@@ -51,6 +52,22 @@ class ScrapeProfileRequest(BaseModel):
 class BatchProcessRequest(BaseModel):
     urls: list
     profile_url: str = ""
+
+
+class VendorSaveEntry(BaseModel):
+    job_id: str
+    # Admin-editable overrides from the results table; falls back to the
+    # AI-extracted value when not provided.
+    vendor_name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    price_range: Optional[str] = None
+    operating_hours_raw: Optional[str] = None
+
+
+class SaveToDatabaseRequest(BaseModel):
+    vendors: list[VendorSaveEntry]
 
 
 def update_job(job_id: str, **kwargs):
@@ -149,9 +166,11 @@ def run_pipeline(job_id: str, url: str):
         #   "This is a recommendation for Mr. Moyo in Kuala Lumpur."
         # We use simple regex to extract the eatery name and city when the
         # LLM extraction left them as null.
+        # NOTE: extract_info() returns "vendor_name"/"city" (not "eatery_name"/
+        # "location") — this fallback must key off the same names or it never fires.
         import re as _re
 
-        if not extracted.get("eatery_name") and summary:
+        if not extracted.get("vendor_name") and summary:
             # Look for eatery name patterns in the summary
             name_patterns = [
                 r"(?:eatery|restaurant|cafe|stall|spot|place)\s+(?:is\s+|called\s+|named\s+)?['\"]?([A-Z][^.,\n'\"]{2,40})['\"]?",
@@ -160,10 +179,10 @@ def run_pipeline(job_id: str, url: str):
             for pat in name_patterns:
                 m = _re.search(pat, summary, _re.IGNORECASE)
                 if m:
-                    extracted["eatery_name"] = m.group(1).strip()
+                    extracted["vendor_name"] = m.group(1).strip()
                     break
 
-        if not extracted.get("location") and summary:
+        if not extracted.get("city") and summary:
             # Look for city/location in the first two sentences of the summary
             first_sentences = ". ".join(summary.split(".")[:2])
             loc_patterns = [
@@ -173,9 +192,9 @@ def run_pipeline(job_id: str, url: str):
             for pat in loc_patterns:
                 m = _re.search(pat, first_sentences, _re.IGNORECASE)
                 if m:
-                    extracted["location"] = m.group(1).strip()
+                    extracted["city"] = m.group(1).strip()
                     # Update is_in_malacca if we found a location
-                    loc_lower = extracted["location"].lower()
+                    loc_lower = extracted["city"].lower()
                     if "malacca" in loc_lower or "melaka" in loc_lower:
                         extracted["is_in_malacca"] = True
                     break
@@ -466,3 +485,62 @@ async def api_export_csv(job_id: str):
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/save-to-database")
+async def api_save_to_database(req: SaveToDatabaseRequest):
+    """
+    Persist admin-reviewed extraction results into Supabase.
+    Only vendors the AI flagged as is_in_malacca are accepted — this endpoint
+    enforces that rule server-side too, not just via the disabled frontend state.
+    """
+    saved, failed = [], []
+
+    for entry in req.vendors:
+        job = jobs.get(entry.job_id)
+        if not job or job.get("status") != "completed":
+            failed.append({"job_id": entry.job_id, "reason": "job not found or not completed"})
+            continue
+
+        ext = job.get("extracted") or {}
+        if not ext.get("is_in_malacca"):
+            failed.append({"job_id": entry.job_id, "reason": "not a Malacca location"})
+            continue
+
+        vendor_name = entry.vendor_name or ext.get("vendor_name")
+        address     = entry.address or ext.get("address")
+        city        = entry.city or ext.get("city")
+        state       = entry.state or ext.get("state")
+
+        if not vendor_name:
+            failed.append({"job_id": entry.job_id, "reason": "missing vendor_name"})
+            continue
+
+        geo = geocode_address(vendor_name, address or "", city or "", state or "")
+        platform = "TikTok" if "tiktok" in (job.get("url") or "").lower() else "YouTube"
+
+        row = {
+            "vendor_name": vendor_name,
+            "address": geo["formatted_address"] if geo else address,
+            "state": state,
+            "latitude": geo["latitude"] if geo else None,
+            "longitude": geo["longitude"] if geo else None,
+            "location_precision": geo["precision"] if geo else "unknown",
+            "cuisine_types": ", ".join(ext.get("cuisine_types") or []),
+            "signature_dishes": ", ".join(ext.get("signature_dishes") or []),
+            "price_range": entry.price_range or ext.get("price_range"),
+            "sentiment_score": ext.get("sentiment_score"),
+            "ai_review_summary": job.get("summary"),
+            "operating_hours_raw": entry.operating_hours_raw or ext.get("operating_hours_raw"),
+            "source_video_url": job.get("url"),
+            "source_platform": platform,
+            "last_updated": datetime.now().isoformat(),
+        }
+
+        try:
+            upsert_vendor(row)
+            saved.append(entry.job_id)
+        except Exception as e:
+            failed.append({"job_id": entry.job_id, "reason": str(e)})
+
+    return {"saved": saved, "failed": failed}

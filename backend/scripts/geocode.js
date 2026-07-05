@@ -102,6 +102,7 @@ async function main() {
         address:               geo.formatted_address,
         latitude:              geo.latitude,
         longitude:             geo.longitude,
+        location_precision:    "exact",
         state:                 row.state?.trim()              || null,
         cuisine_types:         row.cuisine_types?.trim()      || null,
         signature_dishes:      row.signature_dishes?.trim()   || null,

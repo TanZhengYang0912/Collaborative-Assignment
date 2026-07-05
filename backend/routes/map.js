@@ -77,7 +77,7 @@ router.get("/restaurants/nearby", async (req, res) => {
 
   const { data: restaurants, error } = await supabase
     .from("vendors")
-    .select("id, vendor_name, address, latitude, longitude");
+    .select("id, vendor_name, address, latitude, longitude, location_precision");
 
   if (error) {
     return res.status(500).json({ error: "database query failed", details: error.message });

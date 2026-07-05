@@ -12,6 +12,15 @@ const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
 const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 const MAP_ID = import.meta.env.VITE_MAP_ID || "DEMO_MAP_ID";
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function FocusOnVendor({ vendor }) {
   const map = useMap();
   useEffect(() => {
@@ -42,6 +51,11 @@ export default function MapPage() {
   const [selected, setSelected] = useState(null);
   const [userPos, setUserPos] = useState(null);
   const [locateTarget, setLocateTarget] = useState(null);
+  // "single" — entered map by picking one vendor from Dashboard, only show that
+  // pin (plus anything already on the trip). "nearby" — entered via the Map tab,
+  // show the 10 closest vendors to the user's current position.
+  const [mapMode, setMapMode] = useState("single");
+  const [nearbyVendors, setNearbyVendors] = useState([]);
 
   const [trip, setTrip] = useState([]);              // unified draggable stops
   const [tripData, setTripData] = useState(null);
@@ -106,29 +120,59 @@ export default function MapPage() {
     });
   }
 
-  function locateMe() {
+  // silent=true only records the position (needed to add "Your location" as a
+  // trip stop) without moving the camera — used when locating happens as a
+  // side effect of picking a vendor, so it doesn't hijack that vendor's focus
+  // once geolocation resolves a moment later.
+  function locateMe(silent = false) {
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
         setUserPos(pos);
-        setLocateTarget(pos);
+        if (!silent) setLocateTarget(pos);
       },
       () => {
         setUserPos(MELAKA_CENTER);
-        setLocateTarget(MELAKA_CENTER);
+        if (!silent) setLocateTarget(MELAKA_CENTER);
       }
     );
   }
 
   function openVendorOnMap(vendor) {
+    setMapMode("single");
     setFocusVendor(vendor);
     setSelected(vendor);
     setView("map");
     let list = trip.some((s) => s.id === vendor.id) ? [...trip] : [...trip, vendorStop(vendor)];
     if (userPos && !list.some((s) => s.isMe)) list = [meStop(userPos), ...list];
     setTrip(list);
-    if (!userPos) locateMe();
+    if (!userPos) locateMe(true);
     else planTrip(list, true);
+  }
+
+  // Entry point for the Dashboard's "Map" tab — jumps straight into the map,
+  // centred on the user, showing just the 10 nearest vendors instead of every
+  // pin at once.
+  function openMapNearby() {
+    const focusOn = (pos) => {
+      setUserPos(pos);
+      setLocateTarget(pos);
+      setMapMode("nearby");
+      setFocusVendor(null);
+      setSelected(null);
+      setView("map");
+      const nearest = vendors
+        .filter((v) => v.latitude != null && v.longitude != null)
+        .map((v) => ({ ...v, _distFromMe: haversineKm(pos.lat, pos.lng, v.latitude, v.longitude) }))
+        .sort((a, b) => a._distFromMe - b._distFromMe)
+        .slice(0, 10);
+      setNearbyVendors(nearest);
+    };
+    if (userPos) { focusOn(userPos); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => focusOn({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => focusOn(MELAKA_CENTER)
+    );
   }
 
   if (!API_KEY) {
@@ -147,6 +191,7 @@ export default function MapPage() {
         bookmarks={bookmarks}
         onToggleBookmark={toggleBookmark}
         onOpenVendor={openVendorOnMap}
+        onOpenMap={openMapNearby}
       />
     );
   }
@@ -154,6 +199,13 @@ export default function MapPage() {
   const meIndex = trip.findIndex((s) => s.isMe);
   const vendorStopOrder = new Map();
   trip.forEach((s, i) => { if (!s.isMe) vendorStopOrder.set(s.id, i + 1); });
+
+  // Only render every pin when the user is actively browsing "all" — otherwise
+  // stick to what they came here to see (one vendor, or their nearest 10),
+  // plus anything they've already added as a trip stop.
+  const visibleVendors = mapMode === "nearby"
+    ? nearbyVendors
+    : vendors.filter((v) => v.id === focusVendor?.id || vendorStopOrder.has(v.id));
 
   return (
     <APIProvider apiKey={API_KEY} libraries={["geometry", "marker"]}>
@@ -167,15 +219,20 @@ export default function MapPage() {
           style={{ width: "100%", height: "100%" }}
         >
           <MelakaHighlight />
-          <FocusOnVendor vendor={focusVendor} />
+          {/* FocusOnUser must commit before FocusOnVendor — React runs effects in
+              JSX order, and picking a vendor often triggers a first-time
+              locateMe() call in the same update. Without this order, "focus on
+              me" would win and undo the "focus on the vendor I picked" zoom. */}
           <FocusOnUser pos={locateTarget} />
+          <FocusOnVendor vendor={focusVendor} />
           <VendorMarkers
-            vendors={vendors}
+            vendors={visibleVendors}
             userPos={userPos}
             onSelect={setSelected}
             onAddStop={addStop}
             tripOrder={vendorStopOrder}
             userStopNumber={meIndex >= 0 ? meIndex + 1 : null}
+            selectedId={selected?.id}
           />
           {travelMode
             ? <DirectionsRenderer stops={trip} travelMode={travelMode} onSummary={setDirSummary} />
@@ -185,7 +242,7 @@ export default function MapPage() {
 
         <button
           onClick={() => setView("dashboard")}
-          style={{ position: "absolute", top: 16, right: 16, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: "#993C1D", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}
+          style={{ position: "absolute", top: 60, right: 16, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: "#993C1D", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}
         >
           ← Back to vendors
         </button>
@@ -208,6 +265,24 @@ export default function MapPage() {
         </button>
 
         <button
+          onClick={() => planTrip(trip, true)}
+          disabled={trip.length < 2}
+          title={trip.length < 2 ? "Add at least 2 stops to your trip first" : "Reorder stops for the shortest overall trip"}
+          style={{
+            position: "absolute", top: 130, left: 10, zIndex: 10,
+            background: trip.length < 2 ? "#eee" : "#D85A30",
+            color: trip.length < 2 ? "#999" : "#fff",
+            border: "none",
+            borderRadius: 6, padding: "6px 12px",
+            cursor: trip.length < 2 ? "not-allowed" : "pointer",
+            fontFamily: "system-ui", fontSize: 12, fontWeight: 500,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          }}
+        >
+          ↺ Suggest best order
+        </button>
+
+        <button
           onClick={locateMe}
           title="Get current location"
           style={{ position: "absolute", bottom: 180, right: 10, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", fontSize: 18 }}
@@ -220,7 +295,6 @@ export default function MapPage() {
           summary={travelMode ? dirSummary : tripData}
           loading={tripLoading}
           onReorder={reorderTrip}
-          onOptimize={() => planTrip(trip, true)}
           onClear={clearTrip}
           onRemove={removeStop}
           travelMode={travelMode}

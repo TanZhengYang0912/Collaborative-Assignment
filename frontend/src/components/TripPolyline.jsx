@@ -16,10 +16,11 @@ export default function TripPolyline({ path }) {
       map,
     });
 
-    const bounds = new google.maps.LatLngBounds();
-    path.forEach((p) => bounds.extend(p));
-    map.fitBounds(bounds, 90);
-
+    // No fitBounds here on purpose — camera focus is owned by FocusOnVendor /
+    // FocusOnUser, driven by explicit user actions. Auto-fitting to the whole
+    // route on every recalculation used to silently zoom the map back out
+    // (e.g. away from a single vendor the user just picked, or away from
+    // "nearest 10" mode) the moment a route came back from the trip API.
     return () => line.setMap(null);
   }, [map, path]);
 
