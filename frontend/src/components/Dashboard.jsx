@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 // Warm "foodie" palette (cream + orange)
 const C = {
@@ -15,15 +17,41 @@ const C = {
 // Supabase: { id, name, address, latitude, longitude }.
 export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenVendor }) {
   const [tab, setTab] = useState("vendors");
+  const [session, setSession] = useState(null);
+  const navigate = useNavigate();
   const bookmarked = vendors.filter((v) => bookmarks.has(v.id));
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const userEmail = session?.user?.email || "";
+  const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
   return (
     <div style={{ minHeight: "100vh", background: C.cream, fontFamily: "system-ui" }}>
       <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}>🍜 TrueBites</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 14, color: C.text }}>Ng Chi Hao</span>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>NC</div>
+          {session ? (
+            <>
+              <span style={{ fontSize: 14, color: C.text }}>{userEmail}</span>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{initials}</div>
+              <button onClick={handleLogout} style={{ fontSize: 13, color: C.muted, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 12px", cursor: "pointer" }}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <button onClick={() => navigate("/login")} style={{ fontSize: 13, background: C.accent, color: "#fff", border: "none", borderRadius: 6, padding: "7px 16px", cursor: "pointer", fontWeight: 500 }}>
+              Log in
+            </button>
+          )}
         </div>
       </header>
 

@@ -2,6 +2,7 @@
 // Login / register UI backed directly by Supabase Auth (no custom Express routes).
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 const styles = {
@@ -63,6 +64,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -94,6 +96,8 @@ export default function LoginPage() {
 
     if (mode === "signup") {
       setInfoMsg("Check your email to confirm your account before signing in.");
+    } else {
+      navigate("/map", { replace: true });
     }
   }
 
@@ -107,17 +111,10 @@ export default function LoginPage() {
     await supabase.auth.signOut();
   }
 
+  // Already logged in — go back to the app
   if (session) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <p>Logged in as {session.user.email}</p>
-          <button style={styles.button} onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
-      </div>
-    );
+    navigate("/map", { replace: true });
+    return null;
   }
 
   return (

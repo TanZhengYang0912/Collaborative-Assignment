@@ -103,6 +103,8 @@ async function main() {
         latitude:              geo.latitude,
         longitude:             geo.longitude,
         state:                 row.state?.trim()              || null,
+        cuisine_types:         row.cuisine_types?.trim()      || null,
+        signature_dishes:      row.signature_dishes?.trim()   || null,
         price_range:           row.price_range?.trim()        || null,
         average_rating:        row.average_rating             ? parseFloat(row.average_rating) : null,
         review_count:          row.review_count               ? parseInt(row.review_count)     : null,
