@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MapPage        from "./pages/MapPage";
 import LoginPage      from "./pages/LoginPage";
+import ProfilePage    from "./pages/ProfilePage";
 import VendorsPage    from "./pages/VendorsPage";
 import AIPage         from "./pages/AIPage";
 import EngagementPage from "./pages/EngagementPage";
@@ -11,6 +12,7 @@ export default function App() {
       <Routes>
         <Route path="/map"        element={<MapPage />} />
         <Route path="/login"      element={<LoginPage />} />
+        <Route path="/profile"    element={<ProfilePage />} />
         <Route path="/vendors"    element={<VendorsPage />} />
         <Route path="/ai"         element={<AIPage />} />
         <Route path="/engagement" element={<EngagementPage />} />

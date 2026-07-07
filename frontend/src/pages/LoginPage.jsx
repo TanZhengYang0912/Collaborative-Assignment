@@ -2,7 +2,18 @@
 // Login / register UI backed directly by Supabase Auth (no custom Express routes).
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+
+const C = {
+  cream: "#FBF4EA",
+  card: "#FFFFFF",
+  accent: "#D85A30",
+  accentDark: "#993C1D",
+  text: "#3E2C23",
+  muted: "#9A8478",
+  border: "#EADBCB",
+};
 
 const styles = {
   page: {
@@ -10,7 +21,9 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     height: "100vh",
-    fontFamily: "sans-serif",
+    fontFamily: "system-ui",
+    background: C.cream,
+    position: "relative",
   },
   card: {
     width: 320,
@@ -20,6 +33,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 12,
+    background: C.card,
   },
   tabs: { display: "flex", gap: 8, marginBottom: 8 },
   tab: {
@@ -27,30 +41,47 @@ const styles = {
     padding: 8,
     textAlign: "center",
     cursor: "pointer",
-    border: "1px solid #ccc",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: C.border,
     borderRadius: 4,
     background: "#f5f5f5",
+    color: C.text,
   },
-  tabActive: { background: "#333", color: "#fff", borderColor: "#333" },
-  input: { padding: 8, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 },
+  tabActive: { background: C.accent, color: "#fff", borderColor: C.accent, borderStyle: "solid", borderWidth: 1 },
+  input: { padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4 },
   button: {
     padding: 10,
     fontSize: 14,
     border: "none",
     borderRadius: 4,
-    background: "#333",
+    background: C.accent,
     color: "#fff",
     cursor: "pointer",
+    fontWeight: 500,
   },
   googleButton: {
     padding: 10,
     fontSize: 14,
-    border: "1px solid #ccc",
+    border: `1px solid ${C.border}`,
     borderRadius: 4,
-    background: "#fff",
+    background: C.card,
     cursor: "pointer",
+    color: C.text,
   },
-  divider: { textAlign: "center", color: "#999", fontSize: 12 },
+  backLink: {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 13,
+    color: C.accent,
+    fontFamily: "system-ui",
+    padding: 0,
+    marginTop: 8,
+    textAlign: "center",
+    textDecoration: "underline",
+  },
+  divider: { textAlign: "center", color: C.muted, fontSize: 12 },
   error: { color: "#c0392b", fontSize: 13 },
   info: { color: "#2c7a4b", fontSize: 13 },
 };
@@ -63,6 +94,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -80,20 +112,54 @@ export default function LoginPage() {
     setInfoMsg("");
     setLoading(true);
 
-    const { error } =
-      mode === "signup"
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const response =
+        mode === "signup"
+          ? await supabase.auth.signUp({ email, password })
+          : await supabase.auth.signInWithPassword({ email, password });
 
-    setLoading(false);
+      const { error, data } = response;
 
-    if (error) {
-      setErrorMsg(error.message);
-      return;
-    }
+      console.log("Full auth response:", response);
+      console.log("Error:", error);
+      console.log("Data:", data);
 
-    if (mode === "signup") {
-      setInfoMsg("Check your email to confirm your account before signing in.");
+      setLoading(false);
+
+      if (error) {
+        console.error("Full error object:", error);
+        console.error("Error keys:", Object.keys(error));
+        console.error("Error toString:", error.toString());
+        console.error("Error name:", error.name);
+        console.error("Error status:", error.status);
+        console.error("Error code:", error.code);
+        console.error("Error details:", error.__isAuthError);
+
+        const errorMessage =
+          error?.message ||
+          error?.error_description ||
+          error?.statusText ||
+          error?.status ||
+          (error && Object.keys(error).length > 0 ? JSON.stringify(error) : "Unknown error from Supabase");
+        setErrorMsg(errorMessage);
+        return;
+      }
+
+      if (mode === "signup") {
+        if (data?.user?.identities?.length === 0) {
+          setErrorMsg("This email is already registered. Please sign in instead.");
+        } else {
+          setInfoMsg("Account created! Check your email to confirm before signing in.");
+          setEmail("");
+          setPassword("");
+        }
+      } else {
+        navigate("/map", { replace: true });
+      }
+    } catch (err) {
+      setLoading(false);
+      console.error("Unexpected error:", err);
+      setErrorMsg(err.message || "An unexpected error occurred");
     }
   }
 
@@ -107,17 +173,10 @@ export default function LoginPage() {
     await supabase.auth.signOut();
   }
 
+  // Already logged in — go back to the app
   if (session) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <p>Logged in as {session.user.email}</p>
-          <button style={styles.button} onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
-      </div>
-    );
+    navigate("/map", { replace: true });
+    return null;
   }
 
   return (
@@ -176,6 +235,13 @@ export default function LoginPage() {
 
         <button style={styles.googleButton} onClick={handleGoogleLogin}>
           Continue with Google
+        </button>
+
+        <button
+          onClick={() => navigate("/map")}
+          style={styles.backLink}
+        >
+          Return to main page
         </button>
       </div>
     </div>
