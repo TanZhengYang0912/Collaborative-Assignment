@@ -40,12 +40,12 @@ router.post("/restaurants", async (req, res) => {
   const { lat, lng } = geoData.results[0].geometry.location;
 
   const { data, error } = await supabase
-    .from("restaurants")
+    .from("vendors")
     .insert({
-      name,
+      vendor_name: name,
       address,
-      lat,
-      lng,
+      latitude: lat,
+      longitude: lng,
       location: `SRID=4326;POINT(${lng} ${lat})`,
     })
     .select()
@@ -76,19 +76,26 @@ router.get("/restaurants/nearby", async (req, res) => {
   const userLng = parseFloat(lng);
 
   const { data: restaurants, error } = await supabase
-    .from("restaurants")
-    .select("id, name, address, lat, lng");
+    .from("vendors")
+    .select(
+      "id, vendor_name, address, latitude, longitude, location_precision, " +
+      "cuisine_types, signature_dishes, price_range, ai_review_summary, " +
+      "source_video_url, source_platform"
+    );
 
   if (error) {
     return res.status(500).json({ error: "database query failed", details: error.message });
   }
 
   const sorted = restaurants
-    .filter((r) => r.lat != null && r.lng != null)
+    .filter((r) => r.latitude != null && r.longitude != null)
     .map((r) => {
-      const distKm = haversine(userLat, userLng, r.lat, r.lng);
+      const distKm = haversine(userLat, userLng, r.latitude, r.longitude);
       return {
         ...r,
+        name: r.vendor_name,
+        lat: r.latitude,
+        lng: r.longitude,
         distKm: parseFloat(distKm.toFixed(2)),
         roughEtaDriving: Math.round((distKm / 40) * 60),
         roughEtaWalking: Math.round((distKm / 5) * 60),
@@ -146,6 +153,48 @@ router.get("/route", async (req, res) => {
     duration: leg.duration.text,
     path,
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE 4 — MULTI-STOP TRIP (free OSRM, no key)
+//
+// Routes through several stops. optimize=true suggests the best order
+// (first stop kept as the anchor); optimize=false follows the given order.
+// Powers the Map Visualization trip planner.
+//
+// POST /api/trip   Body: { points: [{lat,lng}, ...], optimize: boolean }
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/trip", async (req, res) => {
+  const { points, optimize = true } = req.body || {};
+  if (!Array.isArray(points) || points.length < 2) {
+    return res.status(400).json({ error: "need at least 2 points" });
+  }
+
+  const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
+  const isTrip = optimize;
+  const url = optimize
+    ? `https://router.project-osrm.org/trip/v1/driving/${coords}?source=first&roundtrip=false&overview=full&geometries=geojson`
+    : `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+
+  try {
+    const data = await (await fetch(url)).json();
+    if (data.code !== "Ok") {
+      return res.status(502).json({ error: "trip failed", details: data });
+    }
+    const leg = isTrip ? data.trips[0] : data.routes[0];
+
+    let order = points.map((_, i) => i);
+    if (isTrip) data.waypoints.forEach((wp, i) => { order[wp.waypoint_index] = i; });
+
+    res.json({
+      order,
+      path: leg.geometry.coordinates.map(([lng, lat]) => ({ lat, lng })),
+      distance: (leg.distance / 1000).toFixed(1) + " km",
+      duration: Math.round(leg.duration / 60) + " mins",
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

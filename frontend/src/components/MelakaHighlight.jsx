@@ -23,18 +23,13 @@ export default function MelakaHighlight() {
       map,
     });
 
-    // Frame the view on Melaka + keep the user roughly within the state
-    const bounds = new google.maps.LatLngBounds();
-    boundary.rings.forEach((r) => r.forEach((p) => bounds.extend(p)));
-    map.fitBounds(bounds);
-    map.setOptions({
-      restriction: { latLngBounds: bounds.toJSON(), strictBounds: false },
-      minZoom: 10,
-    });
-
+    // No fitBounds here — every way of entering map view already sets its own
+    // deliberate camera target (FocusOnVendor for a single pick, FocusOnUser
+    // for the "nearest 10" Map tab). Since the whole map tree remounts every
+    // time you come back from Dashboard, this used to re-fire on every visit
+    // and stomp on whichever of those had just focused the camera.
     return () => {
       region.setMap(null);
-      map.setOptions({ restriction: null });
     };
   }, [map]);
 

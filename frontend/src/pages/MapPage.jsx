@@ -1,232 +1,334 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { LoadScript, GoogleMap, Marker, InfoWindow } from "@react-google-maps/api";
-import { getRestaurants, getRoute } from "../api";
-import RestaurantMarkers from "../components/RestaurantMarkers";
-import RoutePolyline from "../components/RoutePolyline";
-import RoutePanel from "../components/RoutePanel";
+import { useEffect, useState } from "react";
+import { APIProvider, Map as GMap, useMap } from "@vis.gl/react-google-maps";
+import { getRestaurants, getTrip } from "../api";
+import VendorMarkers from "../components/VendorMarkers";
+import MelakaHighlight from "../components/MelakaHighlight";
+import TripPanel from "../components/TripPanel";
+import TripPolyline from "../components/TripPolyline";
+import DirectionsRenderer from "../components/DirectionsRenderer";
+import TransitLayer from "../components/TransitLayer";
+import Dashboard from "../components/Dashboard";
+import { C } from "../lib/theme";
 
-const nightStyle = [
-  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
-  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
-  { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-  { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
-];
-const dayStyle = [];
+const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
+const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
+const MAP_ID = import.meta.env.VITE_MAP_ID || "DEMO_MAP_ID";
 
-const USER_ICON = {
-  path: 0,
-  scale: 10,
-  fillColor: "#1d72e8",
-  fillOpacity: 1,
-  strokeColor: "#fff",
-  strokeWeight: 2.5,
-};
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function FocusOnVendor({ vendor }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && vendor) {
+      map.panTo({ lat: vendor.latitude, lng: vendor.longitude });
+      map.setZoom(16);
+    }
+  }, [map, vendor]);
+  return null;
+}
+
+function FocusOnUser({ pos }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && pos) {
+      map.panTo(pos);
+      map.setZoom(14);
+    }
+  }, [map, pos]);
+  return null;
+}
 
 export default function MapPage() {
-  const mapRef     = useRef(null);
-  const pendingPan = useRef(null);
-  const savedView  = useRef(null);
+  const [view, setView] = useState("dashboard");     // "dashboard" | "map"
+  const [vendors, setVendors] = useState([]);
+  const [bookmarks, setBookmarks] = useState(new Set());
+  const [focusVendor, setFocusVendor] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [userPos, setUserPos] = useState(null);
+  const [locateTarget, setLocateTarget] = useState(null);
+  // "single" — entered map by picking one vendor from Dashboard, only show that
+  // pin (plus anything already on the trip). "nearby" — entered via the Map tab,
+  // show the 10 closest vendors to the user's current position.
+  const [mapMode, setMapMode] = useState("single");
+  const [nearbyVendors, setNearbyVendors] = useState([]);
 
-  const [isDark, setIsDark] = useState(
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-  const [userPos, setUserPos]           = useState(null);
-  const [restaurants, setRestaurants]   = useState([]);
-  const [selected, setSelected]         = useState(null);
-  const [route, setRoute]               = useState(null);
-  const [routeLoading, setRouteLoading] = useState(false);
+  const [trip, setTrip] = useState([]);              // unified draggable stops
+  const [tripData, setTripData] = useState(null);
+  const [tripLoading, setTripLoading] = useState(false);
+  const [travelMode, setTravelMode] = useState(null);   // null | "DRIVING" | "TWO_WHEELER" | "TRANSIT" | "WALKING"
+  const [dirSummary, setDirSummary] = useState(null);
+  const [routeIndex, setRouteIndex] = useState(0);       // selected alt route (DRIVING)
+  const [routeOptions, setRouteOptions] = useState([]);  // alt routes + toll flags (DRIVING)
+  const [transitLegs, setTransitLegs] = useState([]);    // itinerary legs (TRANSIT)
+  const [isDark, setIsDark] = useState(false);
 
+  // Load vendors (Supabase, sorted from Melaka centre as a default reference).
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e) => setIsDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    getRestaurants(MELAKA_CENTER.lat, MELAKA_CENTER.lng)
+      .then(setVendors)
+      .catch((e) => console.error("failed to load vendors:", e.message));
   }, []);
 
-  useEffect(() => {
-    mapRef.current?.setOptions({ styles: isDark ? nightStyle : dayStyle });
-  }, [isDark]);
+  // Each stop is a normal draggable entry — the user's location too.
+  const vendorStop = (v) => ({ id: v.id, name: v.name, lat: v.latitude, lng: v.longitude, isMe: false, vendor: v });
+  const meStop = (pos) => ({ id: "__me__", name: "Your location", lat: pos.lat, lng: pos.lng, isMe: true });
 
-  const locateAndLoad = useCallback(() => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by this browser.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords: { latitude: lat, longitude: lng } }) => {
-        setUserPos({ lat, lng });
-        if (mapRef.current) {
-          mapRef.current.panTo({ lat, lng });
-          mapRef.current.setZoom(14);
-        } else {
-          pendingPan.current = { lat, lng };
-        }
-        try {
-          const data = await getRestaurants(lat, lng);
-          setRestaurants(data.slice(0, 2));
-        } catch (e) {
-          alert("Failed to load restaurants: " + e.message);
-        }
-      },
-      () => alert("Location access denied. Please allow location access.")
-    );
-  }, []);
-
-  useEffect(() => { locateAndLoad(); }, [locateAndLoad]);
-
-  function handleSelect(restaurant) {
-    setSelected(restaurant);
-    setRoute(null);
-  }
-
-  async function handleNavigate() {
-    if (!selected || !userPos) return;
-    if (mapRef.current) {
-      savedView.current = {
-        zoom:   mapRef.current.getZoom(),
-        center: mapRef.current.getCenter(),
-      };
-    }
-    setRouteLoading(true);
+  async function planTrip(list, optimize) {
+    if (list.length < 2) { setTripData(null); return; }
+    setTripLoading(true);
     try {
-      const r = await getRoute(userPos, { lat: selected.lat, lng: selected.lng });
-      setRoute(r);
-      if (mapRef.current && r.path.length) {
-        const bounds = new window.google.maps.LatLngBounds();
-        r.path.forEach((p) => bounds.extend(p));
-        mapRef.current.fitBounds(bounds, 60);
-      }
+      const points = list.map((s) => ({ lat: s.lat, lng: s.lng }));
+      const res = await getTrip(points, optimize);
+      if (optimize) setTrip(res.order.map((i) => list[i]));
+      setTripData({ path: res.path, distance: res.distance, duration: res.duration });
     } catch (e) {
-      alert("Routing failed: " + e.message);
+      console.error(e);
+      alert("Trip planning failed (free OSRM server may be busy). Try again.");
     } finally {
-      setRouteLoading(false);
+      setTripLoading(false);
     }
   }
 
-  function handleClear() {
-    setSelected(null);
-    setRoute(null);
-    if (mapRef.current && savedView.current) {
-      mapRef.current.setZoom(savedView.current.zoom);
-      mapRef.current.setCenter(savedView.current.center);
-      savedView.current = null;
-    }
+  useEffect(() => {
+    if (!userPos || trip.length === 0) return;
+    const hasMe = trip.some((s) => s.isMe);
+    const next = hasMe
+      ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng } : s))
+      : [meStop(userPos), ...trip];
+    setTrip(next);
+    planTrip(next, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPos]);
+
+  function addStop(vendor) {
+    if (trip.some((s) => s.id === vendor.id)) return;
+    const list = [...trip, vendorStop(vendor)];
+    setTrip(list);
+    planTrip(list, true);
+  }
+  function reorderTrip(newList) { setTrip(newList); planTrip(newList, false); }
+  function removeStop(id) { const list = trip.filter((s) => s.id !== id); setTrip(list); planTrip(list, false); }
+
+  // Keeps "Your location" and the chosen transport mode — only the vendor
+  // stops (the actual destinations) are cleared, so the user can immediately
+  // start building a new trip from where they are without resetting mode/GPS.
+  function clearTrip() {
+    const list = trip.filter((s) => s.isMe);
+    setTrip(list);
+    setTripData(null);
+    setDirSummary(null);
+    setRouteOptions([]);
+    setTransitLegs([]);
   }
 
-  const onMapLoad = useCallback((mapInstance) => {
-    mapRef.current = mapInstance;
-    mapInstance.setOptions({ styles: isDark ? nightStyle : dayStyle });
-    if (pendingPan.current) {
-      mapInstance.panTo(pendingPan.current);
-      mapInstance.setZoom(14);
-      pendingPan.current = null;
-    }
-    mapInstance.getStreetView().setOptions({
-      addressControl:    true,
-      panControl:        true,
-      zoomControl:       true,
-      linksControl:      true,
-      enableCloseButton: true,
+  // Manual start location typed via Places Autocomplete — same effect as
+  // geolocation resolving, just fed a chosen address instead of GPS.
+  function setManualLocation(pos) {
+    setUserPos(pos);
+    setLocateTarget(pos);
+  }
+
+  // A previously-picked alt route index shouldn't survive a mode switch or a
+  // fresh route recalculation — always default back to Google's top pick.
+  useEffect(() => { setRouteIndex(0); }, [travelMode, trip]);
+
+  function toggleBookmark(id) {
+    setBookmarks((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
-  }, [isDark]);
+  }
+
+  // silent=true only records the position (needed to add "Your location" as a
+  // trip stop) without moving the camera — used when locating happens as a
+  // side effect of picking a vendor, so it doesn't hijack that vendor's focus
+  // once geolocation resolves a moment later.
+  function locateMe(silent = false) {
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setUserPos(pos);
+        if (!silent) setLocateTarget(pos);
+      },
+      () => {
+        setUserPos(MELAKA_CENTER);
+        if (!silent) setLocateTarget(MELAKA_CENTER);
+      }
+    );
+  }
+
+  // Entry point for the Dashboard's "Map" tab — jumps straight into the map,
+  // centred on the user, showing just the 10 nearest vendors instead of every
+  // pin at once.
+  function openMapNearby() {
+    const focusOn = (pos) => {
+      setUserPos(pos);
+      setLocateTarget(pos);
+      setMapMode("nearby");
+      setFocusVendor(null);
+      setSelected(null);
+      setView("map");
+      const nearest = vendors
+        .filter((v) => v.latitude != null && v.longitude != null)
+        .map((v) => ({ ...v, _distFromMe: haversineKm(pos.lat, pos.lng, v.latitude, v.longitude) }))
+        .sort((a, b) => a._distFromMe - b._distFromMe)
+        .slice(0, 10);
+      setNearbyVendors(nearest);
+    };
+    if (userPos) { focusOn(userPos); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => focusOn({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => focusOn(MELAKA_CENTER)
+    );
+  }
+
+  if (!API_KEY) {
+    return (
+      <div style={{ padding: 24, fontFamily: "system-ui" }}>
+        <h2>Missing browser API key</h2>
+        <p>Set <code>VITE_MAPS_BROWSER_KEY</code> in <code>frontend/.env</code>, then restart the dev server.</p>
+      </div>
+    );
+  }
+
+  if (view === "dashboard") {
+    return (
+      <Dashboard
+        vendors={vendors}
+        bookmarks={bookmarks}
+        onToggleBookmark={toggleBookmark}
+        onOpenMap={openMapNearby}
+        tripVendorIds={new Set(trip.filter((s) => !s.isMe).map((s) => s.id))}
+        onAddStop={addStop}
+      />
+    );
+  }
+
+  const meIndex = trip.findIndex((s) => s.isMe);
+  const vendorStopOrder = new Map();
+  trip.forEach((s, i) => { if (!s.isMe) vendorStopOrder.set(s.id, i + 1); });
+
+  // Only render every pin when the user is actively browsing "all" — otherwise
+  // stick to what they came here to see (one vendor, or their nearest 10),
+  // plus anything they've already added as a trip stop.
+  const visibleVendors = mapMode === "nearby"
+    ? nearbyVendors
+    : vendors.filter((v) => v.id === focusVendor?.id || vendorStopOrder.has(v.id));
+
+  // "Nearby to add" in the trip panel — vendors not already in the trip,
+  // closest to the last stop (or the user, if there's no trip yet).
+  const nearbyToAdd = (() => {
+    const anchor = trip[trip.length - 1] || (userPos ? { lat: userPos.lat, lng: userPos.lng } : null);
+    if (!anchor) return [];
+    return vendors
+      .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
+      .map((v) => ({ ...v, distKm: parseFloat(haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude).toFixed(2)) }))
+      .sort((a, b) => a.distKm - b.distKm)
+      .slice(0, 4);
+  })();
 
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
-      <LoadScript googleMapsApiKey={import.meta.env.VITE_MAPS_BROWSER_KEY}>
-        <GoogleMap
-          mapContainerStyle={{ width: "100%", height: "100%" }}
-          defaultCenter={{ lat: 2.1896, lng: 102.2501 }}
-          defaultZoom={12}
-          onLoad={onMapLoad}
-          options={{
-            disableDefaultUI:  true,
-            zoomControl:       true,
-            streetViewControl: true,
-            clickableIcons:    false,
+    <APIProvider apiKey={API_KEY} libraries={["geometry", "marker", "places"]}>
+      <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+        <GMap
+          defaultCenter={MELAKA_CENTER}
+          defaultZoom={13}
+          mapId={MAP_ID}
+          colorScheme={isDark ? "DARK" : "LIGHT"}
+          gestureHandling="greedy"
+          style={{ width: "100%", height: "100%" }}
+        >
+          <MelakaHighlight />
+          {/* FocusOnUser must commit before FocusOnVendor — React runs effects in
+              JSX order, and picking a vendor often triggers a first-time
+              locateMe() call in the same update. Without this order, "focus on
+              me" would win and undo the "focus on the vendor I picked" zoom. */}
+          <FocusOnUser pos={locateTarget} />
+          <FocusOnVendor vendor={focusVendor} />
+          <VendorMarkers
+            vendors={visibleVendors}
+            userPos={userPos}
+            onSelect={setSelected}
+            onAddStop={addStop}
+            tripOrder={vendorStopOrder}
+            userStopNumber={meIndex >= 0 ? meIndex + 1 : null}
+            selectedId={selected?.id}
+          />
+          {travelMode === "TRANSIT" && <TransitLayer />}
+          {travelMode
+            ? (
+              <DirectionsRenderer
+                stops={trip}
+                travelMode={travelMode}
+                routeIndex={routeIndex}
+                onSummary={setDirSummary}
+                onRoutes={setRouteOptions}
+                onTransitLegs={setTransitLegs}
+              />
+            )
+            : tripData?.path && <TripPolyline path={tripData.path} />
+          }
+        </GMap>
+
+        <button
+          onClick={() => setView("dashboard")}
+          style={{ position: "absolute", top: 60, right: 16, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: C.navy, boxShadow: "0 2px 8px rgba(27,42,74,0.12)" }}
+        >
+          ← Back to vendors
+        </button>
+
+        <button
+          onClick={() => setIsDark((v) => !v)}
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            position: "absolute", top: 90, left: 10, zIndex: 10,
+            background: isDark ? "#1f1f1f" : "#fff",
+            border: `1px solid ${isDark ? "#444" : "#ccc"}`,
+            borderRadius: 6, padding: "4px 10px",
+            cursor: "pointer", fontFamily: "system-ui", fontSize: 12,
+            color: isDark ? "#fff" : "#333",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            display: "flex", alignItems: "center", gap: 5,
           }}
         >
-          {userPos && (
-            <Marker
-              position={userPos}
-              title="You are here"
-              icon={USER_ICON}
-              zIndex={100}
-            />
-          )}
+          {isDark ? "☀️ Light" : "🌙 Dark"}
+        </button>
 
-          <RestaurantMarkers
-            restaurants={restaurants}
-            selectedId={selected?.id}
-            onSelect={handleSelect}
-          />
+        <button
+          onClick={locateMe}
+          title="Get current location"
+          style={{ position: "absolute", bottom: 20, left: 10, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.18)", fontSize: 18 }}
+        >
+          📍
+        </button>
 
-          {selected && (
-            <InfoWindow
-              position={{ lat: selected.lat, lng: selected.lng }}
-              onCloseClick={handleClear}
-            >
-              <div style={{ fontFamily: "system-ui", maxWidth: 210, fontSize: 13 }}>
-                <strong style={{ fontSize: 14 }}>{selected.name}</strong>
-                <div style={{ color: "#666", margin: "3px 0 8px" }}>{selected.address}</div>
-
-                {!route && !routeLoading && (
-                  <button
-                    onClick={handleNavigate}
-                    style={{
-                      display: "block", width: "100%", padding: "8px 0",
-                      background: "#1d72e8", color: "#fff", border: "none",
-                      borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    }}
-                  >
-                    🧭 Start Navigation
-                  </button>
-                )}
-
-                {routeLoading && (
-                  <div style={{ color: "#1d72e8", textAlign: "center" }}>
-                    Getting directions…
-                  </div>
-                )}
-
-                {route && !routeLoading && (
-                  <div style={{ background: "#f0f7ff", borderRadius: 6, padding: "8px 10px" }}>
-                    <div>🛣 <strong>{route.distance}</strong></div>
-                    <div>⏱ <strong>{route.duration}</strong></div>
-                  </div>
-                )}
-              </div>
-            </InfoWindow>
-          )}
-
-          {route && <RoutePolyline path={route.path} />}
-        </GoogleMap>
-      </LoadScript>
-
-      <RoutePanel
-        selected={selected}
-        route={route}
-        userPos={userPos}
-        loading={routeLoading}
-        isDark={isDark}
-        onToggleDark={() => setIsDark((d) => !d)}
-        onLocate={locateAndLoad}
-        onNavigate={handleNavigate}
-        onClear={handleClear}
-      />
-    </div>
+        <TripPanel
+          trip={trip}
+          summary={travelMode ? dirSummary : tripData}
+          loading={tripLoading}
+          onReorder={reorderTrip}
+          onClear={clearTrip}
+          onRemove={removeStop}
+          travelMode={travelMode}
+          onTravelMode={setTravelMode}
+          onManualLocation={setManualLocation}
+          routeOptions={routeOptions}
+          routeIndex={routeIndex}
+          onSelectRoute={setRouteIndex}
+          transitLegs={transitLegs}
+          nearbyToAdd={nearbyToAdd}
+          onAddStop={addStop}
+          onSuggestBestOrder={() => planTrip(trip, true)}
+        />
+      </div>
+    </APIProvider>
   );
 }
