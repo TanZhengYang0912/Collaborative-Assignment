@@ -1,7 +1,49 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "@vis.gl/react-google-maps";
 
-export default function DirectionsRenderer({ stops, travelMode, onSummary }) {
+function formatDistance(meters) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
+}
+function formatDuration(seconds) {
+  return seconds >= 3600
+    ? `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}min`
+    : `${Math.floor(seconds / 60)} min`;
+}
+
+// Extracts a flat, ribbon-friendly list of legs (walk + transit legs in order)
+// from a transit DirectionsResult, so TransitDetails doesn't need to know
+// anything about the Google Directions response shape.
+function extractTransitLegs(route) {
+  const legs = [];
+  for (const leg of route.legs) {
+    for (const step of leg.steps) {
+      if (step.travel_mode === "TRANSIT" && step.transit) {
+        const t = step.transit;
+        legs.push({
+          kind: "transit",
+          vehicle: t.line.vehicle?.type || "BUS",
+          lineName: t.line.short_name || t.line.name,
+          lineColor: t.line.color || "#D85A30",
+          textColor: t.line.text_color || "#fff",
+          departureStop: t.departure_stop?.name,
+          arrivalStop: t.arrival_stop?.name,
+          departureTime: t.departure_time?.text,
+          arrivalTime: t.arrival_time?.text,
+          numStops: t.num_stops,
+        });
+      } else {
+        legs.push({
+          kind: "walk",
+          instructions: step.instructions?.replace(/<[^>]+>/g, ""),
+          duration: step.duration?.text,
+        });
+      }
+    }
+  }
+  return legs;
+}
+
+export default function DirectionsRenderer({ stops, travelMode, routeIndex = 0, onSummary, onRoutes, onTransitLegs }) {
   const map = useMap();
   const rendererRef = useRef(null);
 
@@ -23,38 +65,87 @@ export default function DirectionsRenderer({ stops, travelMode, onSummary }) {
 
     rendererRef.current.setMap(map);
 
-    new google.maps.DirectionsService().route(
-      {
-        origin:      { lat: stops[0].lat, lng: stops[0].lng },
-        destination: { lat: stops[stops.length - 1].lat, lng: stops[stops.length - 1].lng },
-        waypoints:   stops.slice(1, -1).map((s) => ({ location: { lat: s.lat, lng: s.lng }, stopover: true })),
-        travelMode:  google.maps.TravelMode[travelMode],
-      },
-      (result, status) => {
-        if (status !== "OK") {
-          onSummary?.({ error: true, distance: "—", duration: "No route available" });
-          return;
-        }
-        rendererRef.current?.setDirections(result);
-        // Focus on the user's current position (always stops[0]) instead of
-        // leaving the camera wherever it was — matches how Google Maps
-        // centers on you once you start navigating.
-        map.panTo({ lat: stops[0].lat, lng: stops[0].lng });
-        map.setZoom(17);
-        const legs  = result.routes[0].legs;
-        const dist  = legs.reduce((a, l) => a + l.distance.value, 0);
-        const dur   = legs.reduce((a, l) => a + l.duration.value, 0);
-        onSummary?.({
-          distance: dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${dist} m`,
-          duration: dur  >= 3600
-            ? `${Math.floor(dur / 3600)}h ${Math.floor((dur % 3600) / 60)}min`
-            : `${Math.floor(dur / 60)} min`,
-        });
-      }
-    );
+    const origin = { lat: stops[0].lat, lng: stops[0].lng };
+    const destination = { lat: stops[stops.length - 1].lat, lng: stops[stops.length - 1].lng };
+    const waypoints = stops.slice(1, -1).map((s) => ({ location: { lat: s.lat, lng: s.lng }, stopover: true }));
+    const directionsService = new google.maps.DirectionsService();
+    let cancelled = false;
 
-    return () => rendererRef.current?.setMap(null);
-  }, [map, stops, travelMode]);
+    const baseRequest = {
+      origin,
+      destination,
+      waypoints,
+      travelMode: google.maps.TravelMode[travelMode],
+    };
+
+    function applyResult(result) {
+      const route = result.routes[Math.min(routeIndex, result.routes.length - 1)];
+      rendererRef.current?.setDirections(result);
+      rendererRef.current?.setRouteIndex(Math.min(routeIndex, result.routes.length - 1));
+      // Focus on the user's current position (always stops[0]) instead of
+      // leaving the camera wherever it was — matches how Google Maps
+      // centers on you once you start navigating.
+      map.panTo(origin);
+      map.setZoom(17);
+
+      const dist = route.legs.reduce((a, l) => a + l.distance.value, 0);
+      const dur = route.legs.reduce((a, l) => a + l.duration.value, 0);
+      onSummary?.({ distance: formatDistance(dist), duration: formatDuration(dur) });
+
+      if (travelMode === "TRANSIT") {
+        onTransitLegs?.(extractTransitLegs(route));
+      }
+    }
+
+    if (travelMode === "DRIVING") {
+      // Two requests: one with alternatives (default, may include toll roads),
+      // one forced off tolls. A route whose summary (the road names Google
+      // returns, e.g. "AKLEH/E13") doesn't match the toll-free route is
+      // flagged as using tolls — approximate, but needs no paid toll-pricing API.
+      Promise.all([
+        directionsService.route({ ...baseRequest, provideRouteAlternatives: true }),
+        directionsService.route({ ...baseRequest, avoidTolls: true }),
+      ])
+        .then(([withAlts, tollFree]) => {
+          if (cancelled) return;
+          const tollFreeSummaries = new Set(tollFree.routes.map((r) => r.summary));
+          const routes = withAlts.routes.map((r, i) => {
+            const dist = r.legs.reduce((a, l) => a + l.distance.value, 0);
+            const dur = r.legs.reduce((a, l) => a + l.duration.value, 0);
+            return {
+              index: i,
+              distance: formatDistance(dist),
+              duration: formatDuration(dur),
+              hasTolls: !tollFreeSummaries.has(r.summary),
+            };
+          });
+          onRoutes?.(routes);
+          applyResult(withAlts);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          onSummary?.({ error: true, distance: "—", duration: "No route available" });
+          onRoutes?.([]);
+        });
+    } else {
+      directionsService
+        .route(baseRequest)
+        .then((result) => {
+          if (cancelled) return;
+          applyResult(result);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          onSummary?.({ error: true, distance: "—", duration: "No route available" });
+          if (travelMode === "TRANSIT") onTransitLegs?.([]);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+      rendererRef.current?.setMap(null);
+    };
+  }, [map, stops, travelMode, routeIndex]);
 
   return null;
 }

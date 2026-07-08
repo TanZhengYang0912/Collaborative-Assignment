@@ -6,7 +6,9 @@ import MelakaHighlight from "../components/MelakaHighlight";
 import TripPanel from "../components/TripPanel";
 import TripPolyline from "../components/TripPolyline";
 import DirectionsRenderer from "../components/DirectionsRenderer";
+import TransitLayer from "../components/TransitLayer";
 import Dashboard from "../components/Dashboard";
+import { C } from "../lib/theme";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
 const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
@@ -62,6 +64,9 @@ export default function MapPage() {
   const [tripLoading, setTripLoading] = useState(false);
   const [travelMode, setTravelMode] = useState(null);   // null | "DRIVING" | "TWO_WHEELER" | "TRANSIT" | "WALKING"
   const [dirSummary, setDirSummary] = useState(null);
+  const [routeIndex, setRouteIndex] = useState(0);       // selected alt route (DRIVING)
+  const [routeOptions, setRouteOptions] = useState([]);  // alt routes + toll flags (DRIVING)
+  const [transitLegs, setTransitLegs] = useState([]);    // itinerary legs (TRANSIT)
   const [isDark, setIsDark] = useState(false);
 
   // Load vendors (Supabase, sorted from Melaka centre as a default reference).
@@ -110,7 +115,29 @@ export default function MapPage() {
   }
   function reorderTrip(newList) { setTrip(newList); planTrip(newList, false); }
   function removeStop(id) { const list = trip.filter((s) => s.id !== id); setTrip(list); planTrip(list, false); }
-  function clearTrip() { setTrip([]); setTripData(null); setTravelMode(null); setDirSummary(null); }
+
+  // Keeps "Your location" and the chosen transport mode — only the vendor
+  // stops (the actual destinations) are cleared, so the user can immediately
+  // start building a new trip from where they are without resetting mode/GPS.
+  function clearTrip() {
+    const list = trip.filter((s) => s.isMe);
+    setTrip(list);
+    setTripData(null);
+    setDirSummary(null);
+    setRouteOptions([]);
+    setTransitLegs([]);
+  }
+
+  // Manual start location typed via Places Autocomplete — same effect as
+  // geolocation resolving, just fed a chosen address instead of GPS.
+  function setManualLocation(pos) {
+    setUserPos(pos);
+    setLocateTarget(pos);
+  }
+
+  // A previously-picked alt route index shouldn't survive a mode switch or a
+  // fresh route recalculation — always default back to Google's top pick.
+  useEffect(() => { setRouteIndex(0); }, [travelMode, trip]);
 
   function toggleBookmark(id) {
     setBookmarks((prev) => {
@@ -136,18 +163,6 @@ export default function MapPage() {
         if (!silent) setLocateTarget(MELAKA_CENTER);
       }
     );
-  }
-
-  function openVendorOnMap(vendor) {
-    setMapMode("single");
-    setFocusVendor(vendor);
-    setSelected(vendor);
-    setView("map");
-    let list = trip.some((s) => s.id === vendor.id) ? [...trip] : [...trip, vendorStop(vendor)];
-    if (userPos && !list.some((s) => s.isMe)) list = [meStop(userPos), ...list];
-    setTrip(list);
-    if (!userPos) locateMe(true);
-    else planTrip(list, true);
   }
 
   // Entry point for the Dashboard's "Map" tab — jumps straight into the map,
@@ -190,8 +205,9 @@ export default function MapPage() {
         vendors={vendors}
         bookmarks={bookmarks}
         onToggleBookmark={toggleBookmark}
-        onOpenVendor={openVendorOnMap}
         onOpenMap={openMapNearby}
+        tripVendorIds={new Set(trip.filter((s) => !s.isMe).map((s) => s.id))}
+        onAddStop={addStop}
       />
     );
   }
@@ -207,8 +223,20 @@ export default function MapPage() {
     ? nearbyVendors
     : vendors.filter((v) => v.id === focusVendor?.id || vendorStopOrder.has(v.id));
 
+  // "Nearby to add" in the trip panel — vendors not already in the trip,
+  // closest to the last stop (or the user, if there's no trip yet).
+  const nearbyToAdd = (() => {
+    const anchor = trip[trip.length - 1] || (userPos ? { lat: userPos.lat, lng: userPos.lng } : null);
+    if (!anchor) return [];
+    return vendors
+      .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
+      .map((v) => ({ ...v, distKm: parseFloat(haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude).toFixed(2)) }))
+      .sort((a, b) => a.distKm - b.distKm)
+      .slice(0, 4);
+  })();
+
   return (
-    <APIProvider apiKey={API_KEY} libraries={["geometry", "marker"]}>
+    <APIProvider apiKey={API_KEY} libraries={["geometry", "marker", "places"]}>
       <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
         <GMap
           defaultCenter={MELAKA_CENTER}
@@ -234,15 +262,25 @@ export default function MapPage() {
             userStopNumber={meIndex >= 0 ? meIndex + 1 : null}
             selectedId={selected?.id}
           />
+          {travelMode === "TRANSIT" && <TransitLayer />}
           {travelMode
-            ? <DirectionsRenderer stops={trip} travelMode={travelMode} onSummary={setDirSummary} />
+            ? (
+              <DirectionsRenderer
+                stops={trip}
+                travelMode={travelMode}
+                routeIndex={routeIndex}
+                onSummary={setDirSummary}
+                onRoutes={setRouteOptions}
+                onTransitLegs={setTransitLegs}
+              />
+            )
             : tripData?.path && <TripPolyline path={tripData.path} />
           }
         </GMap>
 
         <button
           onClick={() => setView("dashboard")}
-          style={{ position: "absolute", top: 60, right: 16, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: "#993C1D", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}
+          style={{ position: "absolute", top: 60, right: 16, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: C.navy, boxShadow: "0 2px 8px rgba(27,42,74,0.12)" }}
         >
           ← Back to vendors
         </button>
@@ -265,27 +303,9 @@ export default function MapPage() {
         </button>
 
         <button
-          onClick={() => planTrip(trip, true)}
-          disabled={trip.length < 2}
-          title={trip.length < 2 ? "Add at least 2 stops to your trip first" : "Reorder stops for the shortest overall trip"}
-          style={{
-            position: "absolute", top: 130, left: 10, zIndex: 10,
-            background: trip.length < 2 ? "#eee" : "#D85A30",
-            color: trip.length < 2 ? "#999" : "#fff",
-            border: "none",
-            borderRadius: 6, padding: "6px 12px",
-            cursor: trip.length < 2 ? "not-allowed" : "pointer",
-            fontFamily: "system-ui", fontSize: 12, fontWeight: 500,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-          }}
-        >
-          ↺ Suggest best order
-        </button>
-
-        <button
           onClick={locateMe}
           title="Get current location"
-          style={{ position: "absolute", bottom: 180, right: 10, zIndex: 10, background: "#fff", border: "1px solid #EADBCB", borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", fontSize: 18 }}
+          style={{ position: "absolute", bottom: 20, left: 10, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.18)", fontSize: 18 }}
         >
           📍
         </button>
@@ -299,6 +319,14 @@ export default function MapPage() {
           onRemove={removeStop}
           travelMode={travelMode}
           onTravelMode={setTravelMode}
+          onManualLocation={setManualLocation}
+          routeOptions={routeOptions}
+          routeIndex={routeIndex}
+          onSelectRoute={setRouteIndex}
+          transitLegs={transitLegs}
+          nearbyToAdd={nearbyToAdd}
+          onAddStop={addStop}
+          onSuggestBestOrder={() => planTrip(trip, true)}
         />
       </div>
     </APIProvider>

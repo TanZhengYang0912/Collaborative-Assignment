@@ -1,23 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import DiscoveryHeader from "./discovery/DiscoveryHeader";
+import FilterChips from "./discovery/FilterChips";
+import VendorCard from "./discovery/VendorCard";
+import VendorDetailModal from "./discovery/VendorDetailModal";
+import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
+import { categoryOf } from "../lib/vendorDisplay";
 
-// Warm "foodie" palette (cream + orange)
-const C = {
-  cream: "#FBF4EA",
-  card: "#FFFFFF",
-  accent: "#D85A30",
-  accentDark: "#993C1D",
-  text: "#3E2C23",
-  muted: "#9A8478",
-  border: "#EADBCB",
-};
-
-// The user dashboard (home). Top-bar layout, three tabs. Vendors come from
-// Supabase: { id, name, address, latitude, longitude }.
-export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenVendor, onOpenMap }) {
+// The map-page discovery dashboard. DiscoveryHeader (logo/search/List·Map/avatar)
+// + Vendors/Bookmarks/My reviews tab strip. Vendors come from Supabase.
+export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenMap, tripVendorIds, onAddStop }) {
   const [tab, setTab] = useState("vendors");
   const [session, setSession] = useState(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [detailVendor, setDetailVendor] = useState(null);
   const navigate = useNavigate();
   const bookmarked = vendors.filter((v) => bookmarks.has(v.id));
 
@@ -27,116 +25,150 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
+  const handleLogout = async () => { await supabase.auth.signOut(); };
   const userEmail = session?.user?.email || "";
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
-  return (
-    <div style={{ minHeight: "100vh", background: C.cream, fontFamily: "system-ui" }}>
-      <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}>🍜 TrueBites</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {session ? (
-            <>
-              <span style={{ fontSize: 14, color: C.text }}>{userEmail}</span>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{initials}</div>
-              <button onClick={handleLogout} style={{ fontSize: 13, color: C.muted, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 12px", cursor: "pointer" }}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <button onClick={() => navigate("/login")} style={{ fontSize: 13, background: C.accent, color: "#fff", border: "none", borderRadius: 6, padding: "7px 16px", cursor: "pointer", fontWeight: 500 }}>
-              Log in
-            </button>
-          )}
-        </div>
-      </header>
+  function matchesSearch(v) {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return v.name?.toLowerCase().includes(q)
+      || (v.cuisine_types || "").toLowerCase().includes(q)
+      || (v.signature_dishes || "").toLowerCase().includes(q);
+  }
+  function matchesCategory(v) {
+    return category === "all" || categoryOf(v) === category;
+  }
 
-      <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`, display: "flex", gap: 24, padding: "0 24px" }}>
+  const displayed = vendors.filter((v) => matchesSearch(v) && matchesCategory(v));
+  const isInTrip = (id) => tripVendorIds?.has(id) ?? false;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY }}>
+      <DiscoveryHeader
+        search={search} onSearchChange={setSearch}
+        onOpenMap={onOpenMap}
+        session={session} userEmail={userEmail} initials={initials}
+        onLogin={() => navigate("/login")} onLogout={handleLogout}
+      />
+
+      {/* Tab strip */}
+      <nav style={{
+        background: C.card, borderBottom: `1px solid ${C.border}`,
+        display: "flex", gap: 24, padding: "0 24px",
+      }}>
         {[
-          ["vendors", "Vendors"],
+          ["vendors",   "Vendors"],
           ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
-          ["reviews", "My reviews"],
-          ["map", "Map"],
+          ["reviews",   "My reviews"],
         ].map(([key, label]) => (
-          <button key={key} onClick={() => (key === "map" ? onOpenMap() : setTab(key))}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "12px 2px", fontSize: 14, color: tab === key ? C.accentDark : C.muted, borderBottom: tab === key ? `2px solid ${C.accent}` : "2px solid transparent" }}>
+          <button key={key} onClick={() => setTab(key)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: "12px 2px", fontSize: 14, fontFamily: FONT_BODY,
+              color: tab === key ? C.navy : C.muted,
+              borderBottom: tab === key ? `2px solid ${C.gold}` : "2px solid transparent",
+              fontWeight: tab === key ? 600 : 400,
+            }}>
             {label}
           </button>
         ))}
       </nav>
 
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px" }}>
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>
         {tab === "vendors" && (
           <>
-            <h2 style={{ color: C.text, fontSize: 20, margin: "0 0 16px" }}>Hidden gems in Melaka</h2>
-            {vendors.length === 0
-              ? <Empty icon="🍽" text="No vendors yet. They'll appear here once added to the database." />
-              : <VendorTable rows={vendors} bookmarks={bookmarks} onToggleBookmark={onToggleBookmark} onOpenVendor={onOpenVendor} />}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 4 }}>
+              <div>
+                <h1 style={{
+                  fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700,
+                  color: C.navy, margin: 0, lineHeight: 1.2,
+                }}>
+                  Hidden gems,{" "}
+                  <span style={{ color: C.gold, fontStyle: "italic" }}>authentic flavours</span>
+                </h1>
+                <p style={{ color: C.muted, fontSize: 14, margin: "4px 0 0" }}>
+                  {vendors.length} places waiting to be discovered
+                </p>
+              </div>
+              <div style={{ color: C.gold, fontSize: 14 }}>♡ {bookmarked.length} saved</div>
+            </div>
+
+            <div style={{ margin: "16px -24px 0" }}>
+              <FilterChips active={category} onSelect={setCategory} />
+            </div>
+
+            {displayed.length === 0 ? (
+              <Empty icon="🍽" text="No vendors match your search yet." />
+            ) : (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: 20, marginTop: 20,
+              }}>
+                {displayed.map((v) => (
+                  <VendorCard
+                    key={v.id} vendor={v}
+                    inTrip={isInTrip(v.id)} bookmarked={bookmarks.has(v.id)}
+                    onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+                    onOpenDetail={setDetailVendor}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
+
         {tab === "bookmarks" && (
           <>
-            <h2 style={{ color: C.text, fontSize: 20, margin: "0 0 16px" }}>Your bookmarks</h2>
-            {bookmarked.length === 0
-              ? <Empty icon="🔖" text="No bookmarks yet. Tap the heart on a vendor to save it here." />
-              : <VendorTable rows={bookmarked} bookmarks={bookmarks} onToggleBookmark={onToggleBookmark} onOpenVendor={onOpenVendor} />}
+            <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 700, color: C.navy, margin: "0 0 16px" }}>
+              Your bookmarks
+            </h1>
+            {bookmarked.length === 0 ? (
+              <Empty icon="🔖" text="No bookmarks yet. Tap the heart on a vendor to save it here." />
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                {bookmarked.map((v) => (
+                  <VendorCard
+                    key={v.id} vendor={v}
+                    inTrip={isInTrip(v.id)} bookmarked
+                    onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+                    onOpenDetail={setDetailVendor}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
+
         {tab === "reviews" && (
           <>
-            <h2 style={{ color: C.text, fontSize: 20, margin: "0 0 16px" }}>My reviews</h2>
+            <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 700, color: C.navy, margin: "0 0 16px" }}>
+              My reviews
+            </h1>
             <Empty icon="⭐" text="No reviews yet. Your ratings and reviews will appear here." />
           </>
         )}
       </main>
-    </div>
-  );
-}
 
-function VendorTable({ rows, bookmarks, onToggleBookmark, onOpenVendor }) {
-  return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-        <thead>
-          <tr style={{ color: C.muted, textAlign: "left" }}>
-            <th style={{ padding: "12px 16px", fontWeight: 500 }}>Vendor</th>
-            <th style={{ padding: "12px 16px", width: 50 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((v) => (
-            <tr key={v.id} onClick={() => onOpenVendor(v)}
-              style={{ cursor: "pointer", borderTop: `1px solid ${C.border}` }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = C.cream)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-              <td style={{ padding: "12px 16px", color: C.text }}>
-                {v.name}
-                {v.address && <div style={{ fontSize: 12, color: C.muted }}>{v.address}</div>}
-              </td>
-              <td style={{ padding: "12px 16px" }}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleBookmark(v.id); }}
-                  aria-label={bookmarks.has(v.id) ? "Remove bookmark" : "Add bookmark"}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: bookmarks.has(v.id) ? C.accent : "#cdbcb0" }}
-                >
-                  {bookmarks.has(v.id) ? "♥" : "♡"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {detailVendor && (
+        <VendorDetailModal
+          vendor={detailVendor}
+          inTrip={isInTrip(detailVendor.id)} bookmarked={bookmarks.has(detailVendor.id)}
+          onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+          onClose={() => setDetailVendor(null)}
+        />
+      )}
     </div>
   );
 }
 
 function Empty({ icon, text }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "48px 24px", textAlign: "center", color: C.muted }}>
+    <div style={{
+      background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+      padding: "48px 24px", textAlign: "center", color: C.muted, marginTop: 20,
+    }}>
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14 }}>{text}</div>
     </div>
