@@ -3,6 +3,7 @@ import os
 import re
 import json
 import shutil
+import sys
 from pathlib import Path
 
 
@@ -25,6 +26,7 @@ def _find_exe(name: str) -> str:
 
 FFMPEG  = _find_exe("ffmpeg")
 FFPROBE = _find_exe("ffprobe")
+YT_DLP = [sys.executable, "-m", "yt_dlp"]
 
 
 def sanitize_filename(name: str) -> str:
@@ -51,7 +53,7 @@ def _yt_dlp_download(url: str, output_path: Path, fmt: str,
                      impersonate: bool = True) -> subprocess.CompletedProcess:
     """Run yt-dlp to download a single format into output_path."""
     cmd = [
-        "yt-dlp",
+        *YT_DLP,
         "--no-playlist",
         "--no-check-formats",
         "--format", fmt,
@@ -249,7 +251,7 @@ def scrape_profile(url: str, start: int = 1, end: int = 10) -> list:
     playlist_items = f"{start}-{end}"
 
     cmd = [
-        "yt-dlp",
+        *YT_DLP,
         "--flat-playlist",
         # --playlist-items stops as soon as the requested items are found —
         # much faster than --playlist-start/end which always walks all pages.
@@ -316,4 +318,3 @@ def scrape_profile(url: str, start: int = 1, end: int = 10) -> list:
             continue
 
     return videos
-
