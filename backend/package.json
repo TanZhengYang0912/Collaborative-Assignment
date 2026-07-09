@@ -5,6 +5,8 @@
   "description": "TrueBites backend — Supabase + Geocoding + Haversine + Directions",
   "scripts": {
     "dev": "node --watch server.js",
+    "generate:vendor-food-variants": "node scripts/generate_vendor_food_variants.mjs",
+    "prepare:vendor-food-images": "node scripts/prepare_vendor_food_images.mjs",
     "start": "node server.js"
   },
   "dependencies": {
