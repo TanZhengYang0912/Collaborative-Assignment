@@ -31,7 +31,7 @@ export function categoryOf(vendor) {
   // cuisine_types is often a generic "Malaysian / Local" placeholder in this
   // dataset regardless of the actual vendor type — the name (e.g. "Baba Nyonya
   // Kitchen") frequently carries the real signal that field doesn't.
-  const text = `${vendor.name || ""} ${vendor.cuisine_types || ""} ${vendor.signature_dishes || ""}`.toLowerCase();
+  const text = `${vendor.name || ""} ${vendor.cuisine_types || ""} ${vendor.signature_dishes || ""} ${vendor.ai_review_summary || ""}`.toLowerCase();
   // Ordered from most specific to broadest so a nyonya restaurant isn't also
   // matched as "streetfood" just because it serves rice.
   if (CATEGORY_KEYWORDS.nyonya.some((k)     => text.includes(k))) return "nyonya";
@@ -46,29 +46,52 @@ export function categoryLabel(vendor) {
 }
 
 // ─── Photo placeholders ────────────────────────────────────────────────────────
-// Curated Unsplash stock photos per category, used when a vendor has no image_url
-// of its own (true for every vendor today; none are stored yet).
+// Local Melaka food photos used when a vendor has no image_url of its own.
+// This keeps the feed visually varied and avoids repeating the same remote
+// stock photo across nearby vendor cards.
+import ikanBakar from "../assets/vendor-food/01-ikan-bakar.png";
+import rotiCanai from "../assets/vendor-food/02-roti-canai.png";
+import kuihAssortment from "../assets/vendor-food/03-kuih-assortment.png";
+import claypotNoodle from "../assets/vendor-food/04-claypot-noodle.png";
+import cendolShake from "../assets/vendor-food/05-cendol-coconut-shake.png";
+import creamyChickenRice from "../assets/vendor-food/06-creamy-chicken-rice-cake.png";
+import healthyCafeBowl from "../assets/vendor-food/07-healthy-cafe-bowl.png";
+import fusionGreenPlate from "../assets/vendor-food/08-fusion-green-plate.png";
+import nyonyaHeritageMeal from "../assets/vendor-food/09-nyonya-heritage-meal.png";
+import coconutShakeStall from "../assets/vendor-food/10-coconut-shake-stall.png";
+import { VENDOR_FOOD_IMAGES } from "../generated/vendorFoodImages.js";
+
 const PLACEHOLDER_IMAGES = {
   nyonya: [
-    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=480&h=360&fit=crop",
+    kuihAssortment,
+    nyonyaHeritageMeal,
+    creamyChickenRice,
+    cendolShake,
   ],
   kopitiam: [
-    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=480&h=360&fit=crop",
+    rotiCanai,
+    claypotNoodle,
+    creamyChickenRice,
+    cendolShake,
+    healthyCafeBowl,
   ],
   dessert: [
-    "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=480&h=360&fit=crop",
+    cendolShake,
+    coconutShakeStall,
+    kuihAssortment,
+    healthyCafeBowl,
+    rotiCanai,
   ],
   streetfood: [
-    "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1543353071-873f17a7a088?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1526318472351-c75fcf070305?w=480&h=360&fit=crop",
-    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=480&h=360&fit=crop",
+    ikanBakar,
+    rotiCanai,
+    claypotNoodle,
+    kuihAssortment,
+    cendolShake,
+    creamyChickenRice,
+    fusionGreenPlate,
+    nyonyaHeritageMeal,
+    coconutShakeStall,
   ],
 };
 
@@ -78,12 +101,26 @@ function hashStr(s) {
   return Math.abs(h);
 }
 
+function photoKeyOf(vendor) {
+  const text = `${vendor.name || ""} ${vendor.signature_dishes || ""} ${vendor.ai_review_summary || ""}`.toLowerCase();
+  if (text.includes("cendol") || text.includes("gula melaka") || text.includes("coconut shake")) return "dessert";
+  if (text.includes("kuih") || text.includes("nyonya") || text.includes("peranakan") || text.includes("baba")) return "nyonya";
+  if (text.includes("roti") || text.includes("kopitiam") || text.includes("toast") || text.includes("breakfast")) return "kopitiam";
+  if (text.includes("kombucha") || text.includes("healthy") || text.includes("carrot cake") || text.includes("salad")) return "kopitiam";
+  if (text.includes("duck kabocha") || text.includes("whole chicken leg") || text.includes("creamy korin")) return "nyonya";
+  if (text.includes("claypot") || text.includes("noodle") || text.includes("mee") || text.includes("char kway") || text.includes("laksa") || text.includes("nasi") || text.includes("ikan") || text.includes("satay")) {
+    return "streetfood";
+  }
+  return categoryOf(vendor);
+}
+
 // Deterministic (not random) so the same vendor always shows the same photo
 // across renders/reloads, and prefers a real image_url the moment one exists.
 export function placeholderImage(vendor) {
   if (vendor.image_url) return vendor.image_url;
-  const pool = PLACEHOLDER_IMAGES[categoryOf(vendor)] || PLACEHOLDER_IMAGES.streetfood;
-  return pool[hashStr(String(vendor.id)) % pool.length];
+  if (VENDOR_FOOD_IMAGES[vendor.id]) return VENDOR_FOOD_IMAGES[vendor.id];
+  const pool = PLACEHOLDER_IMAGES[photoKeyOf(vendor)] || PLACEHOLDER_IMAGES.streetfood;
+  return pool[hashStr(`${vendor.id || ""}:${vendor.name || ""}`) % pool.length];
 }
 
 // "RM8-15 per person" / "RM10" -> "RM8" (first number found); no match -> null.
