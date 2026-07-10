@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { APIProvider, Map as GMap, useMap } from "@vis.gl/react-google-maps";
 import { getRestaurants, getTrip } from "../api";
 import { supabase } from "../supabaseClient";
+import { getBookmarks, getFolders, addBookmark, removeBookmark, createFolder } from "../api/engagement";
 import VendorMarkers from "../components/VendorMarkers";
 import MelakaHighlight from "../components/MelakaHighlight";
 import TripPanel from "../components/TripPanel";
@@ -9,6 +11,8 @@ import TripPolyline from "../components/TripPolyline";
 import DirectionsRenderer from "../components/DirectionsRenderer";
 import TransitLayer from "../components/TransitLayer";
 import Dashboard from "../components/Dashboard";
+import FolderPickerModal from "../components/engagement/FolderPickerModal";
+import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { C } from "../lib/theme";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
@@ -47,10 +51,14 @@ function FocusOnUser({ pos }) {
 }
 
 export default function MapPage() {
+  const navigate = useNavigate();
   const [view, setView] = useState("dashboard");     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
-  const [bookmarks, setBookmarks] = useState(new Set());
-  const [userId, setUserId] = useState(null);
+  const [session, setSession] = useState(null);
+  const [bookmarkRows, setBookmarkRows] = useState([]); // {vendor_id, folder_id, folder} from the server
+  const [folders, setFolders] = useState([]);
+  const [pendingSaveVendor, setPendingSaveVendor] = useState(null); // vendor awaiting a folder pick
+  const bookmarks = new Set(bookmarkRows.map((r) => r.vendor_id));
   const [focusVendor, setFocusVendor] = useState(null);
   const [selected, setSelected] = useState(null);
   const [userPos, setUserPos] = useState(null);
@@ -78,30 +86,25 @@ export default function MapPage() {
       .catch((e) => console.error("failed to load vendors:", e.message));
   }, []);
 
-  // Track the signed-in account so bookmarks can be scoped per-user.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user?.id ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setUserId(s?.user?.id ?? null));
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Load this account's saved bookmarks whenever the signed-in user changes
-  // (login, logout, or switching accounts) — guests get an empty set.
+  // Bookmarks are server-backed and auth-gated — an anonymous browser sees
+  // none, and any local state is dropped the moment the session disappears.
   useEffect(() => {
-    if (!userId) { setBookmarks(new Set()); return; }
-    try {
-      const raw = localStorage.getItem(`truebites_bookmarks_${userId}`);
-      setBookmarks(raw ? new Set(JSON.parse(raw)) : new Set());
-    } catch {
-      setBookmarks(new Set());
-    }
-  }, [userId]);
+    if (!session && !ENGAGEMENT_TEST_MODE) { setBookmarkRows([]); setFolders([]); return; }
+    refreshBookmarks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
-  // Persist bookmarks for the current account so they're there next login.
-  useEffect(() => {
-    if (!userId) return;
-    localStorage.setItem(`truebites_bookmarks_${userId}`, JSON.stringify([...bookmarks]));
-  }, [bookmarks, userId]);
+  function refreshBookmarks() {
+    Promise.all([getBookmarks(), getFolders()])
+      .then(([b, f]) => { setBookmarkRows(b.bookmarks); setFolders(f.folders); })
+      .catch((e) => console.error("failed to load bookmarks:", e.message));
+  }
 
   // Each stop is a normal draggable entry — the user's location too.
   const vendorStop = (v) => ({ id: v.id, name: v.name, lat: v.latitude, lng: v.longitude, isMe: false, vendor: v });
@@ -166,13 +169,27 @@ export default function MapPage() {
   // fresh route recalculation — always default back to Google's top pick.
   useEffect(() => { setRouteIndex(0); }, [travelMode, trip]);
 
+  // Un-saving is a plain delete; saving opens the folder picker (rendered by
+  // each view below) so the vendor lands somewhere the user chose.
   function toggleBookmark(id) {
-    if (!userId) return;
-    setBookmarks((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    if (!session && !ENGAGEMENT_TEST_MODE) { navigate("/login"); return; }
+    if (bookmarks.has(id)) {
+      removeBookmark(id).then(refreshBookmarks).catch((e) => console.error(e.message));
+      return;
+    }
+    const vendor = vendors.find((v) => v.id === id) || nearbyVendors.find((v) => v.id === id);
+    setPendingSaveVendor(vendor || { id });
+  }
+
+  async function confirmSaveBookmark(folderId) {
+    await addBookmark(pendingSaveVendor.id, folderId);
+    setPendingSaveVendor(null);
+    refreshBookmarks();
+  }
+
+  async function createFolderAndSave(name) {
+    const { folder } = await createFolder(name);
+    await confirmSaveBookmark(folder.id);
   }
 
   // silent=true only records the position (needed to add "Your location" as a
@@ -229,14 +246,25 @@ export default function MapPage() {
 
   if (view === "dashboard") {
     return (
-      <Dashboard
-        vendors={vendors}
-        bookmarks={bookmarks}
-        onToggleBookmark={toggleBookmark}
-        onOpenMap={openMapNearby}
-        tripVendorIds={new Set(trip.filter((s) => !s.isMe).map((s) => s.id))}
-        onAddStop={addStop}
-      />
+      <>
+        <Dashboard
+          vendors={vendors}
+          bookmarks={bookmarks}
+          onToggleBookmark={toggleBookmark}
+          onOpenMap={openMapNearby}
+          tripVendorIds={new Set(trip.filter((s) => !s.isMe).map((s) => s.id))}
+          onAddStop={addStop}
+        />
+        {pendingSaveVendor && (
+          <FolderPickerModal
+            vendorName={pendingSaveVendor.name}
+            folders={folders}
+            onClose={() => setPendingSaveVendor(null)}
+            onSave={confirmSaveBookmark}
+            onCreateFolder={createFolderAndSave}
+          />
+        )}
+      </>
     );
   }
 
@@ -356,6 +384,16 @@ export default function MapPage() {
           onAddStop={addStop}
           onSuggestBestOrder={() => planTrip(trip, true)}
         />
+
+        {pendingSaveVendor && (
+          <FolderPickerModal
+            vendorName={pendingSaveVendor.name}
+            folders={folders}
+            onClose={() => setPendingSaveVendor(null)}
+            onSave={confirmSaveBookmark}
+            onCreateFolder={createFolderAndSave}
+          />
+        )}
       </div>
     </APIProvider>
   );

@@ -13,12 +13,23 @@ import OnboardingPage from "./pages/OnboardingPage";
 import VendorsPage    from "./pages/VendorsPage";
 import AIPage         from "./pages/AIPage";
 import EngagementPage from "./pages/EngagementPage";
+import AdminLayout                     from "./components/admin/AdminLayout";
+import AdminDashboardPage              from "./pages/admin/AdminDashboardPage";
+import AdminVendorManagementPage       from "./pages/admin/AdminVendorManagementPage";
+import AdminAIProcessingConsolePage    from "./pages/admin/AdminAIProcessingConsolePage";
+import AdminReviewModerationPage       from "./pages/admin/AdminReviewModerationPage";
+import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
 
 const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/admin-login", "/admin-home", "/superadmin", "/admin-set-password"];
 
 // Admin/superadmin accounts never have a customer-facing home — they only
 // ever belong on the admin auth pages or the AI/vendor management tools.
 const ADMIN_ALLOWED_PATHS = ["/admin-login", "/admin-home", "/superadmin", "/admin-set-password", "/ai", "/vendors"];
+
+// Paths under /admin (the admin console) are always allowed for admin/superadmin accounts.
+function isAdminAllowedPath(pathname) {
+  return ADMIN_ALLOWED_PATHS.includes(pathname) || pathname.startsWith("/admin/");
+}
 
 // Wherever a session first appears — signing in, or landing back here after
 // clicking the emailed confirmation link — route the account to where it
@@ -34,7 +45,7 @@ function AuthGate({ children }) {
       const role = session.user.app_metadata?.role;
 
       if (role === "admin" || role === "superadmin") {
-        if (!ADMIN_ALLOWED_PATHS.includes(location.pathname)) {
+        if (!isAdminAllowedPath(location.pathname)) {
           navigate(role === "superadmin" ? "/superadmin" : "/admin-home", { replace: true });
         }
         return;
@@ -76,6 +87,15 @@ export default function App() {
           <Route path="/vendors"   element={<VendorsPage />} />
           <Route path="/ai"        element={<AIPage />} />
           <Route path="/engagement" element={<EngagementPage />} />
+
+          {/* Admin console */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="vendors2" element={<AdminVendorManagementPage />} />
+            <Route path="ai" element={<AdminAIProcessingConsolePage />} />
+            <Route path="reviews" element={<AdminReviewModerationPage />} />
+            <Route path="settings" element={<AdminSettingsPage />} />
+          </Route>
 
           {/* Unknown paths → landing (not /map) */}
           <Route path="*"          element={<Navigate to="/" replace />} />
