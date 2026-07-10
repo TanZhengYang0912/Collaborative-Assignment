@@ -1,4 +1,4 @@
-import { Heart, Bot, Play, Wallet, Footprints, MapPin, Plus, Check } from "lucide-react";
+import { Heart, Bot, Play, Wallet, Footprints, MapPin, Plus, Check, Star } from "lucide-react";
 import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import {
   categoryLabel, placeholderImage, creatorHandle,
@@ -94,6 +94,15 @@ export default function VendorCard({ vendor, inTrip, bookmarked, onToggleBookmar
         >
           {vendor.name}
         </div>
+
+        {/* Rating — only for vendors with at least one real review */}
+        {vendor.review_count > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12.5, color: C.muted }}>
+            <Star size={12} color={C.gold} fill={C.gold} />
+            <span style={{ fontWeight: 600, color: C.navy }}>{Number(vendor.average_rating).toFixed(1)}</span>
+            <span>({vendor.review_count})</span>
+          </div>
+        )}
 
         {/* AI Review block — gold left border */}
         {vendor.ai_review_summary && (

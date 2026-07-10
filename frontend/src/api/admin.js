@@ -97,3 +97,16 @@ export async function uploadVendorImage(id, file) {
 export async function getAdminSettings() {
   return requestJson("/api/admin/settings");
 }
+
+export async function getAdminReviews({ page = 1, pageSize = 10, visibility = "all" }) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), visibility });
+  return requestJson(`/api/admin/reviews?${params}`);
+}
+
+export async function setReviewVisibility(id, isHidden) {
+  return requestJson(`/api/admin/reviews/${id}/visibility`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_hidden: isHidden }),
+  });
+}
