@@ -1,12 +1,67 @@
-import { useEffect } from "react";
-import { X, Heart, Bot, Play, Wallet, Footprints, MapPin } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { X, Heart, Bot, Play, Wallet, Footprints, MapPin, Star } from "lucide-react";
 import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import {
   categoryLabel, placeholderImage, creatorHandle,
   priceLabel, walkLabel, distanceLabel,
 } from "../../lib/vendorDisplay";
+import { supabase } from "../../supabaseClient";
+import { getReviews, deleteReview, voteReview, removeVote } from "../../api/engagement";
+import ReviewForm from "../engagement/ReviewForm";
+import ReviewList from "../engagement/ReviewList";
+import { ENGAGEMENT_TEST_MODE } from "../../lib/testMode";
 
 export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggleBookmark, onAddStop, onClose }) {
+  const navigate = useNavigate();
+  const [session, setSession] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [editingReview, setEditingReview] = useState(null); // "new" | review object | null
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!vendor) return;
+    setReviewsLoading(true);
+    setEditingReview(null);
+    getReviews(vendor.id)
+      .then((r) => setReviews(r.reviews))
+      .catch((e) => console.error("failed to load reviews:", e.message))
+      .finally(() => setReviewsLoading(false));
+  }, [vendor?.id]);
+
+  const myReview = reviews.find((r) => r.isOwn);
+
+  async function handleVote(reviewId, isLike) {
+    if (!session && !ENGAGEMENT_TEST_MODE) { navigate("/login"); return; }
+    try {
+      isLike === null ? await removeVote(reviewId) : await voteReview(reviewId, isLike);
+      const r = await getReviews(vendor.id);
+      setReviews(r.reviews);
+    } catch (e) { console.error(e.message); }
+  }
+
+  async function handleDeleteReview(id) {
+    try {
+      await deleteReview(id);
+      const r = await getReviews(vendor.id);
+      setReviews(r.reviews);
+    } catch (e) { console.error(e.message); }
+  }
+
+  function handleReviewSaved(review) {
+    setReviews((prev) => {
+      const exists = prev.some((r) => r.id === review.id);
+      return exists ? prev.map((r) => (r.id === review.id ? review : r)) : [review, ...prev];
+    });
+    setEditingReview(null);
+  }
+
   useEffect(() => {
     if (document.getElementById("truebites-modal-fade-style")) return;
     const s = document.createElement("style");
@@ -92,6 +147,12 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
         <div style={{ padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Meta row */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: C.muted }}>
+            {vendor.review_count > 0 && (
+              <MetaItem
+                icon={<Star size={14} color={C.gold} fill={C.gold} />}
+                text={`${Number(vendor.average_rating).toFixed(1)} (${vendor.review_count} review${vendor.review_count === 1 ? "" : "s"})`}
+              />
+            )}
             {dist && <MetaItem icon={<MapPin size={14} color={C.gold} />} text={`${dist} away`} />}
             {walk && <MetaItem icon={<Footprints size={14} color={C.gold} />} text={walk} />}
             {price && <MetaItem icon={<Wallet size={14} color={C.gold} />} text={`${price}/person`} />}
@@ -165,6 +226,43 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
             <IconBtn onClick={() => onToggleBookmark(vendor.id)} bordered>
               <Heart size={16} color={bookmarked ? "#e84040" : C.muted} fill={bookmarked ? "#e84040" : "none"} />
             </IconBtn>
+          </div>
+
+          {/* Reviews */}
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 16, color: C.navy, margin: 0 }}>Reviews</h3>
+              {!myReview && editingReview !== "new" && (
+                <button
+                  onClick={() => { if (!session && !ENGAGEMENT_TEST_MODE) { navigate("/login"); return; } setEditingReview("new"); }}
+                  style={{ background: "none", border: "none", color: C.gold, fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY }}
+                >
+                  + Write a review
+                </button>
+              )}
+            </div>
+
+            {editingReview && (
+              <div style={{ marginBottom: 14 }}>
+                <ReviewForm
+                  vendorId={vendor.id}
+                  initial={editingReview === "new" ? null : editingReview}
+                  onSaved={handleReviewSaved}
+                  onCancel={() => setEditingReview(null)}
+                />
+              </div>
+            )}
+
+            {reviewsLoading ? (
+              <div style={{ fontSize: 13, color: C.muted }}>Loading reviews…</div>
+            ) : (
+              <ReviewList
+                reviews={reviews.filter((r) => editingReview !== r)}
+                onVote={handleVote}
+                onEdit={setEditingReview}
+                onDelete={handleDeleteReview}
+              />
+            )}
           </div>
         </div>
       </div>

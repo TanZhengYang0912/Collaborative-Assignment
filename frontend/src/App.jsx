@@ -9,6 +9,7 @@ import AdminLayout                     from "./components/admin/AdminLayout";
 import AdminDashboardPage              from "./pages/admin/AdminDashboardPage";
 import AdminVendorManagementPage       from "./pages/admin/AdminVendorManagementPage";
 import AdminAIProcessingConsolePage    from "./pages/admin/AdminAIProcessingConsolePage";
+import AdminReviewModerationPage       from "./pages/admin/AdminReviewModerationPage";
 import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="vendors2" element={<AdminVendorManagementPage />} />
           <Route path="ai" element={<AdminAIProcessingConsolePage />} />
+          <Route path="reviews" element={<AdminReviewModerationPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
 

@@ -5,6 +5,7 @@ import {
   BrainCircuit,
   LayoutDashboard,
   LogOut,
+  MessageSquareWarning,
   Settings,
   SquareArrowOutUpRight,
   Store,
@@ -15,6 +16,7 @@ const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/vendors2", label: "Vendors", icon: Store },
   { to: "/admin/ai", label: "AI Processing", icon: BrainCircuit },
+  { to: "/admin/reviews", label: "Reviews", icon: MessageSquareWarning },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -29,6 +31,7 @@ export default function AdminLayout() {
     Dashboard: "Overview of TrueBites platform activity",
     Vendors: "Manage food vendor listings and approval",
     "AI Processing": "AI-powered content processing from TikTok & YouTube",
+    Reviews: "Moderate user reviews — hide, unhide, and check flagged content",
     Settings: "Platform configuration and preferences",
   };
 
