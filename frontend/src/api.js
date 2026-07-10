@@ -41,6 +41,36 @@ export async function deleteAccount(accessToken) {
   return r.json();
 }
 
+// Superadmin: list all admin accounts.
+export async function listAdmins(accessToken) {
+  const r = await fetch(`${BASE}/api/admin/admins`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to load admins");
+  return r.json(); // { admins: [...] }
+}
+
+// Superadmin: invite a new admin. Initial password equals their email.
+export async function addAdmin(accessToken, email) {
+  const r = await fetch(`${BASE}/api/admin/admins`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ email }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to add admin");
+  return r.json();
+}
+
+// Superadmin: remove an admin account.
+export async function removeAdmin(accessToken, id) {
+  const r = await fetch(`${BASE}/api/admin/admins/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to remove admin");
+  return r.json();
+}
+
 // Add a new restaurant — geocoding happens server-side on insert.
 export async function addRestaurant(name, address) {
   const r = await fetch(`${BASE}/api/restaurants`, {

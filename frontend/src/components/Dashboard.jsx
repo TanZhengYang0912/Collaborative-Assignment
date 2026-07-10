@@ -66,7 +66,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
         onOpenMap={onOpenMap}
         session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl}
         onLogin={() => navigate("/login")} onOpenProfile={() => navigate("/profile")}
-        onSignUp={() => navigate("/login", { state: { mode: "signup" } })}
+        onSignUp={() => navigate("/login")}
       />
 
       {/* Tab strip */}

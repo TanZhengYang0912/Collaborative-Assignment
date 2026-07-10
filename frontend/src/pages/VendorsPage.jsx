@@ -2,6 +2,8 @@
 // Vendor Management — Data Entry Dashboard, served at /vendors via App.jsx.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { adminHomePath } from "../lib/adminNav";
 
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const API = `${BASE}/api/vendors`;
@@ -282,6 +284,9 @@ function DeleteModal({ vendor, onClose, onDeleted, notify }) {
 
 // ── Main dashboard 
 export default function VendorsPage() {
+  const navigate = useNavigate();
+  const handleBack = async () => navigate(await adminHomePath());
+
   const [vendors, setVendors] = useState([]);
   const [total, setTotal] = useState(0);
   const [meta, setMeta] = useState({ cuisines: [], statusCounts: {}, total: 0 });
@@ -382,7 +387,10 @@ export default function VendorsPage() {
       {/* Brand top bar — same look as the user-facing Dashboard header */}
       <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}>🍜 TrueBites</div>
-        <span style={{ fontSize: 13, color: C.muted }}>Admin · Vendor Management</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 13, color: C.muted }}>Admin · Vendor Management</span>
+          <button style={S.btn} onClick={handleBack}>← Back</button>
+        </div>
       </header>
 
       <div style={S.wrap}>

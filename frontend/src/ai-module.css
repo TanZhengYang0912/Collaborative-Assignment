@@ -51,8 +51,9 @@
   padding: 40px 24px 80px;
 }
 
-/* ── Logout ─────────────────────────────────────────────────────────────────── */
-.logout-btn {
+/* ── Logout / Back ──────────────────────────────────────────────────────────── */
+.logout-btn,
+.back-btn {
   position: fixed;
   top: 20px;
   right: 24px;
@@ -70,15 +71,28 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.logout-btn:hover {
+.logout-btn:hover,
+.back-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45);
 }
 
-.logout-btn:disabled {
+.logout-btn:disabled,
+.back-btn:disabled {
   opacity: 0.6;
   cursor: default;
   transform: none;
+}
+
+.back-btn {
+  left: 24px;
+  right: auto;
+  background: linear-gradient(135deg, #1B2A4A 0%, #243659 100%);
+  box-shadow: 0 2px 12px rgba(27, 42, 74, 0.35);
+}
+
+.back-btn:hover {
+  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.45);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */

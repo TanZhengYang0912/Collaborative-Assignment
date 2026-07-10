@@ -101,11 +101,10 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-      setLoading(false);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
+        setLoading(false);
         const errorMessage =
           error?.message ||
           error?.error_description ||
@@ -116,17 +115,41 @@ export default function AdminLoginPage() {
         return;
       }
 
-      navigate("/ai", { replace: true });
+      // app_metadata can only be set via the service key (see admin setup docs),
+      // so a user can never grant themselves admin by editing their own profile.
+      const role = data.user?.app_metadata?.role;
+      if (role !== "admin" && role !== "superadmin") {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErrorMsg("This account is not authorized for admin access.");
+        return;
+      }
+
+      setLoading(false);
+
+      if (data.user?.user_metadata?.must_change_password) {
+        navigate("/admin-set-password", { replace: true });
+        return;
+      }
+
+      navigate(role === "superadmin" ? "/superadmin" : "/admin-home", { replace: true });
     } catch (err) {
       setLoading(false);
       setErrorMsg(err.message || "An unexpected error occurred");
     }
   }
 
-  // Already logged in — go straight to the admin landing page.
+  // Already logged in — only skip the form if this session belongs to an admin.
   if (session) {
-    navigate("/ai", { replace: true });
-    return null;
+    const role = session.user?.app_metadata?.role;
+    if (role === "admin" || role === "superadmin") {
+      if (session.user?.user_metadata?.must_change_password) {
+        navigate("/admin-set-password", { replace: true });
+      } else {
+        navigate(role === "superadmin" ? "/superadmin" : "/admin-home", { replace: true });
+      }
+      return null;
+    }
   }
 
   return (

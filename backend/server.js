@@ -6,6 +6,7 @@ import authRoutes       from "./routes/auth.js";
 import vendorRoutes     from "./routes/vendors.js";
 import aiRoutes         from "./routes/ai.js";
 import engagementRoutes from "./routes/engagement.js";
+import adminRoutes      from "./routes/admin.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,6 +19,7 @@ app.use("/api", authRoutes);
 app.use("/api", vendorRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", engagementRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`✅  TrueBites backend running on http://localhost:${PORT}`);

@@ -38,6 +38,61 @@ JOSHUA - I have added a frontend for login page. I just need Tan Zheng Yang's Su
 
 ---
 
+## Authentication & Roles
+
+Auth is backed directly by **Supabase Auth** (no custom sessions/JWTs of our own). There are three account tiers, all distinguished by `app_metadata.role` on the Supabase user — a field that can **only** be set server-side with the service key, so no user can ever grant themselves elevated access by editing their own profile.
+
+| Role | Value in `app_metadata.role` | Who creates the account | Lands on |
+|---|---|---|---|
+| Customer | *(none)* | Self-service — `/login` (email/password or Google) | `/map` |
+| Admin | `"admin"` | Invited by a superadmin | `/admin-home` |
+| Superadmin | `"superadmin"` | Seeded manually (see below) | `/superadmin` |
+
+### Customer auth — `/login`
+
+- Tabbed **Sign In / Create Account** form (`LoginPage.jsx`). Always opens on **Sign In**, regardless of how you navigated there (including the "Sign Up" button elsewhere in the app) — there is no way to land on the Create Account tab by refreshing or re-visiting the page.
+- Google OAuth is also available for customers.
+- **Onboarding gate**: any email/password account without `user_metadata.first_name` is force-redirected to `/onboarding` the moment a session appears, wherever it appears (login, confirmation-link redirect, etc.). Onboarding collects first/last name and date of birth (`OnboardingPage.jsx` + `DobScrollPicker.jsx`), then sends the user to `/map`. Google accounts and admin/superadmin accounts are exempt.
+- **Account deletion** is self-service from `/profile`, calling `DELETE /api/account` with the caller's access token (backend uses the Supabase service key to actually remove the auth user — see `backend/routes/auth.js`). A user can only ever delete their own account; the route derives the target id from the token, never from the request body.
+
+### Admin auth — `/admin-login`
+
+- Separate login form (`AdminLoginPage.jsx`) — same Supabase `signInWithPassword` call as customers, but afterward checks `app_metadata.role`. Anyone without `"admin"` or `"superadmin"` is immediately signed back out with "This account is not authorized for admin access."
+- **First login after being invited**: every new admin is created with `user_metadata.must_change_password: true` and an initial password equal to their email address. On first successful sign-in they're forced to `/admin-set-password` before reaching anything else (`SetAdminPasswordPage.jsx`).
+- After that, regular admins land on **`/admin-home`** — a hub with two large buttons, **AI Module** (`/ai`) and **Vendor Management** (`/vendors`). Superadmins skip the hub and land directly on **`/superadmin`**.
+- **Logout is only available from `/admin-home` (admins) or `/superadmin` (superadmin)** — the AI and Vendor pages only show a **← Back** button that returns to whichever of those two pages the signed-in role belongs on (`frontend/src/lib/adminNav.js` resolves this). This is enforced by convention in the UI, not by removing `supabase.auth.signOut()` capability elsewhere.
+- **Route guard**: `AuthGate` in `App.jsx` runs on every route change. If the signed-in session has an admin/superadmin role and the current path isn't one of `/admin-login`, `/admin-home`, `/superadmin`, `/admin-set-password`, `/ai`, `/vendors`, it's redirected back to the role's home page. Admin/superadmin accounts can never reach `/map`, `/profile`, `/onboarding`, or any other customer page — even by typing the URL directly.
+
+### Superadmin — admin management
+
+Superadmins manage the admin roster from `/superadmin` (`SuperAdminPage.jsx`), backed by `backend/routes/admin.js` and gated by `backend/middleware/requireRole.js`:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/admin/admins` | List all `"admin"`-role accounts |
+| `POST` | `/api/admin/admins` | Invite a new admin by email (fails with `409` if the email already has *any* account — this never overwrites an existing user) |
+| `DELETE` | `/api/admin/admins/:id` | Remove an admin account (a superadmin can't remove their own account) |
+
+`requireRole(...roles)` verifies the caller's Supabase access token server-side and checks `app_metadata.role` against an allow-list before letting the request through — every admin-management route requires a valid `superadmin` token.
+
+### Seeding the first superadmin
+
+There's no UI for creating the very first superadmin (a superadmin can't invite another superadmin — only regular admins). Run this once, locally, with the backend's `.env` configured:
+
+```bash
+cd backend
+node scripts/seedSuperAdmin.js
+```
+
+This creates `admin@gmail.com` / `adminn` with `app_metadata.role: "superadmin"` via the service key, and no-ops if that account already exists. Change the `EMAIL`/`PASSWORD` constants at the top of the script before running it for a real deployment — the defaults are for local dev only.
+
+### Known limitations
+
+- `/ai` and `/vendors` are gated client-side (`AuthGate`, plus each page not being reachable by customers through normal navigation) but the backend routes behind them (`backend/routes/vendors.js`, the AI service) do not themselves check for an admin token — don't rely on this for anything security-sensitive until that's added.
+- There's currently no way to promote an *existing* customer account to admin — `POST /api/admin/admins` only creates brand-new accounts and returns `409` if the email is already registered.
+
+---
+
 ## Team Workflow (for all teammates)
 
 ### 1. Clone the repo
@@ -170,6 +225,12 @@ CREATE POLICY "Allow backend insert" ON restaurants FOR INSERT WITH CHECK (true)
 | `POST` | `/api/restaurants` | Add restaurant (geocodes address, stores in Supabase) |
 | `GET` | `/api/restaurants/nearby?lat=&lng=` | Return nearest restaurants sorted by Haversine |
 | `GET` | `/api/route?fromLat=&fromLng=&toLat=&toLng=` | Return road distance, ETA, and route polyline |
+| `DELETE` | `/api/account` | Delete the calling user's own Supabase auth account (token-derived id only) |
+| `GET` | `/api/admin/admins` | *(superadmin)* List all admin accounts |
+| `POST` | `/api/admin/admins` | *(superadmin)* Invite a new admin by email |
+| `DELETE` | `/api/admin/admins/:id` | *(superadmin)* Remove an admin account |
+
+See [Authentication & Roles](#authentication--roles) above for how sign-in, onboarding, and the admin hierarchy fit together.
 
 ---
 
@@ -181,25 +242,40 @@ Collaborative-Assignment/
 │   ├── server.js               # Entry point — mounts all route modules
 │   ├── routes/
 │   │   ├── map.js              # Map module        (Tan Zheng Yang) — restaurants, route
-│   │   ├── auth.js             # Auth module        (Joshua)         — login, register
+│   │   ├── auth.js             # Auth module        (Joshua)         — account deletion
+│   │   ├── admin.js            # Auth module        (Joshua)         — superadmin: invite/list/remove admins
 │   │   ├── vendors.js          # Vendors module     (Toh Lian Thing) — vendor routes
 │   │   ├── ai.js               # AI module          (Tan Chun Jie)   — video URL, transcribe, summarize, extract
 │   │   └── engagement.js       # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
+│   ├── middleware/
+│   │   └── requireRole.js      # Auth module        (Joshua)         — token→role check for admin routes
+│   ├── scripts/
+│   │   └── seedSuperAdmin.js   # Auth module        (Joshua)         — one-off: create the first superadmin
 │   ├── supabase.js             # Supabase client
 │   ├── haversine.js            # Haversine distance formula
 │   ├── .env                    # Real keys — never committed
 │   └── .env.example            # Template for teammates
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx             # Router only — wires all pages
+│   │   ├── App.jsx             # Router + AuthGate — wires all pages, enforces onboarding/admin routing
 │   │   ├── api.js              # fetch wrappers for backend endpoints
+│   │   ├── lib/
+│   │   │   ├── theme.js            # Shared design tokens (navy/gold/cream)
+│   │   │   └── adminNav.js         # Auth module        (Joshua)         — role-aware "back to admin home" helper
 │   │   ├── pages/
-│   │   │   ├── MapPage.jsx         # Map module        (Tan Zheng Yang) — full map UI
-│   │   │   ├── LoginPage.jsx       # Auth module        (Joshua)         — login/register UI
-│   │   │   ├── VendorsPage.jsx     # Vendors module     (Toh Lian Thing) — vendor UI
-│   │   │   ├── AIPage.jsx          # AI module          (Tan Chun Jie)   — video submit + results
-│   │   │   └── EngagementPage.jsx  # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
+│   │   │   ├── MapPage.jsx             # Map module        (Tan Zheng Yang) — full map UI
+│   │   │   ├── LoginPage.jsx           # Auth module        (Joshua)         — customer sign in / create account
+│   │   │   ├── OnboardingPage.jsx      # Auth module        (Joshua)         — forced name/DOB collection
+│   │   │   ├── AdminLoginPage.jsx      # Auth module        (Joshua)         — admin/superadmin sign in
+│   │   │   ├── AdminHomePage.jsx       # Auth module        (Joshua)         — admin hub (AI / Vendors) + logout
+│   │   │   ├── SuperAdminPage.jsx      # Auth module        (Joshua)         — invite/list/remove admins + logout
+│   │   │   ├── SetAdminPasswordPage.jsx# Auth module        (Joshua)         — forced first-login password change
+│   │   │   ├── ProfilePage.jsx         # Auth module        (Joshua)         — profile + account deletion
+│   │   │   ├── VendorsPage.jsx         # Vendors module     (Toh Lian Thing) — vendor UI
+│   │   │   ├── AIPage.jsx              # AI module          (Tan Chun Jie)   — video submit + results
+│   │   │   └── EngagementPage.jsx      # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
 │   │   └── components/
+│   │       ├── DobScrollPicker.jsx     # Auth module        (Joshua)         — DOB input for onboarding
 │   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
 │   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
 │   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle

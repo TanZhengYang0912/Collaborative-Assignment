@@ -2,7 +2,7 @@
 // Login / register UI backed directly by Supabase Auth (no custom Express routes).
 
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
 
@@ -99,16 +99,15 @@ const styles = {
 };
 
 export default function LoginPage() {
-  const location = useLocation();
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
-  const [mode, setMode] = useState(location.state?.mode === "signup" ? "signup" : "signin"); // "signin" | "signup"
+  const [mode, setMode] = useState("signin"); // "signin" | "signup" — always opens on Sign In
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
   const [justSignedUp, setJustSignedUp] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
