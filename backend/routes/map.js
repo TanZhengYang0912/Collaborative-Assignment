@@ -80,7 +80,7 @@ router.get("/restaurants/nearby", async (req, res) => {
     .select(
       "id, vendor_name, address, latitude, longitude, location_precision, " +
       "cuisine_types, signature_dishes, price_range, ai_review_summary, " +
-      "source_video_url, source_platform"
+      "source_video_url, source_platform, average_rating, review_count"
     );
 
   if (error) {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { supabase } from "../supabase.js";
 import fs from "node:fs";
 import path from "node:path";
+import { recomputeVendorRating } from "./engagement.js";
 
 const router = Router();
 
@@ -422,6 +423,65 @@ router.delete("/admin/vendors/:id", async (req, res) => {
     res.json({ success: true, id });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete vendor", details: error.message });
+  }
+});
+
+router.get("/admin/reviews", async (req, res) => {
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10));
+  const visibility = String(req.query.visibility || "all").toLowerCase();
+
+  try {
+    let builder = supabase
+      .from("reviews")
+      .select("id, rating, body, author_name, is_hidden, hidden_reason, created_at, vendor:vendors(id, vendor_name)", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1);
+
+    if (visibility === "hidden") builder = builder.eq("is_hidden", true);
+    if (visibility === "visible") builder = builder.eq("is_hidden", false);
+
+    const { data, error, count } = await builder;
+    if (error) throw error;
+
+    const items = (data || []).map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      body: r.body,
+      authorName: r.author_name,
+      isHidden: r.is_hidden,
+      hiddenReason: r.hidden_reason,
+      createdAt: r.created_at,
+      vendorId: r.vendor?.id,
+      vendorName: r.vendor?.vendor_name,
+    }));
+
+    res.json({
+      items,
+      pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) },
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load reviews", details: error.message });
+  }
+});
+
+router.patch("/admin/reviews/:id/visibility", async (req, res) => {
+  const { id } = req.params;
+  const isHidden = Boolean(req.body?.is_hidden);
+
+  try {
+    const { data, error } = await supabase
+      .from("reviews")
+      .update({ is_hidden: isHidden, hidden_reason: isHidden ? "admin" : null })
+      .eq("id", id)
+      .select("id, vendor_id")
+      .single();
+    if (error) throw error;
+
+    await recomputeVendorRating(data.vendor_id);
+    res.json({ id: data.id, isHidden });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update review visibility", details: error.message });
   }
 });
 
