@@ -6,7 +6,7 @@ import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 export default function DiscoveryHeader({
   search, onSearchChange,
   onOpenMap,
-  session, userEmail, initials, onLogin, onLogout,
+  session, userEmail, initials, firstName, avatarUrl, onLogin, onOpenProfile, onSignUp,
 }) {
   return (
     <header
@@ -87,27 +87,50 @@ export default function DiscoveryHeader({
 
         {session ? (
           <div
-            title={userEmail}
-            style={{
-              width: 34, height: 34, borderRadius: "50%", background: C.navy, color: "#fff",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-              cursor: "pointer", fontFamily: FONT_BODY, fontWeight: 600,
-            }}
-            onClick={onLogout}
+            onClick={onOpenProfile}
+            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
           >
-            {initials}
+            {firstName && (
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.navy, fontFamily: FONT_BODY, whiteSpace: "nowrap" }}>
+                Welcome, {firstName}
+              </span>
+            )}
+            <div
+              title={userEmail}
+              style={{
+                width: 34, height: 34, borderRadius: "50%", background: C.navy, color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+                fontFamily: FONT_BODY, fontWeight: 600, flexShrink: 0, overflow: "hidden",
+              }}
+            >
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : initials}
+            </div>
           </div>
         ) : (
-          <button
-            onClick={onLogin}
-            style={{
-              width: 34, height: 34, borderRadius: "50%", background: C.cream,
-              border: `1px solid ${C.border}`, display: "flex", alignItems: "center",
-              justifyContent: "center", cursor: "pointer", color: C.muted,
-            }}
-          >
-            <User size={16} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={onSignUp}
+              style={{
+                padding: "8px 18px", borderRadius: 20, background: C.navy,
+                border: "none", cursor: "pointer", color: "#fff",
+                fontSize: 13, fontWeight: 600, fontFamily: FONT_BODY, whiteSpace: "nowrap",
+              }}
+            >
+              Sign Up
+            </button>
+            <button
+              onClick={onLogin}
+              style={{
+                width: 34, height: 34, borderRadius: "50%", background: C.cream,
+                border: `1px solid ${C.border}`, display: "flex", alignItems: "center",
+                justifyContent: "center", cursor: "pointer", color: C.muted, flexShrink: 0,
+              }}
+            >
+              <User size={16} />
+            </button>
+          </div>
         )}
       </div>
     </header>

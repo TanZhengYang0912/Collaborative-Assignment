@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 import '../ai-module.css';
 import StepIndicator       from '../components/ai/StepIndicator';
 import URLSubmissionStep   from '../components/ai/URLSubmissionStep';
@@ -26,8 +28,16 @@ export default function AIPage() {
   const [jobData,   setJobData]  = useState({});
   const [batchId,   setBatchId]  = useState(null);
   const [batchData, setBatchData] = useState({});
+  const [loggingOut, setLoggingOut] = useState(false);
   const pollerRef      = useRef(null);
   const batchPollerRef = useRef(null);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await supabase.auth.signOut();
+    navigate('/map', { replace: true });
+  };
 
   useEffect(() => {
     if (!jobId || page === 'submit') return;
@@ -89,6 +99,9 @@ export default function AIPage() {
 
   return (
     <div className="app-bg">
+      <button className="logout-btn" onClick={handleLogout} disabled={loggingOut}>
+        {loggingOut ? 'Logging out…' : 'Logout'}
+      </button>
       <div className="app-container">
         <header className="app-header">
           <div className="badge"><span>🤖</span> AI Content Processing Module</div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { APIProvider, Map as GMap, useMap } from "@vis.gl/react-google-maps";
 import { getRestaurants, getTrip } from "../api";
+import { supabase } from "../supabaseClient";
 import VendorMarkers from "../components/VendorMarkers";
 import MelakaHighlight from "../components/MelakaHighlight";
 import TripPanel from "../components/TripPanel";
@@ -49,6 +50,7 @@ export default function MapPage() {
   const [view, setView] = useState("dashboard");     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
   const [bookmarks, setBookmarks] = useState(new Set());
+  const [userId, setUserId] = useState(null);
   const [focusVendor, setFocusVendor] = useState(null);
   const [selected, setSelected] = useState(null);
   const [userPos, setUserPos] = useState(null);
@@ -75,6 +77,31 @@ export default function MapPage() {
       .then(setVendors)
       .catch((e) => console.error("failed to load vendors:", e.message));
   }, []);
+
+  // Track the signed-in account so bookmarks can be scoped per-user.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user?.id ?? null));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setUserId(s?.user?.id ?? null));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // Load this account's saved bookmarks whenever the signed-in user changes
+  // (login, logout, or switching accounts) — guests get an empty set.
+  useEffect(() => {
+    if (!userId) { setBookmarks(new Set()); return; }
+    try {
+      const raw = localStorage.getItem(`truebites_bookmarks_${userId}`);
+      setBookmarks(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch {
+      setBookmarks(new Set());
+    }
+  }, [userId]);
+
+  // Persist bookmarks for the current account so they're there next login.
+  useEffect(() => {
+    if (!userId) return;
+    localStorage.setItem(`truebites_bookmarks_${userId}`, JSON.stringify([...bookmarks]));
+  }, [bookmarks, userId]);
 
   // Each stop is a normal draggable entry — the user's location too.
   const vendorStop = (v) => ({ id: v.id, name: v.name, lat: v.latitude, lng: v.longitude, isMe: false, vendor: v });
@@ -140,6 +167,7 @@ export default function MapPage() {
   useEffect(() => { setRouteIndex(0); }, [travelMode, trip]);
 
   function toggleBookmark(id) {
+    if (!userId) return;
     setBookmarks((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);

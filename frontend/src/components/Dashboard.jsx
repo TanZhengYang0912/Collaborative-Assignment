@@ -5,6 +5,7 @@ import DiscoveryHeader from "./discovery/DiscoveryHeader";
 import FilterChips from "./discovery/FilterChips";
 import VendorCard from "./discovery/VendorCard";
 import VendorDetailModal from "./discovery/VendorDetailModal";
+import GuestPrompt from "./discovery/GuestPrompt";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import { categoryOf } from "../lib/vendorDisplay";
 
@@ -16,8 +17,19 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [detailVendor, setDetailVendor] = useState(null);
+  const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const navigate = useNavigate();
   const bookmarked = vendors.filter((v) => bookmarks.has(v.id));
+
+  // Guests can browse freely but can't bookmark, add personal trip stops
+  // tied to an account, or view "My reviews" — nudge them to log in instead.
+  function requireAuth(fn) {
+    return (...args) => {
+      if (!session) { setGuestPromptOpen(true); return; }
+      fn(...args);
+    };
+  }
+  const guardedToggleBookmark = requireAuth(onToggleBookmark);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -25,9 +37,13 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); };
+  const meta = session?.user?.user_metadata || {};
   const userEmail = session?.user?.email || "";
-  const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
+  const avatarUrl = meta.avatar_url || "";
+  const firstName = meta.first_name || "";
+  const initials = firstName
+    ? (meta.first_name?.[0] || "") + (meta.last_name?.[0] || "")
+    : (userEmail ? userEmail.slice(0, 2).toUpperCase() : "?");
 
   function matchesSearch(v) {
     if (!search.trim()) return true;
@@ -48,8 +64,9 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
       <DiscoveryHeader
         search={search} onSearchChange={setSearch}
         onOpenMap={onOpenMap}
-        session={session} userEmail={userEmail} initials={initials}
-        onLogin={() => navigate("/login")} onLogout={handleLogout}
+        session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl}
+        onLogin={() => navigate("/login")} onOpenProfile={() => navigate("/profile")}
+        onSignUp={() => navigate("/login", { state: { mode: "signup" } })}
       />
 
       {/* Tab strip */}
@@ -62,7 +79,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
           ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
           ["reviews",   "My reviews"],
         ].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)}
+          <button key={key} onClick={() => (key === "reviews" || key === "bookmarks" ? requireAuth(setTab)(key) : setTab(key))}
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "12px 2px", fontSize: 14, fontFamily: FONT_BODY,
@@ -110,7 +127,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
                   <VendorCard
                     key={v.id} vendor={v}
                     inTrip={isInTrip(v.id)} bookmarked={bookmarks.has(v.id)}
-                    onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+                    onToggleBookmark={guardedToggleBookmark} onAddStop={onAddStop}
                     onOpenDetail={setDetailVendor}
                   />
                 ))}
@@ -132,7 +149,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
                   <VendorCard
                     key={v.id} vendor={v}
                     inTrip={isInTrip(v.id)} bookmarked
-                    onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+                    onToggleBookmark={guardedToggleBookmark} onAddStop={onAddStop}
                     onOpenDetail={setDetailVendor}
                   />
                 ))}
@@ -155,10 +172,12 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
         <VendorDetailModal
           vendor={detailVendor}
           inTrip={isInTrip(detailVendor.id)} bookmarked={bookmarks.has(detailVendor.id)}
-          onToggleBookmark={onToggleBookmark} onAddStop={onAddStop}
+          onToggleBookmark={guardedToggleBookmark} onAddStop={onAddStop}
           onClose={() => setDetailVendor(null)}
         />
       )}
+
+      <GuestPrompt open={guestPromptOpen} onClose={() => setGuestPromptOpen(false)} />
     </div>
   );
 }

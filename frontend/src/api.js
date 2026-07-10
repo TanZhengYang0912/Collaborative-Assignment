@@ -31,6 +31,16 @@ export async function getTrip(points, optimize = true) {
   return r.json(); // { order, path, distance, duration }
 }
 
+// Permanently deletes the current user's Supabase auth account.
+export async function deleteAccount(accessToken) {
+  const r = await fetch(`${BASE}/api/account`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to delete account");
+  return r.json();
+}
+
 // Add a new restaurant — geocoding happens server-side on insert.
 export async function addRestaurant(name, address) {
   const r = await fetch(`${BASE}/api/restaurants`, {
