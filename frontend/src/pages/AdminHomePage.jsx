@@ -74,7 +74,7 @@ export default function AdminHomePage() {
   const handleLogout = async () => {
     setLoggingOut(true);
     await supabase.auth.signOut();
-    navigate("/admin-login", { replace: true });
+    navigate("/wsdasabi123&admin-login", { replace: true });
   };
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function AdminHomePage() {
     if (!checked) return;
     const role = session?.user?.app_metadata?.role;
     if (role !== "admin" && role !== "superadmin") {
-      navigate("/admin-login", { replace: true });
+      navigate("/wsdasabi123&admin-login", { replace: true });
     }
   }, [checked, session, navigate]);
 

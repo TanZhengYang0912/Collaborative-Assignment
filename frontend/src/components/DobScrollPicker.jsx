@@ -38,16 +38,43 @@ function Column({ items, value, onChange, format = (v) => v }) {
     debounceRef.current = setTimeout(commitFromScroll, 120);
   }
 
+  function handleMouseDown(e) {
+    e.preventDefault();
+    const el = ref.current;
+    if (!el) return;
+    const startY = e.clientY;
+    const startTop = el.scrollTop;
+
+    function onMove(ev) {
+      el.scrollTop = startTop + (startY - ev.clientY);
+    }
+
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      // snap to nearest item then commit
+      const idx = Math.round(el.scrollTop / ITEM_H);
+      el.scrollTo({ top: Math.max(0, idx) * ITEM_H, behavior: "smooth" });
+      commitFromScroll();
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
   return (
     <div
       ref={ref}
       onScroll={handleScroll}
+      onMouseDown={handleMouseDown}
       style={{
         height: ITEM_H * VISIBLE,
         overflowY: "auto",
         scrollSnapType: "y mandatory",
         scrollbarWidth: "none",
         width: 68,
+        cursor: "ns-resize",
+        userSelect: "none",
       }}
     >
       <div style={{ height: PAD }} />

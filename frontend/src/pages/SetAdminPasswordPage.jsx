@@ -20,7 +20,7 @@ export default function SetAdminPasswordPage() {
   useEffect(() => {
     if (session === undefined) return; // still loading
     if (!session || !session.user?.user_metadata?.must_change_password) {
-      navigate("/admin-login", { replace: true });
+      navigate("/wsdasabi123&admin-login", { replace: true });
     }
   }, [session, navigate]);
 

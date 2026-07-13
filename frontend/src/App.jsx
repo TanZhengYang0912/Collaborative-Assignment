@@ -5,8 +5,6 @@ import LandingPage    from "./pages/LandingPage";
 import MapPage        from "./pages/MapPage";
 import LoginPage      from "./pages/LoginPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
-import AdminHomePage  from "./pages/AdminHomePage";
-import SuperAdminPage from "./pages/SuperAdminPage";
 import SetAdminPasswordPage from "./pages/SetAdminPasswordPage";
 import ProfilePage    from "./pages/ProfilePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -20,40 +18,46 @@ import AdminAIProcessingConsolePage    from "./pages/admin/AdminAIProcessingCons
 import AdminReviewModerationPage       from "./pages/admin/AdminReviewModerationPage";
 import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
 
-const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/admin-login", "/admin-home", "/superadmin", "/admin-set-password"];
+// Pages that can be visited without any session
+const AUTH_PUBLIC_PATHS = ["/", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password"];
+
+const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/wsdasabi123&admin-login", "/admin-set-password"];
 
 // Admin/superadmin accounts never have a customer-facing home — they only
 // ever belong on the admin auth pages or the AI/vendor management tools.
-const ADMIN_ALLOWED_PATHS = ["/admin-login", "/admin-home", "/superadmin", "/admin-set-password", "/ai", "/vendors"];
+const ADMIN_ALLOWED_PATHS = ["/wsdasabi123&admin-login", "/admin-set-password", "/ai", "/vendors"];
 
 // Paths under /admin (the admin console) are always allowed for admin/superadmin accounts.
 function isAdminAllowedPath(pathname) {
   return ADMIN_ALLOWED_PATHS.includes(pathname) || pathname.startsWith("/admin/");
 }
 
-// Wherever a session first appears — signing in, or landing back here after
-// clicking the emailed confirmation link — route the account to where it
-// belongs: admins/superadmins never reach onboarding or the main map, and
-// email/password customers missing their name/DOB are forced into onboarding.
 function AuthGate({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     function check(session) {
-      if (!session) return;
+      if (!session) {
+        if (!AUTH_PUBLIC_PATHS.includes(location.pathname)) {
+          navigate("/login", { replace: true });
+        }
+        return;
+      }
       const role = session.user.app_metadata?.role;
 
       if (role === "admin" || role === "superadmin") {
         if (!isAdminAllowedPath(location.pathname)) {
-          navigate(role === "superadmin" ? "/superadmin" : "/admin-home", { replace: true });
+          const dest = role === "superadmin" ? "/superadmin" : "/admin-home";
+          navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
         }
         return;
       }
 
-      const provider = session.user.app_metadata?.provider;
       const meta = session.user.user_metadata || {};
-      const needsOnboarding = provider === "email" && !meta.first_name;
+
+      // Any user (email or Google) missing name or DOB goes through onboarding
+      const needsOnboarding = !meta.first_name || !meta.date_of_birth;
       if (needsOnboarding && !ONBOARDING_EXEMPT_PATHS.includes(location.pathname)) {
         navigate("/onboarding", { replace: true });
       }
@@ -78,9 +82,7 @@ export default function App() {
           {/* Discovery app */}
           <Route path="/map"       element={<MapPage />} />
           <Route path="/login"     element={<LoginPage />} />
-          <Route path="/admin-login" element={<AdminLoginPage />} />
-          <Route path="/admin-home" element={<AdminHomePage />} />
-          <Route path="/superadmin" element={<SuperAdminPage />} />
+          <Route path="/wsdasabi123&admin-login" element={<AdminLoginPage />} />
           <Route path="/admin-set-password" element={<SetAdminPasswordPage />} />
           <Route path="/profile"   element={<ProfilePage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />

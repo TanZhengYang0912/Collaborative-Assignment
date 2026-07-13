@@ -38,7 +38,7 @@ export default function SuperAdminPage() {
   useEffect(() => {
     if (session === undefined) return; // still loading
     if (!session || session.user?.app_metadata?.role !== "superadmin") {
-      navigate("/admin-login", { replace: true });
+      navigate("/wsdasabi123&admin-login", { replace: true });
     }
   }, [session, navigate]);
 
@@ -60,7 +60,7 @@ export default function SuperAdminPage() {
   async function handleLogout() {
     setLoggingOut(true);
     await supabase.auth.signOut();
-    navigate("/admin-login", { replace: true });
+    navigate("/wsdasabi123&admin-login", { replace: true });
   }
 
   async function handleAddAdmin(e) {

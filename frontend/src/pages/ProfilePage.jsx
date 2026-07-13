@@ -142,15 +142,80 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
-    if (!firstName.trim() || !lastName.trim()) {
+    const first = firstName.trim();
+    const last = lastName.trim();
+
+    if (!first || !last) {
       setErrorMsg("First and last name are required.");
       return;
     }
+    if (first.length > 50) {
+      setErrorMsg("First name must be 50 characters or fewer.");
+      return;
+    }
+    if (last.length > 50) {
+      setErrorMsg("Last name must be 50 characters or fewer.");
+      return;
+    }
+
+    // Semantic: names must be letters only (allows spaces, hyphens, apostrophes for names like O'Brien, Al-Rashid)
+    const namePattern = /^[a-zA-Z\s'\-.]+$/;
+    if (!namePattern.test(first)) {
+      setErrorMsg("First name must contain only letters.");
+      return;
+    }
+    if (!namePattern.test(last)) {
+      setErrorMsg("Last name must contain only letters.");
+      return;
+    }
+
+    // Semantic: validate DOB is a real calendar date
+    const dobDate = new Date(dob.year, dob.month - 1, dob.day);
+    if (
+      dobDate.getFullYear() !== dob.year ||
+      dobDate.getMonth() + 1 !== dob.month ||
+      dobDate.getDate() !== dob.day
+    ) {
+      setErrorMsg("Please enter a valid date of birth.");
+      return;
+    }
+
+    const today = new Date();
+    if (dobDate >= today) {
+      setErrorMsg("Date of birth cannot be in the future.");
+      return;
+    }
+
+    let age = today.getFullYear() - dob.year;
+    if (
+      today.getMonth() + 1 < dob.month ||
+      (today.getMonth() + 1 === dob.month && today.getDate() < dob.day)
+    ) age--;
+    if (age < 13) {
+      setErrorMsg("You must be at least 13 years old to use this app.");
+      return;
+    }
+    if (age > 120) {
+      setErrorMsg("Please enter a valid date of birth.");
+      return;
+    }
+
+    const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
+
+    // Idempotency: skip API call if nothing actually changed
+    if (
+      first === (meta.first_name || "") &&
+      last === (meta.last_name || "") &&
+      dobIso === (meta.date_of_birth || "")
+    ) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
     setErrorMsg("");
-    const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
     const { error } = await supabase.auth.updateUser({
-      data: { first_name: firstName.trim(), last_name: lastName.trim(), date_of_birth: dobIso },
+      data: { first_name: first, last_name: last, date_of_birth: dobIso },
     });
     setSaving(false);
     if (error) { setErrorMsg(error.message); return; }
@@ -346,6 +411,7 @@ export default function ProfilePage() {
                 <input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
+                  maxLength={50}
                   style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
                 />
               </label>
@@ -354,6 +420,7 @@ export default function ProfilePage() {
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  maxLength={50}
                   style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
                 />
               </label>

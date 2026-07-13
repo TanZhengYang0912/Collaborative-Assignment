@@ -25,15 +25,49 @@ export default function OnboardingPage() {
         navigate("/login", { replace: true });
         return;
       }
+      // Idempotency: already completed onboarding — skip ahead
+      const meta = data.session.user.user_metadata || {};
+      if (meta.first_name && meta.date_of_birth) {
+        navigate("/map", { replace: true });
+        return;
+      }
       setChecking(false);
     });
   }, [navigate]);
 
   if (checking) return null;
 
+  const namePattern = /^[a-zA-Z\s'\-.]+$/;
   const canContinueStep0 = firstName.trim().length > 0 && lastName.trim().length > 0;
 
+  function handleContinue() {
+    const first = firstName.trim();
+    const last = lastName.trim();
+    if (first.length > 50) { setErrorMsg("First name must be 50 characters or fewer."); return; }
+    if (last.length > 50) { setErrorMsg("Last name must be 50 characters or fewer."); return; }
+    if (!namePattern.test(first)) { setErrorMsg("First name must contain only letters."); return; }
+    if (!namePattern.test(last)) { setErrorMsg("Last name must contain only letters."); return; }
+    setErrorMsg("");
+    setStep(1);
+  }
+
   async function finish() {
+    // Semantic: validate DOB is a real calendar date
+    const dobDate = new Date(dob.year, dob.month - 1, dob.day);
+    if (
+      dobDate.getFullYear() !== dob.year ||
+      dobDate.getMonth() + 1 !== dob.month ||
+      dobDate.getDate() !== dob.day
+    ) { setErrorMsg("Please enter a valid date of birth."); return; }
+
+    const today = new Date();
+    if (dobDate >= today) { setErrorMsg("Date of birth cannot be in the future."); return; }
+
+    let age = today.getFullYear() - dob.year;
+    if (today.getMonth() + 1 < dob.month || (today.getMonth() + 1 === dob.month && today.getDate() < dob.day)) age--;
+    if (age < 13) { setErrorMsg("You must be at least 13 years old to use this app."); return; }
+    if (age > 120) { setErrorMsg("Please enter a valid date of birth."); return; }
+
     setSaving(true);
     setErrorMsg("");
     const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
@@ -99,17 +133,20 @@ export default function OnboardingPage() {
               autoFocus
               placeholder="First name"
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              onChange={(e) => { setFirstName(e.target.value); setErrorMsg(""); }}
+              maxLength={50}
               style={{ padding: 10, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 6, fontFamily: FONT_BODY }}
             />
             <input
               placeholder="Last name"
               value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
+              onChange={(e) => { setLastName(e.target.value); setErrorMsg(""); }}
+              maxLength={50}
               style={{ padding: 10, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 6, fontFamily: FONT_BODY }}
             />
+            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
             <button
-              onClick={() => setStep(1)}
+              onClick={handleContinue}
               disabled={!canContinueStep0}
               style={{
                 marginTop: 8, padding: "12px 16px", borderRadius: 8, border: "none",

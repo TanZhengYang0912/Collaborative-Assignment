@@ -276,12 +276,6 @@ export default function LoginPage() {
         </button>
         </div>
 
-        <button
-          onClick={() => navigate("/admin-login")}
-          style={{ ...styles.backLink, marginTop: 0 }}
-        >
-          Login as admin
-        </button>
       </div>
     </div>
   );
