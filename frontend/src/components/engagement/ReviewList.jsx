@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { ThumbsUp, ThumbsDown, Pencil, Trash2 } from "lucide-react";
 import { C, FONT_BODY } from "../../lib/theme";
 import StarRating from "./StarRating";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
+  const [openPhoto, setOpenPhoto] = useState(null);
+
+  function handleDelete(id) {
+    if (window.confirm("Are you sure you want to delete this review?")) onDelete(id);
+  }
+
   if (!reviews.length) {
-    return <div style={{ fontSize: 13, color: C.muted, padding: "8px 0" }}>No reviews yet — be the first to share one.</div>;
+    return <div style={{ fontSize: 13, color: C.muted, padding: "8px 0" }}>No reviews yet. Be the first to review!</div>;
   }
 
   return (
@@ -29,7 +37,7 @@ export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
             {r.isOwn && (
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => onEdit(r)} aria-label="Edit review" style={iconBtnStyle}><Pencil size={13} color={C.muted} /></button>
-                <button onClick={() => onDelete(r.id)} aria-label="Delete review" style={iconBtnStyle}><Trash2 size={13} color={C.muted} /></button>
+                <button onClick={() => handleDelete(r.id)} aria-label="Delete review" style={iconBtnStyle}><Trash2 size={13} color={C.muted} /></button>
               </div>
             )}
           </div>
@@ -39,7 +47,11 @@ export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
           {r.review_photos?.length > 0 && (
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               {r.review_photos.map((p) => (
-                <img key={p.id} src={p.url} alt="Review attachment" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}` }} />
+                <img
+                  key={p.id} src={p.url} alt="Review attachment"
+                  onClick={() => setOpenPhoto(p.url)}
+                  style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}`, cursor: "zoom-in" }}
+                />
               ))}
             </div>
           )}
@@ -62,6 +74,7 @@ export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
           )}
         </div>
       ))}
+      <ImageLightbox src={openPhoto} onClose={() => setOpenPhoto(null)} />
     </div>
   );
 }

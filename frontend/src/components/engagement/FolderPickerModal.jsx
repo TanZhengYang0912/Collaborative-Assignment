@@ -2,13 +2,14 @@ import { useState } from "react";
 import { X, FolderPlus } from "lucide-react";
 import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 
-// Instagram-style save prompt: pick an existing folder, create a new one, or
-// "Just save" -> the caller resolves that to the Default folder (folderId=null).
+
 export default function FolderPickerModal({ vendorName, folders, onClose, onSave, onCreateFolder }) {
   const [newFolderName, setNewFolderName] = useState("");
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(null); // folder id currently saving, or "new"
   const [error, setError] = useState("");
+
+  const customFolders = folders.filter((f) => !f.is_default);
 
   const handleSave = async (folderId) => {
     setSaving(folderId || "default");
@@ -23,7 +24,15 @@ export default function FolderPickerModal({ vendorName, folders, onClose, onSave
 
   const handleCreate = async () => {
     const name = newFolderName.trim();
-    if (!name) return;
+    if (!name) {
+      setError("Folder name is required.");
+      return;
+    }
+    const exists = folders.some((f) => f.name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      setError("A folder with this name already exists.");
+      return;
+    }
     setSaving("new");
     setError("");
     try {
@@ -60,20 +69,20 @@ export default function FolderPickerModal({ vendorName, folders, onClose, onSave
         {vendorName && <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12 }}>{vendorName}</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-          {folders.length === 0 && (
-            <button
-              onClick={() => handleSave(null)}
-              disabled={saving !== null}
-              style={{
-                textAlign: "left", padding: "10px 12px", borderRadius: 10,
-                border: `1px solid ${C.border}`, background: C.cream, cursor: "pointer",
-                fontSize: 13.5, color: C.navy, fontFamily: FONT_BODY,
-              }}
-            >
-              {saving === "default" ? "Saving…" : "Just save"}
-            </button>
-          )}
-          {folders.map((f) => (
+          <button
+            onClick={() => handleSave(null)}
+            disabled={saving !== null}
+            style={{
+              textAlign: "left", padding: "10px 12px", borderRadius: 10,
+              border: `1px solid ${C.border}`, background: C.cream, cursor: "pointer",
+              fontSize: 13.5, color: C.navy, fontFamily: FONT_BODY, fontWeight: 600,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}
+          >
+            <span>Save without folder</span>
+            {saving === "default" && <span style={{ fontSize: 11.5, color: C.muted, fontWeight: 400 }}>Saving…</span>}
+          </button>
+          {customFolders.map((f) => (
             <button
               key={f.id}
               onClick={() => handleSave(f.id)}
@@ -107,7 +116,7 @@ export default function FolderPickerModal({ vendorName, folders, onClose, onSave
               />
               <button
                 onClick={handleCreate}
-                disabled={saving !== null || !newFolderName.trim()}
+                disabled={saving !== null}
                 style={{
                   padding: "8px 14px", borderRadius: 8, border: "none", background: C.navy,
                   color: "#fff", fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY,

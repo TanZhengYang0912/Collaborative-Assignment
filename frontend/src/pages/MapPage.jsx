@@ -12,6 +12,8 @@ import DirectionsRenderer from "../components/DirectionsRenderer";
 import TransitLayer from "../components/TransitLayer";
 import Dashboard from "../components/Dashboard";
 import FolderPickerModal from "../components/engagement/FolderPickerModal";
+import Toast from "../components/engagement/Toast";
+import { useToast, sleep } from "../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { C } from "../lib/theme";
 
@@ -78,6 +80,7 @@ export default function MapPage() {
   const [routeOptions, setRouteOptions] = useState([]);  // alt routes + toll flags (DRIVING)
   const [transitLegs, setTransitLegs] = useState([]);    // itinerary legs (TRANSIT)
   const [isDark, setIsDark] = useState(false);
+  const [toast, notify] = useToast();
 
   // Load vendors (Supabase, sorted from Melaka centre as a default reference).
   useEffect(() => {
@@ -101,9 +104,8 @@ export default function MapPage() {
   }, [session]);
 
   function refreshBookmarks() {
-    Promise.all([getBookmarks(), getFolders()])
-      .then(([b, f]) => { setBookmarkRows(b.bookmarks); setFolders(f.folders); })
-      .catch((e) => console.error("failed to load bookmarks:", e.message));
+    getFolders().then((f) => setFolders(f.folders)).catch((e) => console.error("failed to load folders:", e.message));
+    getBookmarks().then((b) => setBookmarkRows(b.bookmarks)).catch((e) => console.error("failed to load bookmarks:", e.message));
   }
 
   // Each stop is a normal draggable entry — the user's location too.
@@ -174,7 +176,9 @@ export default function MapPage() {
   function toggleBookmark(id) {
     if (!session && !ENGAGEMENT_TEST_MODE) { navigate("/login"); return; }
     if (bookmarks.has(id)) {
-      removeBookmark(id).then(refreshBookmarks).catch((e) => console.error(e.message));
+      removeBookmark(id)
+        .then(() => { refreshBookmarks(); notify("Vendor removed from bookmarks."); })
+        .catch((e) => notify(e.message, true));
       return;
     }
     const vendor = vendors.find((v) => v.id === id) || nearbyVendors.find((v) => v.id === id);
@@ -185,10 +189,14 @@ export default function MapPage() {
     await addBookmark(pendingSaveVendor.id, folderId);
     setPendingSaveVendor(null);
     refreshBookmarks();
+    notify("Vendor bookmarked!");
   }
 
   async function createFolderAndSave(name) {
     const { folder } = await createFolder(name);
+    notify("Folder created successfully!");
+    refreshBookmarks();
+    await sleep(1200);
     await confirmSaveBookmark(folder.id);
   }
 
@@ -264,6 +272,7 @@ export default function MapPage() {
             onCreateFolder={createFolderAndSave}
           />
         )}
+        <Toast toast={toast} />
       </>
     );
   }
@@ -394,6 +403,7 @@ export default function MapPage() {
             onCreateFolder={createFolderAndSave}
           />
         )}
+        <Toast toast={toast} />
       </div>
     </APIProvider>
   );

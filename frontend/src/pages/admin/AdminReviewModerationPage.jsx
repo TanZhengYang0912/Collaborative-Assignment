@@ -4,6 +4,35 @@ import { getAdminReviews, setReviewVisibility } from "../../api/admin";
 
 const VISIBILITY_OPTIONS = ["all", "visible", "hidden"];
 
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function Toast({ message, isError, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2400);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        zIndex: 100,
+        padding: "10px 18px",
+        borderRadius: 999,
+        background: isError ? "#dc2626" : "#20395f",
+        color: "#fff",
+        fontSize: 13,
+        fontWeight: 700,
+        boxShadow: "0 8px 24px rgba(15,23,42,0.18)",
+        animation: "fadeInUp 0.22s ease",
+      }}
+    >
+      {isError ? message : `✓ ${message}`}
+    </div>
+  );
+}
+
 function Pagination({ pagination, onPageChange }) {
   const { page, totalPages, total } = pagination;
   if (totalPages <= 1) return null;
@@ -26,6 +55,7 @@ export default function AdminReviewModerationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
+  const [toast, setToast] = useState(null); // { message, isError }
 
   const PAGE_SIZE = 10;
 
@@ -59,8 +89,10 @@ export default function AdminReviewModerationPage() {
     try {
       await setReviewVisibility(review.id, !review.isHidden);
       await load();
+      setToast({ message: review.isHidden ? "Review restored successfully." : "Review hidden successfully." });
     } catch (err) {
       setError(err.message);
+      setToast({ message: err.message, isError: true });
     } finally {
       setUpdatingId(null);
     }
@@ -137,6 +169,15 @@ export default function AdminReviewModerationPage() {
         </table>
         <Pagination pagination={data.pagination} onPageChange={load} />
       </section>
+
+      {toast && <Toast message={toast.message} isError={toast.isError} onDone={() => setToast(null)} />}
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 }

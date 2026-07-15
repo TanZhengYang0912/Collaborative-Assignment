@@ -4,17 +4,34 @@ import { C, FONT_BODY } from "../../lib/theme";
 import { createReview, updateReview, uploadReviewPhoto } from "../../api/engagement";
 import StarRating from "./StarRating";
 
-// initial=null -> write a new review. initial={id,rating,body} -> edit own review.
-export default function ReviewForm({ vendorId, initial, onSaved, onCancel }) {
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+export default function ReviewForm({ vendorId, initial, onSaved, onCancel, notify }) {
   const [rating, setRating] = useState(initial?.rating || 0);
   const [body, setBody] = useState(initial?.body || "");
   const [photoFile, setPhotoFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0] || null;
+    e.target.value = "";
+    if (!file) return;
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      notify?.("Only JPEG, PNG and WebP formats are allowed.", true);
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      notify?.("File size must be under 10MB.", true);
+      return;
+    }
+    setPhotoFile(file);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!rating) { setError("Pick a star rating"); return; }
+    if (!rating) { notify?.("Please select a star rating.", true); return; }
     setSaving(true);
     setError("");
     try {
@@ -29,6 +46,7 @@ export default function ReviewForm({ vendorId, initial, onSaved, onCancel }) {
       }
 
       onSaved({ ...review, review_photos: photos, isOwn: true, likes: initial?.likes ?? 0, dislikes: initial?.dislikes ?? 0, myVote: initial?.myVote ?? null });
+      notify?.(initial ? "Review updated successfully!" : "Review submitted successfully!");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,8 +73,8 @@ export default function ReviewForm({ vendorId, initial, onSaved, onCancel }) {
           {photoFile ? photoFile.name : "Add a photo"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
             style={{ display: "none" }}
           />
         </label>

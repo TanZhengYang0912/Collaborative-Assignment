@@ -7,8 +7,8 @@ import {
 
 // Figma card layout:
 // - Photo (top, ~190px) with:
-//   - heart icon top-LEFT (bookmark)
-//   - navy "+" / "✓" circle top-RIGHT (add-to-trip)
+//   - navy "+" / "✓" circle top-LEFT (add-to-trip)
+//   - heart icon top-RIGHT (bookmark)
 //   - navy category badge bottom-LEFT over photo
 // - Name in Playfair Display
 // - Gold-bordered AI Review box with "AI REVIEW" gold label
@@ -37,27 +37,12 @@ export default function VendorCard({ vendor, inTrip, bookmarked, onToggleBookmar
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         />
 
-        {/* Heart bookmark — top-left */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleBookmark(vendor.id); }}
-          aria-label={bookmarked ? "Remove bookmark" : "Save vendor"}
-          style={{
-            position: "absolute", top: 10, left: 10,
-            width: 30, height: 30, borderRadius: "50%",
-            background: "rgba(255,255,255,0.92)", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-          }}
-        >
-          <Heart size={15} color={bookmarked ? "#e84040" : C.muted} fill={bookmarked ? "#e84040" : "none"} />
-        </button>
-
-        {/* Add-to-trip circle — top-right */}
+        {/* Add-to-trip circle — top-left */}
         <button
           onClick={(e) => { e.stopPropagation(); onAddStop(vendor); }}
           aria-label={inTrip ? "Already in trip" : "Add to trip"}
           style={{
-            position: "absolute", top: 10, right: 10,
+            position: "absolute", top: 10, left: 10,
             width: 30, height: 30, borderRadius: "50%",
             background: inTrip ? C.gold : C.navy, border: "none", cursor: inTrip ? "default" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -68,6 +53,21 @@ export default function VendorCard({ vendor, inTrip, bookmarked, onToggleBookmar
             ? <Check size={14} color="#fff" strokeWidth={2.5} />
             : <Plus size={14} color="#fff" strokeWidth={2.5} />
           }
+        </button>
+
+        {/* Heart bookmark — top-right */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleBookmark(vendor.id); }}
+          aria-label={bookmarked ? "Remove bookmark" : "Save vendor"}
+          style={{
+            position: "absolute", top: 10, right: 10,
+            width: 30, height: 30, borderRadius: "50%",
+            background: "rgba(255,255,255,0.92)", border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+          }}
+        >
+          <Heart size={15} color={bookmarked ? "#e84040" : C.muted} fill={bookmarked ? "#e84040" : "none"} />
         </button>
 
         {/* Category badge — bottom-left over photo */}

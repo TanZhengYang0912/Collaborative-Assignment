@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Heart, Star, Trash2, FolderInput, Pencil } from "lucide-react";
+import { Heart, Trash2, FolderInput, Pencil, Plus } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import {
-  getBookmarks, getFolders, removeBookmark, moveBookmark, createFolder, deleteFolder,
+  getBookmarks, getFolders, addBookmark, removeBookmark, moveBookmark, createFolder, deleteFolder,
   getMyReviews, deleteReview,
 } from "../api/engagement";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
-import { categoryLabel, placeholderImage, priceLabel } from "../lib/vendorDisplay";
 import StarRating from "../components/engagement/StarRating";
 import ReviewForm from "../components/engagement/ReviewForm";
+import Toast from "../components/engagement/Toast";
+import { useToast, sleep } from "../lib/useToast";
+import VendorCard from "../components/discovery/VendorCard";
+import VendorDetailModal from "../components/discovery/VendorDetailModal";
+import FolderPickerModal from "../components/engagement/FolderPickerModal";
+import ImageLightbox from "../components/engagement/ImageLightbox";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 
 export default function EngagementPage() {
@@ -22,9 +27,15 @@ export default function EngagementPage() {
   const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState("all");
   const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const [reviews, setReviews] = useState([]);
   const [editingReview, setEditingReview] = useState(null);
+  const [detailVendor, setDetailVendor] = useState(null);
+  const [pendingSaveVendor, setPendingSaveVendor] = useState(null); // vendor awaiting a folder pick
+  const [openPhoto, setOpenPhoto] = useState(null);
+  const [toast, notify] = useToast();
+  const bookmarkedVendorIds = new Set(bookmarks.map((b) => b.vendor_id));
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -38,9 +49,8 @@ export default function EngagementPage() {
   }, [session]);
 
   function refreshBookmarks() {
-    Promise.all([getBookmarks(), getFolders()])
-      .then(([b, f]) => { setBookmarks(b.bookmarks); setFolders(f.folders); })
-      .catch((e) => console.error(e.message));
+    getFolders().then((f) => setFolders(f.folders)).catch((e) => console.error(e.message));
+    getBookmarks().then((b) => setBookmarks(b.bookmarks)).catch((e) => console.error(e.message));
   }
   function refreshReviews() {
     getMyReviews().then((r) => setReviews(r.reviews)).catch((e) => console.error(e.message));
@@ -71,12 +81,16 @@ export default function EngagementPage() {
 
   async function handleCreateFolder() {
     const name = newFolderName.trim();
-    if (!name) return;
+    if (!name) { notify("Folder name is required.", true); return; }
+    const exists = folders.some((f) => f.name.toLowerCase() === name.toLowerCase());
+    if (exists) { notify("A folder with this name already exists.", true); return; }
     try {
       await createFolder(name);
       setNewFolderName("");
+      setCreatingFolder(false);
       refreshBookmarks();
-    } catch (e) { console.error(e.message); }
+      notify("Folder created successfully!");
+    } catch (e) { notify(e.message, true); }
   }
 
   async function handleDeleteFolder(id) {
@@ -84,22 +98,54 @@ export default function EngagementPage() {
       await deleteFolder(id);
       if (activeFolder === id) setActiveFolder("all");
       refreshBookmarks();
-    } catch (e) { console.error(e.message); }
+    } catch (e) { notify(e.message, true); }
   }
 
   async function handleRemoveBookmark(vendorId) {
-    await removeBookmark(vendorId);
-    refreshBookmarks();
+    try {
+      await removeBookmark(vendorId);
+      refreshBookmarks();
+      notify("Vendor removed from wishlist.");
+    } catch (e) { notify(e.message, true); }
   }
 
   async function handleMoveBookmark(vendorId, folderId) {
-    await moveBookmark(vendorId, folderId);
+    try {
+      await moveBookmark(vendorId, folderId);
+      refreshBookmarks();
+    } catch (e) { notify(e.message, true); }
+  }
+
+  // The vendor-detail modal is reachable from both the Bookmarks tab (always
+  // bookmarked) and the Reviews tab (may or may not be) — so the heart there
+  // needs to actually branch, unlike the plain "remove" hearts on the bookmark grid.
+  function toggleBookmarkFromDetail(vendorId) {
+    if (bookmarkedVendorIds.has(vendorId)) { handleRemoveBookmark(vendorId); return; }
+    setPendingSaveVendor(detailVendor);
+  }
+
+  async function confirmSaveBookmark(folderId) {
+    await addBookmark(pendingSaveVendor.id, folderId);
+    setPendingSaveVendor(null);
     refreshBookmarks();
+    notify("Vendor bookmarked!");
+  }
+
+  async function createFolderAndSave(name) {
+    const { folder } = await createFolder(name);
+    notify("Folder created successfully!");
+    refreshBookmarks();
+    await sleep(1200);
+    await confirmSaveBookmark(folder.id);
   }
 
   async function handleDeleteReview(id) {
-    await deleteReview(id);
-    refreshReviews();
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    try {
+      await deleteReview(id);
+      refreshReviews();
+      notify("Review deleted successfully!");
+    } catch (e) { notify(e.message, true); }
   }
 
   return (
@@ -125,11 +171,12 @@ export default function EngagementPage() {
 
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
         {tab === "bookmarks" && (
-          <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 24 }}>
-            <aside style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <FolderRow label="All" count={bookmarks.length} active={activeFolder === "all"} onClick={() => setActiveFolder("all")} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Folder tabs — horizontal row, Instagram-style */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              <FolderPill label="All" count={bookmarks.length} active={activeFolder === "all"} onClick={() => setActiveFolder("all")} />
               {folders.map((f) => (
-                <FolderRow
+                <FolderPill
                   key={f.id} label={f.name}
                   count={bookmarks.filter((b) => b.folder_id === f.id).length}
                   active={activeFolder === f.id}
@@ -137,31 +184,51 @@ export default function EngagementPage() {
                   onDelete={!f.is_default ? () => handleDeleteFolder(f.id) : null}
                 />
               ))}
-              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                <input
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-                  placeholder="New folder…"
-                  style={{ flex: 1, minWidth: 0, padding: "7px 9px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: FONT_BODY }}
-                />
-                <button onClick={handleCreateFolder} style={{ padding: "0 10px", borderRadius: 8, border: "none", background: C.navy, color: "#fff", cursor: "pointer", fontSize: 16 }}>+</button>
-              </div>
-            </aside>
+
+              {creatingFolder ? (
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <input
+                    autoFocus
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                    placeholder="Folder name"
+                    style={{ width: 140, padding: "7px 9px", borderRadius: 20, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: FONT_BODY }}
+                  />
+                  <button onClick={handleCreateFolder} style={{ padding: "0 12px", borderRadius: 20, border: "none", background: C.navy, color: "#fff", cursor: "pointer", fontSize: 12.5, fontFamily: FONT_BODY }}>Create</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCreatingFolder(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
+                    padding: "7px 12px", borderRadius: 20, border: `1px dashed ${C.border}`,
+                    background: "transparent", color: C.muted, cursor: "pointer",
+                    fontSize: 12.5, fontFamily: FONT_BODY,
+                  }}
+                >
+                  <Plus size={13} /> New folder
+                </button>
+              )}
+            </div>
 
             <section>
               {visibleBookmarks.length === 0 ? (
                 <Empty icon="🔖" text="No bookmarks in this folder yet." />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
-                  {visibleBookmarks.map((b) => (
-                    <BookmarkCard
-                      key={b.vendor_id}
-                      row={b}
-                      folders={folders}
-                      onRemove={() => handleRemoveBookmark(b.vendor_id)}
-                      onMove={(folderId) => handleMoveBookmark(b.vendor_id, folderId)}
-                    />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                  {visibleBookmarks.filter((b) => b.vendor).map((b) => (
+                    <div key={b.vendor_id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <VendorCard
+                        vendor={b.vendor}
+                        inTrip={false}
+                        bookmarked={true}
+                        onToggleBookmark={() => handleRemoveBookmark(b.vendor_id)}
+                        onAddStop={() => notify("Open this vendor from the map to add it to your trip.")}
+                        onOpenDetail={setDetailVendor}
+                      />
+                      <FolderMoveSelect row={b} folders={folders} onMove={(folderId) => handleMoveBookmark(b.vendor_id, folderId)} />
+                    </div>
                   ))}
                 </div>
               )}
@@ -170,9 +237,9 @@ export default function EngagementPage() {
         )}
 
         {tab === "reviews" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640, margin: "0 auto" }}>
             {reviews.length === 0 ? (
-              <Empty icon="⭐" text="No reviews yet. Rate a vendor from its detail page." />
+              <Empty icon="⭐" text="No reviews yet. Be the first to review!" />
             ) : (
               reviews.map((r) => (
                 <div key={r.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
@@ -182,14 +249,23 @@ export default function EngagementPage() {
                       initial={r}
                       onSaved={(updated) => { setReviews((prev) => prev.map((x) => (x.id === r.id ? { ...x, ...updated } : x))); setEditingReview(null); }}
                       onCancel={() => setEditingReview(null)}
+                      notify={notify}
                     />
                   ) : (
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
-                          <Link to="/map" style={{ fontFamily: FONT_DISPLAY, fontSize: 16, color: C.navy, textDecoration: "none", fontWeight: 700 }}>
+                          <button
+                            onClick={() => r.vendor && setDetailVendor(r.vendor)}
+                            disabled={!r.vendor}
+                            style={{
+                              background: "none", border: "none", padding: 0, textAlign: "left",
+                              fontFamily: FONT_DISPLAY, fontSize: 16, color: C.navy, fontWeight: 700,
+                              cursor: r.vendor ? "pointer" : "default",
+                            }}
+                          >
                             {r.vendor?.name || "Vendor"}
-                          </Link>
+                          </button>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
                             <StarRating value={r.rating} size={13} />
                             <span style={{ fontSize: 11.5, color: C.muted }}>{new Date(r.created_at).toLocaleDateString()}</span>
@@ -205,7 +281,11 @@ export default function EngagementPage() {
                       {r.review_photos?.length > 0 && (
                         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                           {r.review_photos.map((p) => (
-                            <img key={p.id} src={p.url} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}` }} />
+                            <img
+                              key={p.id} src={p.url} alt=""
+                              onClick={() => setOpenPhoto(p.url)}
+                              style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}`, cursor: "zoom-in" }}
+                            />
                           ))}
                         </div>
                       )}
@@ -217,74 +297,72 @@ export default function EngagementPage() {
           </div>
         )}
       </main>
+
+      {detailVendor && (
+        <VendorDetailModal
+          vendor={detailVendor}
+          inTrip={false}
+          bookmarked={bookmarkedVendorIds.has(detailVendor.id)}
+          onToggleBookmark={() => toggleBookmarkFromDetail(detailVendor.id)}
+          onAddStop={() => notify("Open this vendor from the map to add it to your trip.")}
+          onClose={() => setDetailVendor(null)}
+        />
+      )}
+
+      {pendingSaveVendor && (
+        <FolderPickerModal
+          vendorName={pendingSaveVendor.name}
+          folders={folders}
+          onClose={() => setPendingSaveVendor(null)}
+          onSave={confirmSaveBookmark}
+          onCreateFolder={createFolderAndSave}
+        />
+      )}
+
+      <ImageLightbox src={openPhoto} onClose={() => setOpenPhoto(null)} />
+      <Toast toast={toast} />
     </div>
   );
 }
 
-function FolderRow({ label, count, active, onClick, onDelete }) {
+function FolderPill({ label, count, active, onClick, onDelete }) {
   return (
     <div
       onClick={onClick}
       style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "8px 10px", borderRadius: 8, cursor: "pointer",
-        background: active ? "#fff" : "transparent",
-        border: active ? `1px solid ${C.border}` : "1px solid transparent",
-        fontSize: 13.5, color: active ? C.navy : C.muted, fontWeight: active ? 600 : 400,
+        display: "flex", alignItems: "center", gap: 6, flexShrink: 0, whiteSpace: "nowrap",
+        padding: "7px 12px", borderRadius: 20, cursor: "pointer",
+        background: active ? C.navy : "#fff",
+        border: `1px solid ${active ? C.navy : C.border}`,
+        fontSize: 13, color: active ? "#fff" : C.navy, fontWeight: active ? 600 : 400,
+        fontFamily: FONT_BODY,
       }}
     >
       <span>{label}</span>
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 11.5 }}>{count}</span>
-        {onDelete && (
-          <Trash2 size={12} onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ opacity: 0.5 }} />
-        )}
-      </span>
+      <span style={{ fontSize: 11, opacity: 0.75 }}>{count}</span>
+      {onDelete && (
+        <Trash2
+          size={12}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{ opacity: 0.6 }}
+        />
+      )}
     </div>
   );
 }
 
-function BookmarkCard({ row, folders, onRemove, onMove }) {
-  const vendor = row.vendor;
-  if (!vendor) return null;
-  const price = priceLabel(vendor);
-
+function FolderMoveSelect({ row, folders, onMove }) {
+  if (folders.length === 0) return null;
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ height: 120, position: "relative" }}>
-        <img src={placeholderImage(vendor)} alt={vendor.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        <button
-          onClick={onRemove}
-          aria-label="Remove bookmark"
-          style={{
-            position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%",
-            background: "rgba(255,255,255,0.92)", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <Heart size={13} color="#e84040" fill="#e84040" />
-        </button>
-      </div>
-      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5, color: C.navy }}>{vendor.name}</div>
-        <div style={{ fontSize: 11.5, color: C.muted, display: "flex", gap: 8 }}>
-          <span>{categoryLabel(vendor)}</span>
-          {price && <span>{price}</span>}
-          {vendor.review_count > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: 2 }}><Star size={11} fill={C.gold} color={C.gold} /> {Number(vendor.average_rating).toFixed(1)}</span>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-          <FolderInput size={13} color={C.muted} />
-          <select
-            value={row.folder_id || ""}
-            onChange={(e) => onMove(e.target.value || null)}
-            style={{ flex: 1, minWidth: 0, fontSize: 11.5, padding: "4px 6px", borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: FONT_BODY }}
-          >
-            {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </div>
-      </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 2px" }}>
+      <FolderInput size={13} color={C.muted} />
+      <select
+        value={row.folder_id || ""}
+        onChange={(e) => onMove(e.target.value || null)}
+        style={{ flex: 1, minWidth: 0, fontSize: 11.5, padding: "4px 6px", borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: FONT_BODY }}
+      >
+        {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+      </select>
     </div>
   );
 }

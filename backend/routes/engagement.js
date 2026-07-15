@@ -5,86 +5,30 @@ import { supabase } from "../supabase.js";
 
 const router = Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENGAGEMENT & BOOKMARKING MODULE
-//   Bookmarks (one folder per vendor) + reviews (star + text + photo, with
-//   like/dislike) + admin moderation (see admin.js for the moderation routes).
-//
-// One-time Supabase setup (SQL editor + Storage):
-//
-//   create table if not exists bookmark_folders (
-//     id uuid primary key default gen_random_uuid(),
-//     user_id uuid not null references auth.users(id) on delete cascade,
-//     name text not null,
-//     is_default boolean not null default false,
-//     created_at timestamptz not null default now(),
-//     unique (user_id, name)
-//   );
-//   create table if not exists bookmarks (
-//     id uuid primary key default gen_random_uuid(),
-//     user_id uuid not null references auth.users(id) on delete cascade,
-//     vendor_id uuid not null references vendors(id) on delete cascade,
-//     folder_id uuid references bookmark_folders(id) on delete set null,
-//     created_at timestamptz not null default now(),
-//     unique (user_id, vendor_id)          -- one folder per vendor
-//   );
-//   create table if not exists reviews (
-//     id uuid primary key default gen_random_uuid(),
-//     user_id uuid not null references auth.users(id) on delete cascade,
-//     vendor_id uuid not null references vendors(id) on delete cascade,
-//     rating int not null check (rating between 1 and 5),
-//     body text,
-//     author_name text,
-//     is_hidden boolean not null default false,
-//     hidden_reason text,                  -- 'profanity' | 'admin'
-//     created_at timestamptz not null default now(),
-//     updated_at timestamptz not null default now(),
-//     unique (user_id, vendor_id)          -- one review per user per vendor
-//   );
-//   create table if not exists review_photos (
-//     id uuid primary key default gen_random_uuid(),
-//     review_id uuid not null references reviews(id) on delete cascade,
-//     url text not null
-//   );
-//   create table if not exists review_votes (
-//     id uuid primary key default gen_random_uuid(),
-//     review_id uuid not null references reviews(id) on delete cascade,
-//     user_id uuid not null references auth.users(id) on delete cascade,
-//     is_like boolean not null,
-//     unique (review_id, user_id)          -- one vote per user per review
-//   );
-//   -- Storage: create a PUBLIC bucket named "review-photos"
-//   -- (uploads go through this server with the service key, so no extra
-//   --  storage policies are needed beyond public read).
-// ─────────────────────────────────────────────────────────────────────────────
-
 const REVIEW_PHOTO_BUCKET = "review-photos";
 const ALLOWED_IMAGE_TYPES = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/gif": "gif",
 };
 const MAX_PHOTOS_PER_REVIEW = 4;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 const filter = new Filter();
 
-// ponytail: TEMPORARY — auth fully disabled for local testing. Skips real JWT
-// verification everywhere below and acts as a fixed pre-created test account
-// (engagement-test@truebites.local). This removes the ownership trust
-// boundary entirely — every caller becomes the same user. Flip back to false
-// (this block + the two `if (TEST_MODE)` branches below) before shipping.
-const TEST_MODE = true;
+filter.removeWords("god", "hell", "bloody", "sex");
+
+function isProfaneLoose(text) {
+  return filter.isProfane(text) || filter.isProfane(text.replace(/(.)\1+/g, "$1"));
+}
+
+const TEST_MODE = false;
 const TEST_USER = {
   id: "78c8682a-102e-4925-a2c1-71144f4aaace",
   email: "engagement-test@truebites.local",
   user_metadata: { full_name: "Engagement Test User" },
 };
 
-// The backend uses the Supabase service key for everything, so it trusts no
-// caller by default. Ownership (who may edit/delete a review or bookmark)
-// is a real trust boundary — the verified JWT subject is the only id ever
-// used for a WHERE clause, never a client-supplied one.
 async function requireUser(req, res) {
   if (TEST_MODE) return TEST_USER;
 
@@ -178,7 +122,7 @@ router.post("/engagement/folders", async (req, res) => {
   if (!user) return;
 
   const name = String(req.body?.name || "").trim();
-  if (!name) return res.status(400).json({ error: "Folder name is required" });
+  if (!name) return res.status(400).json({ error: "Folder name is required." });
 
   const { data, error } = await supabase
     .from("bookmark_folders")
@@ -186,8 +130,10 @@ router.post("/engagement/folders", async (req, res) => {
     .select("id, name, is_default, created_at")
     .single();
   if (error) {
-    const status = error.code === "23505" ? 409 : 500;
-    return res.status(status).json({ error: status === 409 ? "You already have a folder with that name" : "database insert failed", details: error.message });
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "A folder with this name already exists." });
+    }
+    return res.status(500).json({ error: "database insert failed", details: error.message });
   }
 
   res.status(201).json({ folder: data });
@@ -364,13 +310,21 @@ router.get("/engagement/reviews/mine", async (req, res) => {
 
   const { data, error } = await supabase
     .from("reviews")
-    .select("id, vendor_id, rating, body, is_hidden, hidden_reason, created_at, updated_at, review_photos(id, url), vendor:vendors(id, vendor_name)")
+    .select(`
+      id, vendor_id, rating, body, is_hidden, hidden_reason, created_at, updated_at, review_photos(id, url),
+      vendor:vendors(id, vendor_name, address, latitude, longitude, cuisine_types,
+        signature_dishes, price_range, ai_review_summary, source_video_url,
+        source_platform, average_rating, review_count)
+    `)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: "database query failed", details: error.message });
 
   res.json({
-    reviews: (data || []).map((r) => ({ ...r, vendor: r.vendor ? { id: r.vendor.id, name: r.vendor.vendor_name } : null })),
+    reviews: (data || []).map((r) => ({
+      ...r,
+      vendor: r.vendor ? { ...r.vendor, id: r.vendor.id, name: r.vendor.vendor_name } : null,
+    })),
   });
 });
 
@@ -383,7 +337,7 @@ router.post("/engagement/vendors/:vendorId/reviews", async (req, res) => {
     return res.status(400).json({ error: "rating must be an integer 1-5" });
   }
   const body = String(req.body?.body || "").trim() || null;
-  const profane = body ? filter.isProfane(body) : false;
+  const profane = body ? isProfaneLoose(body) : false;
 
   const { data, error } = await supabase
     .from("reviews")
@@ -434,7 +388,7 @@ router.patch("/engagement/reviews/:id", async (req, res) => {
   if (req.body?.body != null) {
     const body = String(req.body.body).trim() || null;
     patch.body = body;
-    const profane = body ? filter.isProfane(body) : false;
+    const profane = body ? isProfaneLoose(body) : false;
     patch.is_hidden = profane;
     patch.hidden_reason = profane ? "profanity" : null;
   }
@@ -479,15 +433,21 @@ router.delete("/engagement/reviews/:id", async (req, res) => {
 
 router.post(
   "/engagement/reviews/:id/photo",
-  express.raw({ type: "image/*", limit: "8mb" }),
+  // Parsed one byte above the limit so an oversized upload lands here (as a
+  // full buffer we can measure) instead of being rejected mid-stream by
+  // raw-body with a bare HTML 413 the frontend can't read as JSON.
+  express.raw({ type: "image/*", limit: `${MAX_PHOTO_BYTES + 1}b` }),
   async (req, res) => {
     const user = await requireUser(req, res);
     if (!user) return;
 
     const ext = ALLOWED_IMAGE_TYPES[req.headers["content-type"]];
-    if (!ext) return res.status(400).json({ error: "unsupported image type — use JPEG, PNG, WebP or GIF" });
+    if (!ext) return res.status(400).json({ error: "Only JPEG, PNG and WebP formats are allowed." });
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
       return res.status(400).json({ error: "empty upload — send the raw image as the request body" });
+    }
+    if (req.body.length > MAX_PHOTO_BYTES) {
+      return res.status(413).json({ error: "File size must be under 10MB." });
     }
 
     const { data: review, error: findErr } = await supabase

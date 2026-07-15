@@ -10,6 +10,8 @@ import { supabase } from "../../supabaseClient";
 import { getReviews, deleteReview, voteReview, removeVote } from "../../api/engagement";
 import ReviewForm from "../engagement/ReviewForm";
 import ReviewList from "../engagement/ReviewList";
+import Toast from "../engagement/Toast";
+import { useToast } from "../../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../../lib/testMode";
 
 export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggleBookmark, onAddStop, onClose }) {
@@ -18,6 +20,7 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [editingReview, setEditingReview] = useState(null); // "new" | review object | null
+  const [toast, notify] = useToast();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -51,7 +54,8 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
       await deleteReview(id);
       const r = await getReviews(vendor.id);
       setReviews(r.reviews);
-    } catch (e) { console.error(e.message); }
+      notify("Review deleted successfully!");
+    } catch (e) { notify(e.message, true); }
   }
 
   function handleReviewSaved(review) {
@@ -249,6 +253,7 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
                   initial={editingReview === "new" ? null : editingReview}
                   onSaved={handleReviewSaved}
                   onCancel={() => setEditingReview(null)}
+                  notify={notify}
                 />
               </div>
             )}
@@ -266,6 +271,7 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
           </div>
         </div>
       </div>
+      <Toast toast={toast} />
     </div>
   );
 }
