@@ -69,14 +69,12 @@ const MAX_PHOTOS_PER_REVIEW = 4;
 
 const filter = new Filter();
 
-// ponytail: TEMPORARY testing bypass — set ENGAGEMENT_TEST_MODE=true in
-// backend/.env to skip real JWT verification everywhere below and act as a
-// fixed pre-created test account (engagement-test@truebites.local). This
-// removes the ownership trust boundary entirely — every caller becomes the
-// same user. MUST be deleted (this block + the two `if (TEST_MODE)` branches
-// below) before the engagement module ships; do not leave ENGAGEMENT_TEST_MODE
-// set in any deployed environment.
-const TEST_MODE = process.env.ENGAGEMENT_TEST_MODE === "true";
+// ponytail: TEMPORARY — auth fully disabled for local testing. Skips real JWT
+// verification everywhere below and acts as a fixed pre-created test account
+// (engagement-test@truebites.local). This removes the ownership trust
+// boundary entirely — every caller becomes the same user. Flip back to false
+// (this block + the two `if (TEST_MODE)` branches below) before shipping.
+const TEST_MODE = true;
 const TEST_USER = {
   id: "78c8682a-102e-4925-a2c1-71144f4aaace",
   email: "engagement-test@truebites.local",

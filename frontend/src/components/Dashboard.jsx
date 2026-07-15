@@ -8,6 +8,7 @@ import VendorDetailModal from "./discovery/VendorDetailModal";
 import GuestPrompt from "./discovery/GuestPrompt";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import { categoryOf } from "../lib/vendorDisplay";
+import { DISABLE_AUTH } from "../lib/testMode";
 
 // The map-page discovery dashboard. DiscoveryHeader (logo/search/List·Map/avatar)
 // + Vendors/Bookmarks/My reviews tab strip. Vendors come from Supabase.
@@ -25,7 +26,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
   // tied to an account, or view "My reviews" — nudge them to log in instead.
   function requireAuth(fn) {
     return (...args) => {
-      if (!session) { setGuestPromptOpen(true); return; }
+      if (!session && !DISABLE_AUTH) { setGuestPromptOpen(true); return; }
       fn(...args);
     };
   }

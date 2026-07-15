@@ -17,6 +17,7 @@ import AdminVendorManagementPage       from "./pages/admin/AdminVendorManagement
 import AdminAIProcessingConsolePage    from "./pages/admin/AdminAIProcessingConsolePage";
 import AdminReviewModerationPage       from "./pages/admin/AdminReviewModerationPage";
 import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
+import { DISABLE_AUTH } from "./lib/testMode";
 
 // Pages that can be visited without any session
 const AUTH_PUBLIC_PATHS = ["/", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password"];
@@ -37,6 +38,9 @@ function AuthGate({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // ponytail: TEMPORARY — auth fully disabled for local testing, see lib/testMode.js
+    if (DISABLE_AUTH) return;
+
     function check(session) {
       if (!session) {
         if (!AUTH_PUBLIC_PATHS.includes(location.pathname)) {
