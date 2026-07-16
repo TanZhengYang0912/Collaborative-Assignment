@@ -1,6 +1,12 @@
 import { Router } from "express";
 import express from "express";
 import { supabase } from "../supabase.js";
+import {
+  STORAGE_BUCKET,
+  VENDOR_STATUSES,
+  validateVendor,
+  storagePathFromUrl,
+} from "../lib/vendorValidation.js";
 const router = Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,99 +22,6 @@ const router = Router();
 //   -- (uploads go through this server with the service key, so no extra
 //   --  storage policies are needed beyond public read).
 // ─────────────────────────────────────────────────────────────────────────────
-
-const STORAGE_BUCKET = "vendor-images";
-const VENDOR_STATUSES = ["draft", "active", "suspended"];
-
-const MELAKA_BOUNDS = { latMin: 1.8, latMax: 2.6, lngMin: 101.8, lngMax: 102.8 };
-
-const HOURS_RE = /(\d{1,2}([:.]\d{2})?\s*(am|pm))|(\d{1,2}[:.]\d{2})|(24\s*hours?)/i;
-
-function validateVendor(body = {}) {
-  const errors = {};
-  const clean = {};
-
-  const str = (v) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim());
-
-  // Business name
-  const name = str(body.vendor_name);
-  if (!name) errors.vendor_name = "Business name is required";
-  else if (name.length < 2 || name.length > 120) errors.vendor_name = "Business name must be 2–120 characters";
-  else clean.vendor_name = name;
-
-  // Address
-  const address = str(body.address);
-  if (!address) errors.address = "Address is required";
-  else clean.address = address;
-
-  // Coordinates
-  const lat = parseFloat(body.latitude);
-  const lng = parseFloat(body.longitude);
-  if (body.latitude == null || body.latitude === "" || Number.isNaN(lat)) {
-    errors.latitude = "Latitude is required and must be a number";
-  } else if (lat < -90 || lat > 90) {
-    errors.latitude = "Latitude must be between -90 and 90";
-  } else if (lat < MELAKA_BOUNDS.latMin || lat > MELAKA_BOUNDS.latMax) {
-    errors.latitude = `Latitude looks outside Melaka (expected ${MELAKA_BOUNDS.latMin}–${MELAKA_BOUNDS.latMax})`;
-  } else {
-    clean.latitude = lat;
-  }
-  if (body.longitude == null || body.longitude === "" || Number.isNaN(lng)) {
-    errors.longitude = "Longitude is required and must be a number";
-  } else if (lng < -180 || lng > 180) {
-    errors.longitude = "Longitude must be between -180 and 180";
-  } else if (lng < MELAKA_BOUNDS.lngMin || lng > MELAKA_BOUNDS.lngMax) {
-    errors.longitude = `Longitude looks outside Melaka (expected ${MELAKA_BOUNDS.lngMin}–${MELAKA_BOUNDS.lngMax})`;
-  } else {
-    clean.longitude = lng;
-  }
-  if (clean.latitude != null && clean.longitude != null) {
-    clean.location = `SRID=4326;POINT(${clean.longitude} ${clean.latitude})`;
-    clean.location_precision = "exact";
-  }
-
-  // Cuisine categories
-  const cuisineRaw = Array.isArray(body.cuisine_types)
-    ? body.cuisine_types.join(", ")
-    : str(body.cuisine_types);
-  if (!cuisineRaw) errors.cuisine_types = "At least one cuisine type is required";
-  else clean.cuisine_types = cuisineRaw;
-
-  // Operating hours
-  const hours = str(body.operating_hours_raw);
-  if (!hours) errors.operating_hours_raw = "Operating hours are required";
-  else if (!HOURS_RE.test(hours)) errors.operating_hours_raw = 'Include a recognisable time, e.g. "Mon–Sun 9:00am – 10:00pm"';
-  else clean.operating_hours_raw = hours;
-
-  // Contact number (required, Malaysian format)
-  const phone = str(body.phone);
-  if (!phone) {
-    errors.phone = "Contact number is required";
-  } else if (!/^(\+?60|0)\d{8,10}$/.test(phone.replace(/[\s-]/g, ""))) {
-    errors.phone = "Enter a valid Malaysian phone number, e.g. 06-283 1234 or +60 12-345 6789";
-  } else {
-    clean.phone = phone;
-  }
-
-  // Visibility status
-  const status = str(body.status).toLowerCase() || "draft";
-  if (!VENDOR_STATUSES.includes(status)) {
-    errors.status = `Status must be one of: ${VENDOR_STATUSES.join(", ")}`;
-  } else {
-    clean.status = status;
-  }
-
-  // Remaining fields
-  clean.state = str(body.state) || "Melaka";
-  const priceRange = str(body.price_range);
-  if (!priceRange) errors.price_range = "Price range is required";
-  else clean.price_range = priceRange;
-  const dishes = str(body.signature_dishes);
-  if (!dishes) errors.signature_dishes = "Signature dishes are required";
-  else clean.signature_dishes = dishes;
-
-  return { errors, clean };
-}
 
 const sanitizeTerm = (t) => String(t).replace(/[,()]/g, " ").trim();
 
@@ -324,12 +237,5 @@ router.delete("/vendors/:id", async (req, res) => {
 
   res.json({ deleted: true, id: vendor.id });
 });
-
-function storagePathFromUrl(url) {
-  if (!url) return null;
-  const marker = `/object/public/${STORAGE_BUCKET}/`;
-  const idx = url.indexOf(marker);
-  return idx === -1 ? null : decodeURIComponent(url.slice(idx + marker.length));
-}
 
 export default router;

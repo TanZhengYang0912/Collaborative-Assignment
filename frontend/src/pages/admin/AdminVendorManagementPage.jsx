@@ -1,20 +1,32 @@
-import { Eye, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Ban, Check, Eye, ImagePlus, MapPin, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
-  createAdminVendor, deleteAdminVendor, getAdminVendors,
+  createAdminVendor, deleteAdminVendor, geocodeVendorAddress, getAdminVendors,
   updateAdminVendor, uploadVendorImage,
 } from "../../api/admin";
 
 const CATEGORIES = ["Malaysian / Local", "Nyonya / Peranakan", "Chinese", "Cafe / Dessert", "Western"];
-const STATUS_OPTIONS = ["all", "active", "pending", "suspended"];
+const STATUS_OPTIONS = ["all", "active", "draft", "suspended"];
 const SORT_OPTIONS = [
   { value: "default", label: "Default" },
-  { value: "az", label: "Name A-Z" },
-  { value: "za", label: "Name Z-A" },
+  { value: "az", label: "Name A–Z" },
+  { value: "za", label: "Name Z–A" },
   { value: "newest", label: "Newest" },
   { value: "oldest", label: "Oldest" },
 ];
+
+// Each sortable column header toggles between an ascending and a descending
+// sort value (both backed by the API's `sort` param); a third click clears back
+// to "default".
+const COLUMN_SORTS = {
+  vendor: ["az", "za"],
+  category: ["cat_az", "cat_za"],
+  status: ["status", "status_desc"],
+  score: ["score_asc", "score_desc"],
+};
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 // Every 30-min slot in 12-hour form, zero-padded — "12:00 AM", "12:30 AM", "01:00 AM" … "11:30 PM".
 // Matches the DB's stored hour format; picking from this list can never produce
@@ -45,6 +57,7 @@ const emptyForm = {
   phone: "",
   status: "draft",
   imageFile: null,
+  imagePreview: null,
 };
 
 // "RM 10 - RM 20 per person" / "RM10-20 per person" / "RM 20 per person" (equal
@@ -103,6 +116,7 @@ function makeForm(vendor) {
     phone: vendor.phone || "",
     status: (vendor.status || "draft").toLowerCase(),
     imageFile: null,
+    imagePreview: vendor.imageUrl || null,
   };
 }
 
@@ -145,15 +159,22 @@ function validateForm(form) {
   return errors;
 }
 
-function Pagination({ pagination, onPageChange }) {
+function Pagination({ pagination, pageSize, onPageChange, onPageSizeChange }) {
   const { page, totalPages, total } = pagination;
-  if (totalPages <= 1) return null;
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
   return (
     <div className="admin-pagination">
       <div className="admin-pagination-meta">
-        <strong>{total}</strong> vendors in Supabase
+        Showing <strong>{from}–{to}</strong> of <strong>{total}</strong> vendors
       </div>
       <div className="admin-pagination-controls">
+        <label className="admin-page-size">
+          Rows
+          <select value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))}>
+            {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
         <button type="button" className="admin-secondary-btn compact" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           Previous
         </button>
@@ -168,6 +189,149 @@ function Pagination({ pagination, onPageChange }) {
 
 function FieldError({ message }) {
   return message ? <div className="admin-field-error">{message}</div> : null;
+}
+
+// Table-row thumbnail: the real storefront photo if one's been uploaded,
+// otherwise a tile with the vendor's first initial. Resets its error flag
+// whenever imageUrl changes so a freshly-uploaded photo always gets a fresh
+// load attempt instead of getting stuck on a stale failure.
+function VendorThumb({ vendor }) {
+  const [errored, setErrored] = useState(false);
+  useEffect(() => setErrored(false), [vendor.imageUrl]);
+
+  if (!vendor.imageUrl || errored) {
+    const initial = (vendor.name || "?").trim().charAt(0).toUpperCase();
+    return (
+      <div className="admin-table-thumb admin-table-thumb-initial" aria-hidden="true">
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={vendor.imageUrl}
+      alt=""
+      className="admin-table-thumb"
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
+// Drag-and-drop (or click-to-browse) image field. `onFileChange` receives the
+// File directly — callers don't need to know whether it came from a drop or
+// the hidden <input>.
+function ImageDropzone({ form, onFileChange, disabled }) {
+  const fileInputRef = useRef(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [objectUrl, setObjectUrl] = useState(null);
+
+  useEffect(() => {
+    if (!form.imageFile) { setObjectUrl(null); return; }
+    const url = URL.createObjectURL(form.imageFile);
+    setObjectUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [form.imageFile]);
+
+  const preview = objectUrl || form.imagePreview || null;
+
+  const pickFile = (file) => {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+      setImageError("Please choose a JPEG, PNG, WebP or GIF image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setImageError("Image must be under 8 MB.");
+      return;
+    }
+    setImageError("");
+    onFileChange(file);
+  };
+
+  return (
+    <label>
+      <span>Add Image</span>
+      <div
+        className={`admin-dropzone${dragOver ? " drag-over" : ""}${disabled ? " disabled" : ""}`}
+        onClick={() => !disabled && fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); if (!disabled) setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          if (disabled) return;
+          pickFile(e.dataTransfer.files?.[0]);
+        }}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) => pickFile(e.target.files?.[0])}
+          disabled={disabled}
+          style={{ display: "none" }}
+        />
+        {preview ? (
+          <img src={preview} alt="Storefront preview" className="admin-dropzone-preview" />
+        ) : (
+          <div className="admin-dropzone-empty">
+            <ImagePlus size={18} />
+            <span>Drag & drop or click to upload</span>
+          </div>
+        )}
+      </div>
+      <FieldError message={imageError} />
+    </label>
+  );
+}
+
+// Calls the server-side geocoder to resolve the typed address to lat/lng —
+// writes the result back through the same `onChange` used by the plain text
+// inputs (synthetic `{ target: { name, value } }` events), so no extra prop
+// plumbing is needed through Add/Edit/View. Clears its "verified" state the
+// moment the address text changes, since a stale checkmark would be
+// misleading once the address no longer matches the filled-in coordinates.
+function AddressVerifyButton({ form, onChange, disabled }) {
+  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [message, setMessage] = useState("");
+  const [verifiedFor, setVerifiedFor] = useState("");
+
+  useEffect(() => {
+    if (status === "success" && form.address !== verifiedFor) setStatus("idle");
+  }, [form.address, status, verifiedFor]);
+
+  const verify = async () => {
+    if (!form.address.trim()) {
+      setStatus("error");
+      setMessage("Enter an address first.");
+      return;
+    }
+    setStatus("loading");
+    try {
+      const result = await geocodeVendorAddress({ address: form.address, vendor_name: form.vendor_name });
+      onChange({ target: { name: "latitude", value: String(result.latitude) } });
+      onChange({ target: { name: "longitude", value: String(result.longitude) } });
+      setVerifiedFor(form.address);
+      setStatus("success");
+      setMessage(result.formatted_address);
+    } catch (err) {
+      setStatus("error");
+      setMessage(err.message);
+    }
+  };
+
+  return (
+    <div className="admin-geocode-row">
+      <button type="button" className="admin-secondary-btn compact" onClick={verify} disabled={disabled || status === "loading"}>
+        <MapPin size={13} />
+        {status === "loading" ? "Verifying…" : "Verify Address"}
+      </button>
+      {status === "success" && <span className="admin-geocode-result success"><Check size={13} /> {message}</span>}
+      {status === "error" && <span className="admin-geocode-result error">{message}</span>}
+    </div>
+  );
 }
 
 // Shared by the Add Vendor modal, the Edit form, AND the read-only View —
@@ -186,6 +350,8 @@ function VendorFormFields({ form, errors, onChange, onFileChange, disabled }) {
         <textarea name="address" value={form.address} onChange={onChange} disabled={disabled} rows={2} placeholder="Full address" />
         <FieldError message={errors?.address} />
       </label>
+
+      <AddressVerifyButton form={form} onChange={onChange} disabled={disabled} />
 
       <div className="admin-modal-grid">
         <label>
@@ -241,27 +407,49 @@ function VendorFormFields({ form, errors, onChange, onFileChange, disabled }) {
         <FieldError message={errors?.signature_dishes} />
       </label>
 
-      <div className="admin-modal-grid admin-modal-grid-3">
+      <div className="admin-modal-grid">
         <label>
           <span>Phone</span>
           <input name="phone" value={form.phone} onChange={onChange} disabled={disabled} placeholder="e.g. +60 12-345 6789" />
           <FieldError message={errors?.phone} />
         </label>
         <label>
-          <span>Add Image</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onFileChange} disabled={disabled} />
-        </label>
-        <label>
           <span>Status</span>
           <select name="status" value={form.status} onChange={onChange} disabled={disabled}>
             <option value="active">Active</option>
-            <option value="pending">Pending</option>
             <option value="draft">Draft</option>
             <option value="suspended">Suspended</option>
           </select>
         </label>
       </div>
+
+      <ImageDropzone form={form} onFileChange={onFileChange} disabled={disabled} />
     </>
+  );
+}
+
+// A real confirmation dialog for destructive actions — replaces the cramped
+// inline "Delete? Yes / No" that used to sit inside the table row / bulk bar.
+function ConfirmDialog({ title, message, confirmLabel = "Delete", busy, onConfirm, onCancel }) {
+  return (
+    <div className="admin-modal-backdrop" onClick={onCancel}>
+      <div className="admin-modal-card admin-confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <h2>{title}</h2>
+        </div>
+        <div className="admin-modal-form">
+          <p className="admin-confirm-message">{message}</p>
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-secondary-btn compact" onClick={onCancel} disabled={busy}>
+              Cancel
+            </button>
+            <button type="button" className="admin-primary-btn compact danger" onClick={onConfirm} disabled={busy}>
+              {busy ? "…" : confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -325,7 +513,7 @@ function AddVendorModal({ onClose, onCreated }) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
-  const handleFileChange = (e) => setForm((prev) => ({ ...prev, imageFile: e.target.files?.[0] || null }));
+  const handleFileChange = (file) => setForm((prev) => ({ ...prev, imageFile: file }));
 
   const handleSave = async () => {
     const errs = validateForm(form);
@@ -402,8 +590,10 @@ export default function AdminVendorManagementPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const PAGE_SIZE = 10;
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   // Real-time search — debounce like VendorsPage.jsx, no Enter/submit needed.
   useEffect(() => {
@@ -424,10 +614,10 @@ export default function AdminVendorManagementPage() {
   }, [setTopbarAction]);
 
   const loadVendors = (overrides = {}) => {
-    const page = overrides.page ?? 1;
+    const page = overrides.page ?? data.pagination.page ?? 1;
     setLoading(true);
     setError("");
-    return getAdminVendors({ page, pageSize: PAGE_SIZE, status, category, sort, q: query })
+    return getAdminVendors({ page, pageSize, status, category, sort, q: query })
       .then((payload) => setData(payload))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -438,14 +628,22 @@ export default function AdminVendorManagementPage() {
     setLoading(true);
     setError("");
 
-    getAdminVendors({ page: data.pagination.page, pageSize: PAGE_SIZE, status, category, sort, q: query })
+    getAdminVendors({ page: data.pagination.page, pageSize, status, category, sort, q: query })
       .then((payload) => { if (active) setData(payload); })
       .catch((err) => { if (active) setError(err.message); })
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.pagination.page, status, category, sort, query]);
+  }, [data.pagination.page, status, category, sort, query, pageSize]);
+
+  // Selection is scoped to the current page/filter view — clear it whenever the
+  // visible set changes so a stale id can't be bulk-acted on off-screen.
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setConfirmBulkDelete(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.pagination.page, status, category, sort, query, pageSize]);
 
   const resetToFirstPage = () => setData((cur) => ({ ...cur, pagination: { ...cur.pagination, page: 1 } }));
 
@@ -485,7 +683,7 @@ export default function AdminVendorManagementPage() {
       if (form.imageFile) {
         await uploadVendorImage(selectedVendor.id, form.imageFile);
       }
-      const refreshed = await getAdminVendors({ page: data.pagination.page, pageSize: PAGE_SIZE, status, category, sort, q: query });
+      const refreshed = await getAdminVendors({ page: data.pagination.page, pageSize, status, category, sort, q: query });
       setData(refreshed);
       const updated = refreshed.items.find((i) => i.id === selectedVendor.id);
       if (updated) { setSelectedVendor(updated); setForm(makeForm(updated)); }
@@ -502,13 +700,108 @@ export default function AdminVendorManagementPage() {
     try {
       await deleteAdminVendor(id);
       setConfirmDeleteId(null);
-      const refreshed = await getAdminVendors({ page: data.pagination.page, pageSize: PAGE_SIZE, status, category, sort, q: query });
+      const refreshed = await getAdminVendors({ page: data.pagination.page, pageSize, status, category, sort, q: query });
       setData(refreshed);
     } catch (err) {
       setError(err.message);
     } finally {
       setDeleting(false);
     }
+  };
+
+  const refreshList = () =>
+    getAdminVendors({ page: data.pagination.page, pageSize, status, category, sort, q: query }).then(setData);
+
+  // One-click status change straight from a table row (Approve / Suspend) —
+  // reuses the partial-PATCH endpoint, no full edit needed.
+  const handleQuickStatus = async (id, newStatus) => {
+    setError("");
+    try {
+      await updateAdminVendor(id, { status: newStatus });
+      await refreshList();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleSelect = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const allOnPageSelected = data.items.length > 0 && data.items.every((v) => selectedIds.has(v.id));
+
+  const toggleSelectAll = () => setSelectedIds((prev) => {
+    if (data.items.length && data.items.every((v) => prev.has(v.id))) return new Set();
+    return new Set(data.items.map((v) => v.id));
+  });
+
+  const bulkSetStatus = async (newStatus) => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    setError("");
+    try {
+      await Promise.all(ids.map((id) => updateAdminVendor(id, { status: newStatus })));
+      setSelectedIds(new Set());
+      await refreshList();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    setError("");
+    try {
+      await Promise.all(ids.map((id) => deleteAdminVendor(id)));
+      setSelectedIds(new Set());
+      setConfirmBulkDelete(false);
+      await refreshList();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleHeaderSort = (col) => {
+    const [asc, desc] = COLUMN_SORTS[col];
+    setSort((cur) => (cur === asc ? desc : cur === desc ? "default" : asc));
+    resetToFirstPage();
+  };
+
+  const sortIndicator = (col) => {
+    const [asc, desc] = COLUMN_SORTS[col];
+    if (sort === asc) return "▲";
+    if (sort === desc) return "▼";
+    return "";
+  };
+
+  const ariaSortFor = (col) => {
+    const [asc, desc] = COLUMN_SORTS[col];
+    if (sort === asc) return "ascending";
+    if (sort === desc) return "descending";
+    return "none";
+  };
+
+  const handlePageSizeChange = (n) => {
+    setPageSize(n);
+    resetToFirstPage();
+  };
+
+  const clearFilters = () => {
+    setDraftQuery("");
+    setQuery("");
+    setStatus("all");
+    setCategory("all");
+    setSort("default");
+    resetToFirstPage();
   };
 
   return (
@@ -539,31 +832,106 @@ export default function AdminVendorManagementPage() {
         </div>
       </div>
 
-      {error ? <div className="admin-feedback error">{error}</div> : null}
+      {error ? (
+        <div className="admin-feedback error admin-feedback-row">
+          <span>{error}</span>
+          <button type="button" className="admin-secondary-btn compact" onClick={() => loadVendors()}>Retry</button>
+        </div>
+      ) : null}
+
+      {selectedIds.size > 0 && (
+        <div className="admin-bulk-bar">
+          <span className="admin-bulk-count">{selectedIds.size} selected</span>
+          <div className="admin-bulk-actions">
+            <button type="button" className="admin-secondary-btn compact" disabled={bulkBusy} onClick={() => bulkSetStatus("active")}>
+              <Check size={14} /> Approve
+            </button>
+            <button type="button" className="admin-secondary-btn compact" disabled={bulkBusy} onClick={() => bulkSetStatus("draft")}>
+              Set Draft
+            </button>
+            <button type="button" className="admin-secondary-btn compact" disabled={bulkBusy} onClick={() => bulkSetStatus("suspended")}>
+              <Ban size={14} /> Suspend
+            </button>
+            <button type="button" className="admin-secondary-btn compact danger" disabled={bulkBusy} onClick={() => setConfirmBulkDelete(true)}>
+              <Trash2 size={14} /> Delete
+            </button>
+            <button type="button" className="admin-link-btn" onClick={() => setSelectedIds(new Set())}>Clear</button>
+          </div>
+        </div>
+      )}
 
       <section className="admin-panel admin-table-panel">
+        <div className="admin-table-scroll">
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Vendor</th>
-              <th>Category</th>
+              <th className="admin-th-check">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleSelectAll}
+                  aria-label="Select all vendors on this page"
+                />
+              </th>
+              <th>Image</th>
+              <th aria-sort={ariaSortFor("vendor")}>
+                <button type="button" className="admin-th-sort" onClick={() => handleHeaderSort("vendor")}>
+                  Vendor <span className="admin-sort-caret">{sortIndicator("vendor")}</span>
+                </button>
+              </th>
+              <th aria-sort={ariaSortFor("category")}>
+                <button type="button" className="admin-th-sort" onClick={() => handleHeaderSort("category")}>
+                  Category <span className="admin-sort-caret">{sortIndicator("category")}</span>
+                </button>
+              </th>
               <th>Hours</th>
-              <th>Status</th>
-              <th>AI Score</th>
+              <th aria-sort={ariaSortFor("status")}>
+                <button type="button" className="admin-th-sort" onClick={() => handleHeaderSort("status")}>
+                  Status <span className="admin-sort-caret">{sortIndicator("status")}</span>
+                </button>
+              </th>
+              <th aria-sort={ariaSortFor("score")}>
+                <button type="button" className="admin-th-sort" onClick={() => handleHeaderSort("score")}>
+                  AI Score <span className="admin-sort-caret">{sortIndicator("score")}</span>
+                </button>
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6"><div className="admin-feedback">Loading vendors…</div></td></tr>
+              Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (
+                <tr key={`sk-${i}`} className="admin-skeleton-row">
+                  {Array.from({ length: 8 }).map((__, j) => (
+                    <td key={j}><div className="admin-skeleton-bar" /></td>
+                  ))}
+                </tr>
+              ))
             ) : data.items.length ? (
-              data.items.map((vendor) => (
-                <tr key={vendor.id}>
+              data.items.map((vendor) => {
+                const st = vendor.status.toLowerCase();
+                return (
+                <tr
+                  key={vendor.id}
+                  className={selectedIds.has(vendor.id) ? "is-selected" : ""}
+                  onClick={() => openVendor(vendor)}
+                >
+                  <td className="admin-td-check" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(vendor.id)}
+                      onChange={() => toggleSelect(vendor.id)}
+                      aria-label={`Select ${vendor.name}`}
+                    />
+                  </td>
+                  <td>
+                    <VendorThumb vendor={vendor} />
+                  </td>
                   <td><strong>{vendor.name}</strong></td>
                   <td>{vendor.category}</td>
                   <td>{vendor.operatingHours || <span className="admin-dash">—</span>}</td>
                   <td>
-                    <span className={`admin-status-pill ${vendor.status.toLowerCase()}`}>
+                    <span className={`admin-status-pill ${st}`}>
                       {vendor.status}
                     </span>
                   </td>
@@ -577,8 +945,18 @@ export default function AdminVendorManagementPage() {
                       <span className="admin-dash">—</span>
                     )}
                   </td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="admin-table-actions">
+                      {st !== "active" && (
+                        <button type="button" className="approve" onClick={() => handleQuickStatus(vendor.id, "active")} aria-label={`Approve ${vendor.name}`} title="Approve">
+                          <Check size={15} />
+                        </button>
+                      )}
+                      {st === "active" && (
+                        <button type="button" onClick={() => handleQuickStatus(vendor.id, "suspended")} aria-label={`Suspend ${vendor.name}`} title="Suspend">
+                          <Ban size={15} />
+                        </button>
+                      )}
                       <button type="button" onClick={() => openVendor(vendor)} aria-label={`View ${vendor.name}`}>
                         <Eye size={15} />
                       </button>
@@ -589,34 +967,43 @@ export default function AdminVendorManagementPage() {
                       >
                         <Pencil size={15} />
                       </button>
-                      {confirmDeleteId === vendor.id ? (
-                        <div className="admin-confirm-row">
-                          <span>Delete?</span>
-                          <button type="button" className="danger" onClick={() => handleDelete(vendor.id)} disabled={deleting}>
-                            {deleting ? "…" : "Yes"}
-                          </button>
-                          <button type="button" onClick={() => setConfirmDeleteId(null)}>No</button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="danger"
-                          onClick={() => setConfirmDeleteId(vendor.id)}
-                          aria-label={`Delete ${vendor.name}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => setConfirmDeleteId(vendor.id)}
+                        aria-label={`Delete ${vendor.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             ) : (
-              <tr><td colSpan="6"><div className="admin-empty-state">No vendors matched this filter.</div></td></tr>
+              <tr>
+                <td colSpan="8">
+                  <div className="admin-empty-state">
+                    <p>No vendors matched this filter.</p>
+                    <div className="admin-empty-actions">
+                      <button type="button" className="admin-secondary-btn compact" onClick={clearFilters}>Clear filters</button>
+                      <button type="button" className="admin-primary-btn compact" onClick={() => setShowAddModal(true)}>
+                        <Plus size={14} /> Add Vendor
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
-        <Pagination pagination={data.pagination} onPageChange={handlePageChange} />
+        </div>
+        <Pagination
+          pagination={data.pagination}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </section>
 
       <VendorDetailModal
@@ -639,7 +1026,7 @@ export default function AdminVendorManagementPage() {
           const { name, value } = e.target;
           setForm((cur) => ({ ...cur, [name]: value }));
         }}
-        onFileChange={(e) => setForm((cur) => ({ ...cur, imageFile: e.target.files?.[0] || null }))}
+        onFileChange={(file) => setForm((cur) => ({ ...cur, imageFile: file }))}
         onSave={handleSave}
       />
 
@@ -647,6 +1034,26 @@ export default function AdminVendorManagementPage() {
         <AddVendorModal
           onClose={() => setShowAddModal(false)}
           onCreated={() => loadVendors({ page: 1 })}
+        />
+      )}
+
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="Delete vendor?"
+          message={`This will permanently delete "${data.items.find((v) => v.id === confirmDeleteId)?.name || "this vendor"}" along with its reviews, bookmarks, and storefront image. This can't be undone.`}
+          busy={deleting}
+          onConfirm={() => handleDelete(confirmDeleteId)}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
+
+      {confirmBulkDelete && (
+        <ConfirmDialog
+          title={`Delete ${selectedIds.size} vendor${selectedIds.size === 1 ? "" : "s"}?`}
+          message="This will permanently delete the selected vendors along with their reviews, bookmarks, and storefront images. This can't be undone."
+          busy={bulkBusy}
+          onConfirm={bulkDelete}
+          onCancel={() => setConfirmBulkDelete(false)}
         />
       )}
     </section>

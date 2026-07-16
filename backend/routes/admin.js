@@ -4,6 +4,14 @@ import { requireRole } from "../middleware/requireRole.js";
 import fs from "node:fs";
 import path from "node:path";
 import { recomputeVendorRating } from "./engagement.js";
+import {
+  STORAGE_BUCKET,
+  VENDOR_STATUSES,
+  validateVendor,
+  validateVendorPatch,
+  storagePathFromUrl,
+} from "../lib/vendorValidation.js";
+import { geocodeAddress } from "../lib/geocode.js";
 
 const router = Router();
 
@@ -88,7 +96,7 @@ router.delete("/admins/:id", requireRole("superadmin"), async (req, res) => {
 
 function normalizeStatusFilter(status) {
   if (!status || status === "all") return null;
-  if (status === "pending") return ["pending", "draft"];
+  if (!VENDOR_STATUSES.includes(status)) return null;
   return [status];
 }
 
@@ -138,7 +146,7 @@ router.get("/dashboard", async (_req, res) => {
       await Promise.all([
         countQuery(supabase.from("vendors").select("id", { count: "exact", head: true })),
         countQuery(supabase.from("vendors").select("id", { count: "exact", head: true }).eq("status", "active")),
-        countQuery(supabase.from("vendors").select("id", { count: "exact", head: true }).in("status", ["pending", "draft"])),
+        countQuery(supabase.from("vendors").select("id", { count: "exact", head: true }).eq("status", "draft")),
         countQuery(supabase.from("vendors").select("id", { count: "exact", head: true }).not("source_video_url", "is", null)),
         supabase
           .from("vendors")
@@ -159,7 +167,7 @@ router.get("/dashboard", async (_req, res) => {
     const stats = [
       { label: "Total Vendors", value: totalVendors, note: "Records in Supabase", tone: "neutral" },
       { label: "Active Vendors", value: activeVendors, note: `${totalVendors ? Math.round((activeVendors / totalVendors) * 100) : 0}% activation`, tone: "success" },
-      { label: "Pending Review", value: pendingReview, note: "Draft or pending approval", tone: "warning" },
+      { label: "Pending Review", value: pendingReview, note: "Drafts awaiting approval", tone: "warning" },
       { label: "AI Videos Processed", value: aiVideosProcessed, note: "Saved from AI pipeline", tone: "accent" },
     ];
 
@@ -188,6 +196,29 @@ router.get("/dashboard", async (_req, res) => {
 
 const ADMIN_CATEGORIES = ["Malaysian / Local", "Nyonya / Peranakan", "Chinese", "Cafe / Dessert", "Western"];
 
+// Resolves an address the admin typed into the Add/Edit Vendor form to a
+// lat/lng, so those two fields can't silently drift apart from each other.
+// `vendor_name` is folded into the query when given — Google matches named
+// stalls/shops noticeably better than a bare street address alone.
+router.post("/geocode", async (req, res) => {
+  const address = String(req.body?.address || "").trim();
+  const vendorName = String(req.body?.vendor_name || "").trim();
+  if (!address) return res.status(400).json({ error: "Address is required" });
+
+  const query = vendorName ? `${vendorName}, ${address}, Melaka, Malaysia` : `${address}, Melaka, Malaysia`;
+
+  try {
+    const result = await geocodeAddress(query);
+    if (!result) {
+      return res.status(404).json({ error: "Couldn't find that address in Melaka — try adding more detail (street, area)." });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("POST /admin/geocode failed:", error);
+    res.status(500).json({ error: "Geocoding request failed" });
+  }
+});
+
 router.get("/vendors", async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10));
@@ -200,7 +231,7 @@ router.get("/vendors", async (req, res) => {
     let builder = supabase
       .from("vendors")
       .select(
-        "id,vendor_name,address,state,latitude,longitude,status,cuisine_types,signature_dishes,source_platform,source_video_url,sentiment_score,created_at,last_updated,phone,price_range,operating_hours,operating_hours_raw,location_precision",
+        "id,vendor_name,address,state,latitude,longitude,status,cuisine_types,signature_dishes,source_platform,source_video_url,sentiment_score,created_at,last_updated,phone,price_range,operating_hours,operating_hours_raw,location_precision,storefront_image_url",
         { count: "exact" }
       )
       .range((page - 1) * pageSize, page * pageSize - 1);
@@ -211,6 +242,18 @@ router.get("/vendors", async (req, res) => {
       builder = builder.order("vendor_name", { ascending: false });
     } else if (sort === "oldest") {
       builder = builder.order("created_at", { ascending: true, nullsFirst: false });
+    } else if (sort === "score_desc") {
+      builder = builder.order("sentiment_score", { ascending: false, nullsFirst: false });
+    } else if (sort === "score_asc") {
+      builder = builder.order("sentiment_score", { ascending: true, nullsFirst: false });
+    } else if (sort === "status") {
+      builder = builder.order("status", { ascending: true, nullsFirst: false });
+    } else if (sort === "status_desc") {
+      builder = builder.order("status", { ascending: false, nullsFirst: false });
+    } else if (sort === "cat_az") {
+      builder = builder.order("cuisine_types", { ascending: true, nullsFirst: false });
+    } else if (sort === "cat_za") {
+      builder = builder.order("cuisine_types", { ascending: false, nullsFirst: false });
     } else {
       // "default" and "newest" are the same — newest-created first.
       builder = builder.order("created_at", { ascending: false, nullsFirst: false });
@@ -249,6 +292,7 @@ router.get("/vendors", async (req, res) => {
       phone: vendor.phone,
       operatingHours: vendor.operating_hours_raw || vendor.operating_hours,
       locationPrecision: vendor.location_precision,
+      imageUrl: vendor.storefront_image_url || null,
     }));
 
     res.json({
@@ -267,32 +311,19 @@ router.get("/vendors", async (req, res) => {
 
 router.patch("/vendors/:id", async (req, res) => {
   const { id } = req.params;
-  const {
-    vendor_name, address, state, status, cuisine_types, signature_dishes,
-    price_range, phone, latitude, longitude, operating_hours_raw,
-  } = req.body || {};
+
+  const { errors, clean } = validateVendorPatch(req.body || {});
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: "Validation failed", fields: errors });
+  }
+
+  const patch = { ...clean, last_updated: new Date().toISOString() };
+  // Write both hour columns — operating_hours previously went stale because
+  // only operating_hours_raw was updated here while the GET preferred
+  // operating_hours.
+  if (clean.operating_hours_raw != null) patch.operating_hours = clean.operating_hours_raw;
 
   try {
-    const patch = {};
-    if (vendor_name != null) patch.vendor_name = vendor_name;
-    if (address != null) patch.address = address;
-    if (state != null) patch.state = state;
-    if (status != null) patch.status = status.toLowerCase();
-    if (cuisine_types != null) patch.cuisine_types = cuisine_types;
-    if (signature_dishes != null) patch.signature_dishes = signature_dishes;
-    if (price_range != null) patch.price_range = price_range;
-    if (phone != null) patch.phone = phone;
-    if (latitude != null && latitude !== "") patch.latitude = Number.parseFloat(latitude);
-    if (longitude != null && longitude !== "") patch.longitude = Number.parseFloat(longitude);
-    if (operating_hours_raw != null) {
-      // Write both hour columns — operating_hours previously went stale
-      // because only operating_hours_raw was updated here while the GET
-      // preferred operating_hours.
-      patch.operating_hours_raw = operating_hours_raw;
-      patch.operating_hours = operating_hours_raw;
-    }
-    patch.last_updated = new Date().toISOString();
-
     const { data, error } = await supabase
       .from("vendors")
       .update(patch)
@@ -300,10 +331,15 @@ router.patch("/vendors/:id", async (req, res) => {
       .select("*")
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // PGRST116 = "no rows" from .single() — the id doesn't exist.
+      if (error.code === "PGRST116") return res.status(404).json({ error: "Vendor not found" });
+      throw error;
+    }
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update vendor", details: error.message });
+    console.error("PATCH /vendors/:id failed:", error);
+    res.status(500).json({ error: "Failed to update vendor" });
   }
 });
 
@@ -447,30 +483,17 @@ router.get("/settings", async (_req, res) => {
 });
 
 router.post("/vendors", async (req, res) => {
-  const {
-    vendor_name, address, state, status, cuisine_types, signature_dishes,
-    price_range, phone, latitude, longitude, operating_hours_raw,
-  } = req.body || {};
-
-  if (!vendor_name || !vendor_name.trim()) {
-    return res.status(400).json({ error: "Vendor name is required" });
+  const { errors, clean } = validateVendor(req.body || {});
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: "Validation failed", fields: errors });
   }
 
   try {
     const now = new Date().toISOString();
     const record = {
-      vendor_name: vendor_name.trim(),
-      address: address?.trim() || null,
-      state: state?.trim() || null,
-      status: (status || "draft").toLowerCase(),
-      cuisine_types: cuisine_types?.trim() || null,
-      signature_dishes: signature_dishes?.trim() || null,
-      price_range: price_range?.trim() || null,
-      phone: phone?.trim() || null,
-      latitude: latitude != null && latitude !== "" ? Number.parseFloat(latitude) : null,
-      longitude: longitude != null && longitude !== "" ? Number.parseFloat(longitude) : null,
-      operating_hours_raw: operating_hours_raw?.trim() || null,
-      operating_hours: operating_hours_raw?.trim() || null,
+      ...clean,
+      // GET prefers operating_hours; keep it in sync with the raw value.
+      operating_hours: clean.operating_hours_raw,
       created_at: now,
       last_updated: now,
     };
@@ -481,26 +504,75 @@ router.post("/vendors", async (req, res) => {
       .select("*")
       .single();
 
-    if (error) throw error;
+    if (error) {
+      const status = error.code === "23505" ? 409 : 500; // unique violation → conflict
+      if (status === 409) return res.status(409).json({ error: "A vendor with these details already exists" });
+      throw error;
+    }
     res.status(201).json(data);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create vendor", details: error.message });
+    console.error("POST /vendors failed:", error);
+    res.status(500).json({ error: "Failed to create vendor" });
   }
 });
+
+const REVIEW_PHOTO_BUCKET = "review-photos";
+
+// Extract the object path for an arbitrary public bucket URL (the shared
+// storagePathFromUrl is hardcoded to the vendor-images bucket).
+function pathFromUrl(bucket, url) {
+  if (!url) return null;
+  const marker = `/object/public/${bucket}/`;
+  const idx = url.indexOf(marker);
+  return idx === -1 ? null : decodeURIComponent(url.slice(idx + marker.length));
+}
 
 router.delete("/vendors/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { error } = await supabase
+    // 404 up front, and grab the storefront image so we can clean it up after.
+    const { data: vendor, error: findErr } = await supabase
       .from("vendors")
-      .delete()
-      .eq("id", id);
+      .select("id, storefront_image_url")
+      .eq("id", id)
+      .single();
+    if (findErr?.code === "PGRST116" || !vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+    if (findErr) throw findErr;
 
-    if (error) throw error;
+    // Clean up related records in FK-safe order (children first) so nothing is
+    // orphaned regardless of whether the DB has ON DELETE CASCADE. The schema
+    // isn't in-repo, so we do this explicitly in app code.
+    const { data: reviews } = await supabase.from("reviews").select("id").eq("vendor_id", id);
+    const reviewIds = (reviews || []).map((r) => r.id);
+
+    if (reviewIds.length) {
+      // Review photos: remove storage objects, then the rows.
+      const { data: photos } = await supabase
+        .from("review_photos").select("url").in("review_id", reviewIds);
+      const photoPaths = (photos || []).map((p) => pathFromUrl(REVIEW_PHOTO_BUCKET, p.url)).filter(Boolean);
+      if (photoPaths.length) await supabase.storage.from(REVIEW_PHOTO_BUCKET).remove(photoPaths);
+      await supabase.from("review_photos").delete().in("review_id", reviewIds);
+      await supabase.from("review_votes").delete().in("review_id", reviewIds);
+    }
+
+    await supabase.from("reviews").delete().eq("vendor_id", id);
+    await supabase.from("bookmarks").delete().eq("vendor_id", id);
+
+    const { error: delErr } = await supabase.from("vendors").delete().eq("id", id);
+    if (delErr) throw delErr;
+
+    // Best-effort removal of the storefront image (don't fail the request if the
+    // storage object is already gone).
+    const imagePath = storagePathFromUrl(vendor.storefront_image_url);
+    if (imagePath) await supabase.storage.from(STORAGE_BUCKET).remove([imagePath]);
+
     res.json({ success: true, id });
   } catch (error) {
-    res.status(500).json({ error: "Failed to delete vendor", details: error.message });
+    console.error("DELETE /vendors/:id failed:", error);
+    res.status(500).json({ error: "Failed to delete vendor" });
   }
 });
 

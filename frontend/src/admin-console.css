@@ -259,6 +259,14 @@
   background: var(--admin-navy-strong);
 }
 
+.admin-primary-btn.danger {
+  background: var(--admin-danger-text);
+}
+
+.admin-primary-btn.danger:hover:not(:disabled) {
+  background: #d9342f;
+}
+
 .admin-primary-btn:disabled,
 .admin-secondary-btn:disabled {
   opacity: 0.5;
@@ -491,11 +499,6 @@
   color: var(--admin-success-text);
 }
 
-.admin-status-pill.pending {
-  background: var(--admin-warning-bg);
-  color: var(--admin-warning-text);
-}
-
 .admin-status-pill.suspended {
   background: var(--admin-danger-bg);
   color: var(--admin-danger-text);
@@ -667,6 +670,181 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.admin-table-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--admin-panel-soft);
+  display: block;
+}
+
+.admin-table-thumb-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-navy);
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+/* Horizontal scroll wrapper so the 8-column table never breaks the layout on
+   narrow screens. */
+.admin-table-scroll {
+  overflow-x: auto;
+}
+
+.admin-table {
+  min-width: 820px;
+}
+
+/* Clickable rows — the row-hover highlight already existed; make it truthful. */
+.admin-table tbody tr:not(.admin-skeleton-row) {
+  cursor: pointer;
+}
+
+.admin-table tbody tr.is-selected td {
+  background: #eef4ff;
+}
+
+/* Selection checkbox column */
+.admin-th-check,
+.admin-td-check {
+  width: 36px;
+  text-align: center;
+}
+
+.admin-th-check input,
+.admin-td-check input {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--admin-navy);
+}
+
+/* Sortable header buttons */
+.admin-th-sort {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--admin-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-th-sort:hover {
+  color: var(--admin-navy);
+}
+
+.admin-sort-caret {
+  color: var(--admin-navy);
+  font-size: 9px;
+}
+
+/* Quick-approve (green) row action */
+.admin-table-actions button.approve {
+  color: var(--admin-success-text);
+}
+
+.admin-table-actions button.approve:hover {
+  background: var(--admin-success-bg);
+}
+
+/* Bulk action bar */
+.admin-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--admin-navy);
+  color: #fff;
+  border-radius: 12px;
+}
+
+.admin-bulk-count {
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.admin-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-link-btn {
+  border: none;
+  background: transparent;
+  color: #fff;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.admin-link-btn:hover {
+  opacity: 1;
+}
+
+/* Error banner + retry on one row */
+.admin-feedback-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Skeleton loading rows (reuses the adminShimmer keyframes) */
+.admin-skeleton-bar {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(110deg, #eef1f6 8%, #f7f9fc 18%, #eef1f6 33%);
+  background-size: 200% 100%;
+  animation: adminShimmer 1.6s linear infinite;
+}
+
+/* Empty-state call-to-action */
+.admin-empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* Pagination page-size selector */
+.admin-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--admin-muted);
+  font-weight: 700;
+}
+
+.admin-page-size select {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+  background: #fff;
+  color: var(--admin-text);
+  cursor: pointer;
 }
 
 .admin-table-number {
@@ -1146,9 +1324,84 @@
   width: min(860px, 100%);
 }
 
+.admin-confirm-modal {
+  width: min(420px, 100%);
+}
+
+.admin-confirm-message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--admin-text);
+  line-height: 1.5;
+}
+
 .admin-field-error {
   font-size: 11.5px;
   color: var(--admin-danger-text);
+}
+
+.admin-geocode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-geocode-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.admin-geocode-result.success {
+  color: var(--admin-success-text);
+}
+
+.admin-geocode-result.error {
+  color: var(--admin-danger-text);
+}
+
+.admin-dropzone {
+  border: 1.5px dashed var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-panel-soft);
+  cursor: pointer;
+  transition: border-color 140ms, background 140ms;
+  overflow: hidden;
+}
+
+.admin-dropzone:hover {
+  border-color: var(--admin-navy);
+}
+
+.admin-dropzone.drag-over {
+  border-color: var(--admin-navy);
+  background: #eef2f8;
+}
+
+.admin-dropzone.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.admin-dropzone-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 8px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.admin-dropzone-preview {
+  display: block;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
 }
 
 .admin-detail-row {
