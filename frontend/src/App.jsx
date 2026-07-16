@@ -7,6 +7,7 @@ import LoginPage      from "./pages/LoginPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import SetAdminPasswordPage from "./pages/SetAdminPasswordPage";
 import ProfilePage    from "./pages/ProfilePage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import VendorsPage    from "./pages/VendorsPage";
 import AIPage         from "./pages/AIPage";
@@ -20,9 +21,9 @@ import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
 import { DISABLE_AUTH } from "./lib/testMode";
 
 // Pages that can be visited without any session
-const AUTH_PUBLIC_PATHS = ["/", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password"];
+const AUTH_PUBLIC_PATHS = ["/", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password", "/reset-password"];
 
-const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/wsdasabi123&admin-login", "/admin-set-password"];
+const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/wsdasabi123&admin-login", "/admin-set-password", "/reset-password"];
 
 // Admin/superadmin accounts never have a customer-facing home — they only
 // ever belong on the admin auth pages or the AI/vendor management tools.
@@ -89,6 +90,7 @@ export default function App() {
           <Route path="/wsdasabi123&admin-login" element={<AdminLoginPage />} />
           <Route path="/admin-set-password" element={<SetAdminPasswordPage />} />
           <Route path="/profile"   element={<ProfilePage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/vendors"   element={<VendorsPage />} />
           <Route path="/ai"        element={<AIPage />} />

@@ -80,7 +80,11 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
           ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
           ["reviews",   "My reviews"],
         ].map(([key, label]) => (
-          <button key={key} onClick={() => (key === "reviews" || key === "bookmarks" ? requireAuth(setTab)(key) : setTab(key))}
+          <button key={key} onClick={() => {
+            if (key === "bookmarks") { requireAuth(() => navigate("/engagement"))(); return; }
+            if (key === "reviews") { requireAuth(() => navigate("/engagement?tab=reviews"))(); return; }
+            setTab(key);
+          }}
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "12px 2px", fontSize: 14, fontFamily: FONT_BODY,
@@ -136,28 +140,6 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
             )}
           </>
         )}
-
-        {tab === "bookmarks" && (
-          <HubRedirect
-            icon="🔖"
-            title="Your bookmarks"
-            text={bookmarked.length
-              ? `${bookmarked.length} saved vendor${bookmarked.length === 1 ? "" : "s"}, organised into folders.`
-              : "Tap the heart on a vendor to save it here."}
-            cta="Open My Bookmarks"
-            onClick={() => navigate("/engagement")}
-          />
-        )}
-
-        {tab === "reviews" && (
-          <HubRedirect
-            icon="⭐"
-            title="My reviews"
-            text="Your ratings and reviews live in the Engagement hub, alongside your bookmarks."
-            cta="Open My Reviews"
-            onClick={() => navigate("/engagement?tab=reviews")}
-          />
-        )}
       </main>
 
       {detailVendor && (
@@ -182,28 +164,6 @@ function Empty({ icon, text }) {
     }}>
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14 }}>{text}</div>
-    </div>
-  );
-}
-
-function HubRedirect({ icon, title, text, cta, onClick }) {
-  return (
-    <div style={{
-      background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
-      padding: "48px 24px", textAlign: "center", marginTop: 20,
-    }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, color: C.navy, margin: "0 0 6px" }}>{title}</h2>
-      <div style={{ fontSize: 14, color: C.muted, marginBottom: 16 }}>{text}</div>
-      <button
-        onClick={onClick}
-        style={{
-          padding: "10px 20px", borderRadius: 10, border: "none", background: C.navy,
-          color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY,
-        }}
-      >
-        {cta}
-      </button>
     </div>
   );
 }

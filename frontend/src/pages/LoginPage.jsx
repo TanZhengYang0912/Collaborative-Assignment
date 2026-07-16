@@ -101,7 +101,7 @@ const styles = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
-  const [mode, setMode] = useState("signin"); // "signin" | "signup" — always opens on Sign In
+  const [mode, setMode] = useState("signin"); // "signin" | "signup" | "forgot" — always opens on Sign In
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -180,6 +180,20 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword(e) {
+    e.preventDefault();
+    setErrorMsg("");
+    setInfoMsg("");
+    setLoading(true);
+    // Always show the same message whether or not the email is registered,
+    // so this can't be used to enumerate accounts.
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    setInfoMsg("If that email is registered, we've sent a password reset link.");
+  }
+
   async function handleGoogleLogin() {
     setErrorMsg("");
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
@@ -208,65 +222,107 @@ export default function LoginPage() {
           <span style={{ color: THEME.gold, fontStyle: "italic" }}>better experience</span>...
         </h1>
         <div style={styles.card}>
-        <div style={styles.tabs}>
-          <div
-            style={{ ...styles.tab, ...(mode === "signin" ? styles.tabActive : {}) }}
-            onClick={() => {
-              setMode("signin");
-              setErrorMsg("");
-              setInfoMsg("");
-            }}
-          >
-            Sign In
+        {mode !== "forgot" && (
+          <div style={styles.tabs}>
+            <div
+              style={{ ...styles.tab, ...(mode === "signin" ? styles.tabActive : {}) }}
+              onClick={() => {
+                setMode("signin");
+                setErrorMsg("");
+                setInfoMsg("");
+              }}
+            >
+              Sign In
+            </div>
+            <div
+              style={{ ...styles.tab, ...(mode === "signup" ? styles.tabActive : {}) }}
+              onClick={() => {
+                setMode("signup");
+                setErrorMsg("");
+                setInfoMsg("");
+              }}
+            >
+              Create Account
+            </div>
           </div>
-          <div
-            style={{ ...styles.tab, ...(mode === "signup" ? styles.tabActive : {}) }}
-            onClick={() => {
-              setMode("signup");
-              setErrorMsg("");
-              setInfoMsg("");
-            }}
-          >
-            Create Account
-          </div>
-        </div>
+        )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input
-            style={styles.input}
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+        {mode === "forgot" ? (
+          <form onSubmit={handleForgotPassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+              Enter your account email and we'll send you a link to reset your password.
+            </p>
+            <input
+              style={styles.input}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <button style={styles.button} type="submit" disabled={loading}>
+              {loading ? "Sending…" : "Send reset link"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              style={styles.input}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            <button
+              style={mode === "signup" ? { ...styles.button, background: THEME.gold } : styles.button}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In"}
+            </button>
+          </form>
+        )}
+
+        {mode === "signin" && (
           <button
-            style={mode === "signup" ? { ...styles.button, background: THEME.gold } : styles.button}
-            type="submit"
-            disabled={loading}
+            onClick={() => { setMode("forgot"); setErrorMsg(""); setInfoMsg(""); }}
+            style={styles.backLink}
           >
-            {loading ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In"}
+            Forgot password?
           </button>
-        </form>
+        )}
+        {mode === "forgot" && (
+          <button
+            onClick={() => { setMode("signin"); setErrorMsg(""); setInfoMsg(""); }}
+            style={styles.backLink}
+          >
+            Back to Sign In
+          </button>
+        )}
 
         {errorMsg && <p style={styles.error}>{errorMsg}</p>}
         {infoMsg && <p style={styles.info}>{infoMsg}</p>}
 
-        <div style={styles.divider}>— or —</div>
+        {mode !== "forgot" && (
+          <>
+            <div style={styles.divider}>— or —</div>
 
-        <button style={{ ...styles.googleButton, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
-          <GoogleIcon />
-          Continue with Google
-        </button>
+            <button style={{ ...styles.googleButton, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
+              <GoogleIcon />
+              Continue with Google
+            </button>
+          </>
+        )}
 
         <button
           onClick={() => navigate("/map")}
