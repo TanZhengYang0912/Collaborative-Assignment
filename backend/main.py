@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.process import router as process_router
 
+#MAIN
+
 app = FastAPI(
     title="AI Content Processing Module",
     description="TikTok/YouTube video processing with Whisper + Ollama",
