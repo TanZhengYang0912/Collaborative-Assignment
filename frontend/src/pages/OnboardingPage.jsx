@@ -4,17 +4,19 @@ import { supabase } from "../supabaseClient";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import DobScrollPicker from "../components/DobScrollPicker";
 
-const STEPS = ["Full Name", "Date of Birth"];
+const STEPS = ["Full Name", "Date of Birth", "Gender"];
 const CURRENT_YEAR = new Date().getFullYear();
+const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
 
-// Forced 2-step onboarding right after email/password signup — collects the
-// account's first/last name and DOB before the user can reach the app.
+// Forced 3-step onboarding right after email/password signup — collects the
+// account's first/last name, DOB, and gender before the user can reach the app.
 export default function OnboardingPage() {
   const [checking, setChecking] = useState(true);
   const [step, setStep] = useState(0);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState({ day: 1, month: 1, year: CURRENT_YEAR - 18 });
+  const [gender, setGender] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
@@ -27,7 +29,7 @@ export default function OnboardingPage() {
       }
       // Idempotency: already completed onboarding — skip ahead
       const meta = data.session.user.user_metadata || {};
-      if (meta.first_name && meta.date_of_birth) {
+      if (meta.first_name && meta.date_of_birth && meta.gender) {
         navigate("/map", { replace: true });
         return;
       }
@@ -51,7 +53,7 @@ export default function OnboardingPage() {
     setStep(1);
   }
 
-  async function finish() {
+  function handleContinueStep1() {
     // Semantic: validate DOB is a real calendar date
     const dobDate = new Date(dob.year, dob.month - 1, dob.day);
     if (
@@ -68,6 +70,13 @@ export default function OnboardingPage() {
     if (age < 13) { setErrorMsg("You must be at least 13 years old to use this app."); return; }
     if (age > 120) { setErrorMsg("Please enter a valid date of birth."); return; }
 
+    setErrorMsg("");
+    setStep(2);
+  }
+
+  async function finish() {
+    if (!gender) { setErrorMsg("Please select a gender."); return; }
+
     setSaving(true);
     setErrorMsg("");
     const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
@@ -76,6 +85,7 @@ export default function OnboardingPage() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         date_of_birth: dobIso,
+        gender,
       },
     });
     setSaving(false);
@@ -119,7 +129,7 @@ export default function OnboardingPage() {
         </div>
 
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, color: C.navy, margin: "0 0 4px" }}>
-          {step === 0 ? "What's your name?" : "When were you born?"}
+          {step === 0 ? "What's your name?" : step === 1 ? "When were you born?" : "What's your gender?"}
         </h2>
         <p style={{ fontSize: 13, color: C.muted, margin: "0 0 20px" }}>
           {step === 0
@@ -174,6 +184,55 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => setStep(0)}
+                style={{
+                  padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: "#fff", color: C.navy, fontSize: 14, fontWeight: 600,
+                  cursor: "pointer", fontFamily: FONT_BODY,
+                }}
+              >
+                Back
+              </button>
+              <button
+                onClick={handleContinueStep1}
+                style={{
+                  flex: 1, padding: "12px 16px", borderRadius: 8, border: "none",
+                  background: C.navy, color: "#fff", fontSize: 14, fontWeight: 600,
+                  cursor: "pointer", fontFamily: FONT_BODY,
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {GENDER_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => { setGender(option); setErrorMsg(""); }}
+                  style={{
+                    padding: "10px 14px", borderRadius: 8, textAlign: "left",
+                    border: `1.5px solid ${gender === option ? C.navy : C.border}`,
+                    background: gender === option ? C.navy : "#fff",
+                    color: gender === option ? "#fff" : C.navy,
+                    fontSize: 14, fontWeight: gender === option ? 600 : 400,
+                    cursor: "pointer", fontFamily: FONT_BODY,
+                  }}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setStep(1)}
                 style={{
                   padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
                   background: "#fff", color: C.navy, fontSize: 14, fontWeight: 600,

@@ -16,6 +16,8 @@ function formatDob({ day, month, year }) {
   return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
 }
 
+const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
+
 const C = {
   cream: THEME.cream,
   card: THEME.card,
@@ -36,10 +38,17 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState(null);
+  const [gender, setGender] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetDone, setResetDone] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -75,6 +84,9 @@ export default function ProfilePage() {
   const initials = fullName
     ? (meta.first_name?.[0] || "") + (meta.last_name?.[0] || "")
     : (userEmail ? userEmail.slice(0, 2).toUpperCase() : "?");
+  // Google-only accounts have no password to reset — only accounts with an
+  // "email" identity (signed up or linked via email/password) get the option.
+  const hasPassword = (session?.user?.identities || []).some((i) => i.provider === "email");
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -86,6 +98,7 @@ export default function ProfilePage() {
     setFirstName(meta.first_name || "");
     setLastName(meta.last_name || "");
     setDob(savedDob || { day: 1, month: 1, year: new Date().getFullYear() - 18 });
+    setGender(meta.gender || "");
     setErrorMsg("");
     setEditing(true);
   }
@@ -200,13 +213,19 @@ export default function ProfilePage() {
       return;
     }
 
+    if (!gender) {
+      setErrorMsg("Please select a gender.");
+      return;
+    }
+
     const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
 
     // Idempotency: skip API call if nothing actually changed
     if (
       first === (meta.first_name || "") &&
       last === (meta.last_name || "") &&
-      dobIso === (meta.date_of_birth || "")
+      dobIso === (meta.date_of_birth || "") &&
+      gender === (meta.gender || "")
     ) {
       setEditing(false);
       return;
@@ -215,13 +234,41 @@ export default function ProfilePage() {
     setSaving(true);
     setErrorMsg("");
     const { error } = await supabase.auth.updateUser({
-      data: { first_name: first, last_name: last, date_of_birth: dobIso },
+      data: { first_name: first, last_name: last, date_of_birth: dobIso, gender },
     });
     setSaving(false);
     if (error) { setErrorMsg(error.message); return; }
     const { data } = await supabase.auth.getSession();
     setSession(data.session);
     setEditing(false);
+  }
+
+  function startResettingPassword() {
+    setNewPassword("");
+    setConfirmPassword("");
+    setResetError("");
+    setResetDone(false);
+    setResettingPassword(true);
+  }
+
+  const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+
+  async function handleResetPassword() {
+    if (!PASSWORD_RE.test(newPassword)) {
+      setResetError("Password must be at least 8 characters and include a letter and a number.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError("Passwords do not match.");
+      return;
+    }
+
+    setResetSaving(true);
+    setResetError("");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setResetSaving(false);
+    if (error) { setResetError(error.message); return; }
+    setResetDone(true);
   }
 
   return (
@@ -316,9 +363,14 @@ export default function ProfilePage() {
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{fullName || "Not set"}</div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Date of Birth</div>
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{savedDob ? formatDob(savedDob) : "Not set"}</div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Gender</div>
+              <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{meta.gender || "Not set"}</div>
             </div>
 
             <button
@@ -332,6 +384,84 @@ export default function ProfilePage() {
             >
               Edit Profile
             </button>
+
+            {hasPassword && (
+              <button
+                onClick={startResettingPassword}
+                style={{
+                  width: "100%", padding: "12px 16px", fontSize: 14,
+                  background: "#fff", color: C.accentDark, border: `1.5px solid ${C.border}`,
+                  borderRadius: 6, cursor: "pointer", fontWeight: 500,
+                  fontFamily: "system-ui", marginBottom: 10,
+                }}
+              >
+                Reset Password
+              </button>
+            )}
+
+            {resettingPassword && (
+              <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, marginBottom: 10, textAlign: "left" }}>
+                {resetDone ? (
+                  <>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>Your password has been updated.</p>
+                    <button
+                      onClick={() => setResettingPassword(false)}
+                      style={{
+                        width: "100%", padding: "10px 16px", fontSize: 13.5,
+                        background: C.accent, color: "#fff", border: "none",
+                        borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
+                      }}
+                    >
+                      Done
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+                      <input
+                        type="password"
+                        placeholder="New password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        style={{ width: "100%", padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        style={{ width: "100%", padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
+                      />
+                    </div>
+                    {resetError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 12px" }}>{resetError}</p>}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => setResettingPassword(false)}
+                        disabled={resetSaving}
+                        style={{
+                          flex: 1, padding: "10px 16px", fontSize: 13.5,
+                          background: "#fff", color: C.text, border: `1px solid ${C.border}`,
+                          borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleResetPassword}
+                        disabled={resetSaving}
+                        style={{
+                          flex: 1, padding: "10px 16px", fontSize: 13.5,
+                          background: C.accent, color: "#fff", border: "none",
+                          borderRadius: 6, cursor: resetSaving ? "default" : "pointer", fontWeight: 600, fontFamily: "system-ui",
+                        }}
+                      >
+                        {resetSaving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             <button
               onClick={handleLogout}
@@ -432,6 +562,20 @@ export default function ProfilePage() {
                 <span style={{ width: 68, textAlign: "center" }}>YEAR</span>
               </div>
               <DobScrollPicker value={dob} onChange={setDob} />
+
+              <label style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+                Gender
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY, background: "#fff" }}
+                >
+                  <option value="" disabled>Select gender</option>
+                  {GENDER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{errorMsg}</p>}
