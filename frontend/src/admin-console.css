@@ -1340,26 +1340,15 @@
   color: var(--admin-danger-text);
 }
 
-.admin-geocode-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+/* Google Places suggestions render as a body-level .pac-container; lift it
+   above the modal (z-index 50) so the dropdown isn't clipped behind it. */
+.pac-container {
+  z-index: 10000;
 }
 
-.admin-geocode-result {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.admin-geocode-result.success {
-  color: var(--admin-success-text);
-}
-
-.admin-geocode-result.error {
-  color: var(--admin-danger-text);
+.admin-field-hint {
+  font-size: 11px;
+  color: var(--admin-muted);
 }
 
 .admin-dropzone {

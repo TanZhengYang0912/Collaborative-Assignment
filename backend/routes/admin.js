@@ -11,7 +11,6 @@ import {
   validateVendorPatch,
   storagePathFromUrl,
 } from "../lib/vendorValidation.js";
-import { geocodeAddress } from "../lib/geocode.js";
 
 const router = Router();
 
@@ -195,29 +194,6 @@ router.get("/dashboard", async (_req, res) => {
 });
 
 const ADMIN_CATEGORIES = ["Malaysian / Local", "Nyonya / Peranakan", "Chinese", "Cafe / Dessert", "Western"];
-
-// Resolves an address the admin typed into the Add/Edit Vendor form to a
-// lat/lng, so those two fields can't silently drift apart from each other.
-// `vendor_name` is folded into the query when given — Google matches named
-// stalls/shops noticeably better than a bare street address alone.
-router.post("/geocode", async (req, res) => {
-  const address = String(req.body?.address || "").trim();
-  const vendorName = String(req.body?.vendor_name || "").trim();
-  if (!address) return res.status(400).json({ error: "Address is required" });
-
-  const query = vendorName ? `${vendorName}, ${address}, Melaka, Malaysia` : `${address}, Melaka, Malaysia`;
-
-  try {
-    const result = await geocodeAddress(query);
-    if (!result) {
-      return res.status(404).json({ error: "Couldn't find that address in Melaka — try adding more detail (street, area)." });
-    }
-    res.json(result);
-  } catch (error) {
-    console.error("POST /admin/geocode failed:", error);
-    res.status(500).json({ error: "Geocoding request failed" });
-  }
-});
 
 router.get("/vendors", async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);

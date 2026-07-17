@@ -94,16 +94,6 @@ export async function uploadVendorImage(id, file) {
   });
 }
 
-// Resolves an address to { latitude, longitude, formatted_address } via the
-// server's Google Geocoding call — used by the "Verify Address" button.
-export async function geocodeVendorAddress({ address, vendor_name }) {
-  return requestJson("/api/admin/geocode", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address, vendor_name }),
-  });
-}
-
 export async function getAdminSettings() {
   return requestJson("/api/admin/settings");
 }
