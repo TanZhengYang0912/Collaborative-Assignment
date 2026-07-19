@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 
 // Shown whenever a guest (no session) tries to bookmark, add a stop tied to
@@ -13,7 +13,7 @@ export default function GuestPrompt({ open, onClose }) {
     <div
       onClick={onClose}
       style={{
-        position: "fixed", inset: 0, background: "rgba(27,42,74,0.6)",
+        position: "fixed", inset: 0, background: "rgba(32,42,53,0.56)",
         display: "flex", alignItems: "center", justifyContent: "center",
         zIndex: 1100, padding: 20,
       }}
@@ -21,9 +21,9 @@ export default function GuestPrompt({ open, onClose }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%", maxWidth: 360, background: C.card, borderRadius: 16,
+          width: "100%", maxWidth: 360, background: C.card, borderRadius: 8,
           padding: "28px 24px 24px", textAlign: "center", fontFamily: FONT_BODY,
-          boxShadow: "0 20px 60px rgba(27,42,74,0.35)", position: "relative",
+          boxShadow: "0 20px 60px rgba(32,42,53,0.18)", position: "relative",
         }}
       >
         <button
@@ -37,7 +37,7 @@ export default function GuestPrompt({ open, onClose }) {
           <X size={18} />
         </button>
 
-        <div style={{ fontSize: 32, marginBottom: 10 }}>🍜</div>
+        <MapPin size={28} color={C.navy} strokeWidth={1.5} style={{ marginBottom: 10 }} />
         <div style={{
           fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18,
           color: C.navy, marginBottom: 20, lineHeight: 1.35,

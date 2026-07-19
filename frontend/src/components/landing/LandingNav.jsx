@@ -30,7 +30,11 @@ export default function LandingNav({ heroRef }) {
       transition: "background 0.3s ease, border-color 0.3s ease",
     }}>
       {/* Wordmark */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <Link
+        to="/"
+        aria-label="Back to TrueBites home"
+        style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}
+      >
         <div style={{
           width: 34, height: 34, borderRadius: 7, background: C.navy,
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -48,7 +52,7 @@ export default function LandingNav({ heroRef }) {
             letterSpacing: 1.8, textTransform: "uppercase",
           }}>MELAKA · MALAYSIA</div>
         </div>
-      </div>
+      </Link>
 
       {/* Links */}
       <div style={{ display: "flex", alignItems: "center", gap: 32 }}>

@@ -140,9 +140,119 @@ async function countQuery(builder) {
   return count || 0;
 }
 
+function startOfDay(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function dateKey(date) {
+  return startOfDay(date).toISOString().slice(0, 10);
+}
+
+function makeTrend(days = 30) {
+  const trend = [];
+  const today = startOfDay(new Date());
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - offset);
+    trend.push({
+      date: dateKey(date),
+      label: date.toLocaleDateString("en-MY", { day: "numeric", month: "short" }),
+      value: 0,
+      active: 0,
+      draft: 0,
+    });
+  }
+  return trend;
+}
+
+function splitValues(value) {
+  if (Array.isArray(value)) return value;
+  return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function buildDashboardAnalytics(vendors, reviews) {
+  const trend = makeTrend(90);
+  const trendByDate = new Map(trend.map((item) => [item.date, item]));
+  const statusCounts = new Map([["active", 0], ["draft", 0], ["suspended", 0]]);
+  const categoryCounts = new Map();
+  const sourceCounts = new Map();
+
+  for (const vendor of vendors) {
+    const status = String(vendor.status || "draft").toLowerCase();
+    statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
+
+    const createdDate = vendor.created_at && trendByDate.get(dateKey(vendor.created_at));
+    if (createdDate) {
+      createdDate.value += 1;
+      if (status === "active") createdDate.active += 1;
+      if (status === "draft") createdDate.draft += 1;
+    }
+
+    const categories = splitValues(vendor.cuisine_types);
+    if (categories.length === 0) {
+      categoryCounts.set("Uncategorized", (categoryCounts.get("Uncategorized") || 0) + 1);
+    } else {
+      categories.slice(0, 2).forEach((category) => {
+        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+      });
+    }
+
+    if (vendor.source_video_url) {
+      const source = platformBadge(vendor.source_video_url, vendor.source_platform);
+      sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    }
+  }
+
+  const hiddenReviews = reviews.filter((review) => review.is_hidden).length;
+  const draftVendors = statusCounts.get("draft") || 0;
+  const missingAddress = vendors.filter((vendor) => !vendor.address || !vendor.city).length;
+  const missingHours = vendors.filter((vendor) => !vendor.operating_hours_raw).length;
+  const aiImported = vendors.filter((vendor) => vendor.source_video_url).length;
+  const aiDrafts = vendors.filter((vendor) => vendor.source_video_url && String(vendor.status || "").toLowerCase() === "draft").length;
+
+  const toBreakdown = (map, limit = 6) => [...map.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, limit)
+    .map(([label, value]) => ({ label, value }));
+
+  const attentionItems = [
+    { id: "drafts", label: "Draft vendors waiting for approval", value: draftVendors, href: "/admin/vendors2", tone: "warning" },
+    { id: "missing-address", label: "Vendors missing verified location", value: missingAddress, href: "/admin/vendors2", tone: "warning" },
+    { id: "missing-hours", label: "Vendors missing operating hours", value: missingHours, href: "/admin/vendors2", tone: "neutral" },
+    { id: "hidden-reviews", label: "Hidden reviews to revisit", value: hiddenReviews, href: "/admin/reviews", tone: "danger" },
+  ].filter((item) => item.value > 0);
+
+  return {
+    kpis: [
+      { key: "totalVendors", label: "Total vendors", value: vendors.length, note: `${statusCounts.get("active") || 0} active`, href: "/admin/vendors2", tone: "neutral" },
+      { key: "activeRate", label: "Active rate", value: vendors.length ? Math.round(((statusCounts.get("active") || 0) / vendors.length) * 100) : 0, suffix: "%", note: "of all vendor records", href: "/admin/vendors2?status=active", tone: "success" },
+      { key: "pendingDrafts", label: "Pending drafts", value: draftVendors, note: "awaiting approval", href: "/admin/vendors2?status=draft", tone: "warning" },
+      { key: "aiImported", label: "AI imported", value: aiImported, note: `${aiDrafts} still in draft`, href: "/admin/ai", tone: "accent" },
+      { key: "reviews", label: "Reviews", value: reviews.length, note: `${hiddenReviews} hidden`, href: "/admin/reviews", tone: "neutral" },
+    ],
+    vendorTrend: trend,
+    statusBreakdown: [
+      { label: "Active", value: statusCounts.get("active") || 0, tone: "success" },
+      { label: "Draft", value: statusCounts.get("draft") || 0, tone: "warning" },
+      { label: "Suspended", value: statusCounts.get("suspended") || 0, tone: "danger" },
+    ],
+    categoryBreakdown: toBreakdown(categoryCounts),
+    sourceBreakdown: toBreakdown(sourceCounts, 4),
+    aiPipeline: [
+      { label: "AI imported", value: aiImported, tone: "accent" },
+      { label: "Needs review", value: aiDrafts, tone: "warning" },
+      { label: "Active", value: vendors.filter((vendor) => vendor.source_video_url && String(vendor.status || "").toLowerCase() === "active").length, tone: "success" },
+      { label: "Needs data", value: vendors.filter((vendor) => vendor.source_video_url && (!vendor.address || !vendor.operating_hours_raw)).length, tone: "danger" },
+    ],
+    attentionItems,
+  };
+}
+
 router.get("/dashboard", async (_req, res) => {
   try {
-    const [totalVendors, activeVendors, pendingReview, aiVideosProcessed, recentVendorsRes, recentLogRes] =
+    const [totalVendors, activeVendors, pendingReview, aiVideosProcessed, recentVendorsRes, recentLogRes, analyticsVendorsRes, analyticsReviewsRes] =
       await Promise.all([
         countQuery(supabase.from("vendors").select("id", { count: "exact", head: true })),
         countQuery(supabase.from("vendors").select("id", { count: "exact", head: true }).eq("status", "active")),
@@ -159,10 +269,23 @@ router.get("/dashboard", async (_req, res) => {
           .not("source_video_url", "is", null)
           .order("last_updated", { ascending: false, nullsFirst: false })
           .limit(5),
+        supabase
+          .from("vendors")
+          .select("id,vendor_name,cuisine_types,address,city,state,status,source_video_url,source_platform,operating_hours_raw,created_at,last_updated")
+          .limit(5000),
+        supabase
+          .from("reviews")
+          .select("id,is_hidden,created_at")
+          .limit(5000),
       ]);
 
     if (recentVendorsRes.error) throw recentVendorsRes.error;
     if (recentLogRes.error) throw recentLogRes.error;
+
+    const analytics = buildDashboardAnalytics(
+      analyticsVendorsRes.error ? [] : (analyticsVendorsRes.data || []),
+      analyticsReviewsRes.error ? [] : (analyticsReviewsRes.data || []),
+    );
 
     const stats = [
       { label: "Total Vendors", value: totalVendors, note: "Records in Supabase", tone: "neutral" },
@@ -188,7 +311,13 @@ router.get("/dashboard", async (_req, res) => {
       recommendation: recommendationLabel(item.sentiment_score),
     }));
 
-    res.json({ stats, recentVendors, recentProcessing });
+    res.json({
+      stats,
+      recentVendors,
+      recentProcessing,
+      ...analytics,
+      lastUpdated: new Date().toISOString(),
+    });
   } catch (error) {
     res.status(500).json({ error: "Failed to load admin dashboard", details: error.message });
   }

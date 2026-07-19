@@ -2,10 +2,9 @@
 // Mirrors LoginPage.jsx but drops Google OAuth and lands on /ai instead of /map.
 
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import SuperAdminPage from "./SuperAdminPage";
-import AdminHomePage from "./AdminHomePage";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
 
 const C = {
@@ -137,7 +136,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const dest = role === "superadmin" ? "/superadmin" : "/admin-home";
+      const dest = role === "superadmin" ? "/superadmin" : "/admin";
       navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
     } catch (err) {
       setLoading(false);
@@ -155,7 +154,7 @@ export default function AdminLoginPage() {
     try {
       const dest = atob(decodeURIComponent(r));
       if (dest === "/superadmin" && role === "superadmin") return <SuperAdminPage />;
-      if (dest === "/admin-home" && (role === "admin" || role === "superadmin")) return <AdminHomePage />;
+      if (dest === "/admin" && (role === "admin" || role === "superadmin")) return <Navigate to="/admin" replace />;
     } catch {
       // malformed r — fall through to login form
     }
@@ -168,7 +167,7 @@ export default function AdminLoginPage() {
       if (session.user?.user_metadata?.must_change_password) {
         navigate("/admin-set-password", { replace: true });
       } else {
-        const dest = role === "superadmin" ? "/superadmin" : "/admin-home";
+        const dest = role === "superadmin" ? "/superadmin" : "/admin";
         navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
       }
       return null;
@@ -179,7 +178,7 @@ export default function AdminLoginPage() {
     <div style={styles.page}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
         <h1 style={{
-          fontFamily: "'Courier New', Courier, monospace", fontSize: 30, fontWeight: 700,
+        fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 500,
           color: C.text, margin: 0, lineHeight: 1.2, textAlign: "center",
         }}>
           Admin login

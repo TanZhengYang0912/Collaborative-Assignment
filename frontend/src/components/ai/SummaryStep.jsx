@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-export default function SummaryStep({ jobData, onNext, onBack }) {
+export default function SummaryStep({ jobData, summaryValue, onSummaryChange, onNext, onBack }) {
+  const [summary, setSummary] = useState(summaryValue || jobData.summary || '');
+
+  useEffect(() => {
+    setSummary(summaryValue || jobData.summary || '');
+  }, [jobData.job_id, jobData.summary, summaryValue]);
+
+  const updateSummary = (value) => {
+    setSummary(value);
+    onSummaryChange?.(value);
+  };
+
   const copySummary = () => {
-    if (jobData.summary) navigator.clipboard.writeText(jobData.summary);
+    if (summary) navigator.clipboard.writeText(summary);
   };
 
   return (
@@ -30,12 +41,18 @@ export default function SummaryStep({ jobData, onNext, onBack }) {
       </div>
 
       {/* Summary body */}
-      {jobData.summary ? (
+      {summary ? (
         <>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 12 }}>
             Summary
           </div>
-          <div className="summary-card">{jobData.summary}</div>
+          <textarea
+            aria-label="AI review summary"
+            className="summary-card"
+            value={summary}
+            onChange={(event) => updateSummary(event.target.value)}
+            style={{ width: '100%', minHeight: 150, resize: 'vertical', fontFamily: 'inherit' }}
+          />
 
           <div className="action-bar">
             <button id="back-to-transcript-btn" className="btn btn-ghost" onClick={onBack}>

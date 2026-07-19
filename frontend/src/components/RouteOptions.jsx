@@ -1,11 +1,4 @@
-const C = {
-  text: "#3E2C23",
-  muted: "#9A8478",
-  border: "#EADBCB",
-  cream: "#FBF4EA",
-  accent: "#D85A30",
-  toll: "#C77D18",
-};
+import { C, FONT_BODY } from "../lib/theme";
 
 // Lets the user switch between Google's alternative driving routes, each
 // flagged with whether it uses tolls (approximate — see DirectionsRenderer).
@@ -13,7 +6,7 @@ export default function RouteOptions({ routes, selectedIndex, onSelect }) {
   if (!routes || routes.length === 0) return null;
 
   return (
-    <div style={{ margin: "8px 0", fontFamily: "system-ui" }}>
+    <div style={{ margin: "8px 0", fontFamily: FONT_BODY }}>
       {routes.map((r) => {
         const active = r.index === selectedIndex;
         return (
@@ -28,7 +21,7 @@ export default function RouteOptions({ routes, selectedIndex, onSelect }) {
               background: active ? C.accent : C.cream,
               color: active ? "#fff" : C.text,
               border: `1.5px solid ${active ? C.accent : C.border}`,
-              fontFamily: "system-ui",
+              fontFamily: FONT_BODY,
             }}
           >
             <span style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -36,7 +29,7 @@ export default function RouteOptions({ routes, selectedIndex, onSelect }) {
             </span>
             {r.hasTolls && (
               <span style={{ color: active ? "#fff" : C.toll, fontSize: 11, fontWeight: 600 }}>
-                🪙 tolls
+                tolls
               </span>
             )}
           </button>

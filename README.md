@@ -136,6 +136,12 @@ cd frontend
 npm install
 npm run dev
 # Runs at http://localhost:5173
+
+# Terminal 3 — AI processing service
+cd backend
+python -m pip install -r requirements.txt
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Runs at http://localhost:8000
 ```
 
 ### 5. When your feature is ready, push and open a PR
@@ -159,6 +165,7 @@ Then open a Pull Request on GitHub to merge into `main`.
 | `GOOGLE_API_KEY` | Server-side key for Geocoding API + Directions API | Ask Tan Zheng Yang |
 | `SUPABASE_URL` | Supabase project URL | Ask Tan Zheng Yang |
 | `SUPABASE_SERVICE_KEY` | Supabase secret key (never committed) | Ask Tan Zheng Yang |
+| `WHISPER_LANGUAGE` | Whisper language hint for AI transcription | Leave as `ms` for Malay/English food content |
 | `PORT` | Server port (default 4000) | Leave as `4000` |
 
 ---
@@ -169,6 +176,7 @@ Then open a Pull Request on GitHub to merge into `main`.
 |---|---|---|
 | `VITE_MAPS_BROWSER_KEY` | Google Maps browser key | Ask Tan Zheng Yang |
 | `VITE_API_BASE` | Backend URL | Leave as `http://localhost:4000` |
+| `VITE_AI_API_BASE` | FastAPI AI processing URL | Leave as `http://localhost:8000/api` |
 
 > The frontend does **not** need Supabase keys — all database access goes through the backend.
 

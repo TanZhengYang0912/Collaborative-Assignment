@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import VideoSelectionList from './VideoSelectionList';
+import { getAiApiBase } from '../../lib/aiApi';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = getAiApiBase(import.meta.env.VITE_AI_API_BASE);
 
 export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
   const [mode, setMode]           = useState('single'); // 'single' | 'profile'
@@ -46,7 +47,7 @@ export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
         setPreview({ platform: data.platform });
       }
     } catch {
-      setError('Could not reach backend. Is the server running?');
+      setError(`AI service unavailable at ${API_BASE}. Start the FastAPI AI service and try again.`);
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
       const data = await res.json();
       onJobStarted(data.job_id, url, preview?.platform || 'Unknown');
     } catch {
-      setError('Could not connect to the backend server.');
+      setError(`AI service unavailable at ${API_BASE}. Start the FastAPI AI service and try again.`);
     } finally {
       setLoading(false);
     }
@@ -143,14 +144,14 @@ export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
             setTimeout(poll, 2000);
           }
         } catch {
-          setError('Could not reach backend while polling.');
+      setError(`AI service unavailable at ${API_BASE} while polling.`);
           setScrapeStatus('');
           setLoading(false);
         }
       };
       setTimeout(poll, 2000);
     } catch {
-      setError('Could not connect to the backend server.');
+      setError(`AI service unavailable at ${API_BASE}. Start the FastAPI AI service and try again.`);
       setScrapeStatus('');
       setLoading(false);
     }
@@ -200,7 +201,7 @@ export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
       <div className="mode-toggle">
         <button 
           className={`mode-btn ${mode === 'single' ? 'active' : ''}`}
-          onClick={() => { setMode('single'); setError(''); setScrapedVideos([]); setUrl('https://vt.tiktok.com/ZSC83a2kM/'); }}
+          onClick={() => { setMode('single'); setError(''); setPreview(null); setScrapedVideos([]); setUrl(''); }}
         >
           🎬 Single Video
         </button>
@@ -268,7 +269,7 @@ export default function URLSubmissionStep({ onJobStarted, onBatchStarted }) {
             <input
               type="url"
               className={`url-input ${error ? 'error' : ''}`}
-              placeholder="https://vt.tiktok.com/... or https://youtube.com/watch?v=..."
+              placeholder="e.g. https://www.tiktok.com/@username/video/..."
               value={url}
               onChange={handleUrlChange}
               onBlur={handleBlur}

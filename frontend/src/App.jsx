@@ -27,7 +27,7 @@ const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/wsdasabi123&admin-lo
 
 // Admin/superadmin accounts never have a customer-facing home — they only
 // ever belong on the admin auth pages or the AI/vendor management tools.
-const ADMIN_ALLOWED_PATHS = ["/wsdasabi123&admin-login", "/admin-set-password", "/ai", "/vendors"];
+const ADMIN_ALLOWED_PATHS = ["/wsdasabi123&admin-login", "/admin-set-password", "/admin", "/ai", "/vendors"];
 
 // Paths under /admin (the admin console) are always allowed for admin/superadmin accounts.
 function isAdminAllowedPath(pathname) {
@@ -53,7 +53,7 @@ function AuthGate({ children }) {
 
       if (role === "admin" || role === "superadmin") {
         if (!isAdminAllowedPath(location.pathname)) {
-          const dest = role === "superadmin" ? "/superadmin" : "/admin-home";
+          const dest = role === "superadmin" ? "/superadmin" : "/admin";
           navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
         }
         return;

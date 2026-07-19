@@ -1,9 +1,4 @@
-const C = {
-  text: "#3E2C23",
-  muted: "#9A8478",
-  border: "#EADBCB",
-  cream: "#FBF4EA",
-};
+import { C, FONT_BODY } from "../lib/theme";
 
 const VEHICLE_ICON = {
   BUS: "🚌",
@@ -27,7 +22,7 @@ export default function TransitDetails({ legs }) {
   }
 
   return (
-    <div style={{ margin: "8px 0", fontFamily: "system-ui" }}>
+      <div style={{ margin: "8px 0", fontFamily: FONT_BODY }}>
       {legs.map((leg, i) => (
         <div key={i} style={{ display: "flex", gap: 8, position: "relative" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 14 }}>

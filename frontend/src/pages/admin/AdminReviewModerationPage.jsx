@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, EyeOff, Search, Star } from "lucide-react";
 import { getAdminReviews, setReviewVisibility } from "../../api/admin";
+import { getSelectionSummary, togglePageSelection, toggleSelection } from "../../lib/batchSelection";
 
 const VISIBILITY_OPTIONS = ["all", "visible", "hidden"];
 
@@ -20,7 +21,7 @@ function Toast({ message, isError, onDone }) {
         zIndex: 100,
         padding: "10px 18px",
         borderRadius: 999,
-        background: isError ? "#dc2626" : "#20395f",
+        background: isError ? "var(--admin-danger-text)" : "var(--admin-success-text)",
         color: "#fff",
         fontSize: 13,
         fontWeight: 700,
@@ -56,6 +57,10 @@ export default function AdminReviewModerationPage() {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
   const [toast, setToast] = useState(null); // { message, isError }
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [confirmBulkAction, setConfirmBulkAction] = useState(null); // { isHidden, count }
+  const [bulkAction, setBulkAction] = useState(null);
+  const selectAllRef = useRef(null);
 
   const PAGE_SIZE = 10;
 
@@ -72,6 +77,7 @@ export default function AdminReviewModerationPage() {
     let active = true;
     setLoading(true);
     setError("");
+    setSelectedIds(new Set());
     getAdminReviews({ page: 1, pageSize: PAGE_SIZE, visibility })
       .then((payload) => { if (active) setData(payload); })
       .catch((err) => { if (active) setError(err.message); })
@@ -80,9 +86,32 @@ export default function AdminReviewModerationPage() {
   }, [visibility]);
 
   const query = draftQuery.trim().toLowerCase();
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [query]);
+
   const filtered = query
     ? data.items.filter((r) => r.vendorName?.toLowerCase().includes(query) || r.authorName?.toLowerCase().includes(query) || r.body?.toLowerCase().includes(query))
     : data.items;
+  const pageIds = useMemo(() => filtered.map((review) => String(review.id)), [filtered]);
+  const selection = useMemo(() => getSelectionSummary(selectedIds, pageIds), [selectedIds, pageIds]);
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = selection.someOnPageSelected;
+  }, [selection.someOnPageSelected]);
+
+  const handlePageSelection = (checked) => {
+    setSelectedIds((current) => togglePageSelection(current, pageIds, checked));
+  };
+
+  const handleItemSelection = (id, checked) => {
+    setSelectedIds((current) => toggleSelection(current, String(id), checked));
+  };
+
+  const handlePageChange = (page) => {
+    setSelectedIds(new Set());
+    load(page);
+  };
 
   const handleToggle = async (review) => {
     setUpdatingId(review.id);
@@ -95,6 +124,29 @@ export default function AdminReviewModerationPage() {
       setToast({ message: err.message, isError: true });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleBulkVisibility = async () => {
+    if (!confirmBulkAction) return;
+    const { isHidden } = confirmBulkAction;
+    const ids = [...selectedIds];
+    setConfirmBulkAction(null);
+    setBulkAction(isHidden ? "hide" : "restore");
+    setError("");
+
+    const results = await Promise.allSettled(ids.map((id) => setReviewVisibility(id, isHidden)));
+    const failed = results.filter((result) => result.status === "rejected").length;
+    const completed = ids.length - failed;
+
+    setSelectedIds(new Set());
+    await load();
+    setBulkAction(null);
+
+    if (failed) {
+      setToast({ message: `${completed} updated, ${failed} failed.`, isError: true });
+    } else {
+      setToast({ message: `${completed} review${completed === 1 ? "" : "s"} ${isHidden ? "hidden" : "restored"}.` });
     }
   };
 
@@ -117,9 +169,51 @@ export default function AdminReviewModerationPage() {
       {error ? <div className="admin-feedback error">{error}</div> : null}
 
       <section className="admin-panel admin-table-panel">
+        {selection.selectedCount > 0 && (
+          <div className="admin-batch-toolbar" role="region" aria-label="Review batch actions">
+            <div className="admin-batch-summary">
+              <span className="admin-batch-check"><Eye size={14} /></span>
+              <strong>{selection.selectedCount} selected</strong>
+              <span>on this page</span>
+            </div>
+            <div className="admin-batch-actions">
+              <button
+                className="admin-secondary-btn compact"
+                type="button"
+                disabled={Boolean(bulkAction)}
+                onClick={() => setConfirmBulkAction({ isHidden: true, count: selection.selectedCount })}
+              >
+                <EyeOff size={14} />
+                Hide selected
+              </button>
+              <button
+                className="admin-secondary-btn compact"
+                type="button"
+                disabled={Boolean(bulkAction)}
+                onClick={() => setConfirmBulkAction({ isHidden: false, count: selection.selectedCount })}
+              >
+                <Eye size={14} />
+                Restore selected
+              </button>
+              <button className="admin-batch-clear" type="button" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
         <table className="admin-table">
           <thead>
             <tr>
+              <th className="admin-selection-column">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={selection.allOnPageSelected}
+                  onChange={(event) => handlePageSelection(event.target.checked)}
+                  disabled={!pageIds.length || loading || Boolean(bulkAction)}
+                  aria-label="Select all reviews on this page"
+                />
+              </th>
               <th>Vendor</th>
               <th>Author</th>
               <th>Rating</th>
@@ -130,10 +224,19 @@ export default function AdminReviewModerationPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6"><div className="admin-feedback">Loading reviews…</div></td></tr>
+              <tr><td colSpan="7"><div className="admin-feedback">Loading reviews…</div></td></tr>
             ) : filtered.length ? (
               filtered.map((r) => (
                 <tr key={r.id}>
+                  <td className="admin-selection-column">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(String(r.id))}
+                      onChange={(event) => handleItemSelection(r.id, event.target.checked)}
+                      disabled={Boolean(bulkAction)}
+                      aria-label={`Select review by ${r.authorName || "Anonymous"}`}
+                    />
+                  </td>
                   <td><strong>{r.vendorName || "—"}</strong></td>
                   <td>{r.authorName || "Anonymous"}</td>
                   <td className="admin-table-score">
@@ -163,12 +266,39 @@ export default function AdminReviewModerationPage() {
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="6"><div className="admin-empty-state">No reviews matched this filter.</div></td></tr>
+              <tr><td colSpan="7"><div className="admin-empty-state">No reviews matched this filter.</div></td></tr>
             )}
           </tbody>
         </table>
-        <Pagination pagination={data.pagination} onPageChange={load} />
+        <Pagination pagination={data.pagination} onPageChange={handlePageChange} />
       </section>
+
+      {confirmBulkAction && (
+        <div className="admin-modal-backdrop" role="presentation" onClick={() => setConfirmBulkAction(null)}>
+          <div className="admin-modal-card admin-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-review-title" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-modal-header">
+              <div>
+                <h2 id="bulk-review-title">{confirmBulkAction.isHidden ? "Hide selected reviews?" : "Restore selected reviews?"}</h2>
+                <p>{confirmBulkAction.count} review{confirmBulkAction.count === 1 ? "" : "s"} will be updated.</p>
+              </div>
+              <button type="button" className="admin-icon-btn subtle" onClick={() => setConfirmBulkAction(null)} aria-label="Close confirmation">×</button>
+            </div>
+            <div className="admin-modal-form">
+              <p className="admin-confirm-message">
+                {confirmBulkAction.isHidden
+                  ? "Hidden reviews will no longer appear in the public vendor experience. You can restore them later."
+                  : "Restored reviews will be visible to users again."}
+              </p>
+              <div className="admin-modal-actions">
+                <button type="button" className="admin-secondary-btn compact" onClick={() => setConfirmBulkAction(null)}>Cancel</button>
+                <button type="button" className={`admin-primary-btn compact${confirmBulkAction.isHidden ? " danger" : ""}`} onClick={handleBulkVisibility}>
+                  {confirmBulkAction.isHidden ? "Hide reviews" : "Restore reviews"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast message={toast.message} isError={toast.isError} onDone={() => setToast(null)} />}
 

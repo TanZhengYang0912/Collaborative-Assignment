@@ -11,7 +11,7 @@ const LANG_MAP = {
   en: 'English', ms: 'Malay', zh: 'Chinese', id: 'Indonesian',
 };
 
-export default function TranscriptStep({ jobData, onTranscriptReady }) {
+export default function TranscriptStep({ jobData, onTranscriptReady, onRetry }) {
   const isProcessing = jobData.status !== 'completed' && jobData.status !== 'error';
   const hasTranscript = !!jobData.transcript;
   const prevStatus = useRef(null);
@@ -80,7 +80,7 @@ export default function TranscriptStep({ jobData, onTranscriptReady }) {
               </div>
               {jobData.detected_language && (
                 <div className="language-badge">
-                  🌐 Detected: {LANG_MAP[jobData.detected_language] || jobData.detected_language.toUpperCase()}
+                  🌐 Language: {LANG_MAP[jobData.detected_language] || jobData.detected_language.toUpperCase()}
                 </div>
               )}
             </div>
@@ -109,6 +109,11 @@ export default function TranscriptStep({ jobData, onTranscriptReady }) {
           <div className="error-card-body">
             <h3>Processing Error</h3>
             <p>{jobData.error}</p>
+            {onRetry && (
+              <button className="btn btn-primary" onClick={onRetry} style={{ marginTop: 12 }}>
+                ↻ Retry Processing
+              </button>
+            )}
           </div>
         </div>
       )}

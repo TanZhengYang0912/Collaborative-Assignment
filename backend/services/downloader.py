@@ -3,6 +3,8 @@ import os
 import re
 import json
 import shutil
+import sys
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -25,6 +27,56 @@ def _find_exe(name: str) -> str:
 
 FFMPEG  = _find_exe("ffmpeg")
 FFPROBE = _find_exe("ffprobe")
+
+
+def _resolve_yt_dlp_command(
+    python_executable: str | None = None,
+    path_lookup: str | None = None,
+    existing_paths: set[str] | None = None,
+) -> str:
+    """Use yt-dlp from the running Python environment before falling back to PATH."""
+    executable = python_executable or sys.executable
+    sibling = Path(executable).with_name("yt-dlp")
+    if existing_paths is None:
+        sibling_exists = sibling.is_file()
+    else:
+        sibling_exists = str(sibling) in existing_paths
+    if sibling_exists:
+        return str(sibling)
+    return path_lookup or shutil.which("yt-dlp") or "yt-dlp"
+
+
+def _extract_impersonate_target(output: str) -> str | None:
+    """Return the first Chrome impersonation target advertised by yt-dlp."""
+    targets = []
+    for line in output.splitlines():
+        match = re.match(r"^\s*(Chrome-\d+(?:\.\d+)?)\s+", line)
+        if match:
+            targets.append(match.group(1))
+    for preferred in ("Chrome-120", "Chrome-131", "Chrome-133"):
+        if preferred in targets:
+            return preferred
+    return targets[0] if targets else None
+
+
+YT_DLP = _resolve_yt_dlp_command()
+
+
+@lru_cache(maxsize=8)
+def _impersonate_args(yt_dlp_command: str) -> tuple[str, ...]:
+    """Use a target supported by this yt-dlp build, or no impersonation."""
+    try:
+        result = subprocess.run(
+            [yt_dlp_command, "--list-impersonate-targets"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ()
+
+    target = _extract_impersonate_target(result.stdout)
+    return ("--impersonate", target) if target else ()
 
 
 def sanitize_filename(name: str) -> str:
@@ -51,7 +103,7 @@ def _yt_dlp_download(url: str, output_path: Path, fmt: str,
                      impersonate: bool = True) -> subprocess.CompletedProcess:
     """Run yt-dlp to download a single format into output_path."""
     cmd = [
-        "yt-dlp",
+        YT_DLP,
         "--no-playlist",
         "--no-check-formats",
         "--format", fmt,
@@ -60,7 +112,7 @@ def _yt_dlp_download(url: str, output_path: Path, fmt: str,
         "--no-write-thumbnail",
     ]
     if impersonate:
-        cmd += ["--impersonate", "chrome"]
+        cmd += list(_impersonate_args(YT_DLP))
     cmd += [
         "--user-agent",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -249,7 +301,7 @@ def scrape_profile(url: str, start: int = 1, end: int = 10) -> list:
     playlist_items = f"{start}-{end}"
 
     cmd = [
-        "yt-dlp",
+        YT_DLP,
         "--flat-playlist",
         # --playlist-items stops as soon as the requested items are found —
         # much faster than --playlist-start/end which always walks all pages.
@@ -263,11 +315,10 @@ def scrape_profile(url: str, start: int = 1, end: int = 10) -> list:
         # Fail fast — don't retry on network errors
         "--retries", "1",
         "--fragment-retries", "0",
-        # Impersonate a real browser to reduce TikTok anti-bot friction
-        "--impersonate", "chrome",
         "--user-agent", "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
         url,
     ]
+    cmd[cmd.index("--user-agent"):cmd.index("--user-agent")] = list(_impersonate_args(YT_DLP))
 
     result = subprocess.run(
         cmd,
@@ -316,4 +367,3 @@ def scrape_profile(url: str, start: int = 1, end: int = 10) -> list:
             continue
 
     return videos
-

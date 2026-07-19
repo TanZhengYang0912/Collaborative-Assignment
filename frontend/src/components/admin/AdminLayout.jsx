@@ -13,10 +13,10 @@ import {
 import "../../admin-console.css";
 
 const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/admin/vendors2", label: "Vendors", icon: Store },
-  { to: "/admin/ai", label: "AI Processing", icon: BrainCircuit },
-  { to: "/admin/reviews", label: "Reviews", icon: MessageSquareWarning },
+  { to: "/admin/ai", label: "AI Content Queue", icon: BrainCircuit },
+  { to: "/admin/reviews", label: "Review Moderation", icon: MessageSquareWarning },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -25,13 +25,13 @@ export default function AdminLayout() {
   const [topbarAction, setTopbarAction] = useState(null);
   const pageName = navItems.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
-  )?.label || "Dashboard";
+  )?.label || "Overview";
 
   const subtitleMap = {
-    Dashboard: "Overview of TrueBites platform activity",
+    Overview: "Operational view of the TrueBites platform",
     Vendors: "Manage food vendor listings and approval",
-    "AI Processing": "AI-powered content processing from TikTok & YouTube",
-    Reviews: "Moderate user reviews — hide, unhide, and check flagged content",
+    "AI Content Queue": "Review AI-extracted vendor content before it goes live",
+    "Review Moderation": "Moderate user reviews and keep vendor content trustworthy",
     Settings: "Platform configuration and preferences",
   };
 

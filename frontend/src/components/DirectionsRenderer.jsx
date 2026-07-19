@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "@vis.gl/react-google-maps";
+import { C } from "../lib/theme";
 
 function formatDistance(meters) {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
@@ -23,7 +24,7 @@ function extractTransitLegs(route) {
           kind: "transit",
           vehicle: t.line.vehicle?.type || "BUS",
           lineName: t.line.short_name || t.line.name,
-          lineColor: t.line.color || "#D85A30",
+          lineColor: t.line.color || "#40544A",
           textColor: t.line.text_color || "#fff",
           departureStop: t.departure_stop?.name,
           arrivalStop: t.arrival_stop?.name,

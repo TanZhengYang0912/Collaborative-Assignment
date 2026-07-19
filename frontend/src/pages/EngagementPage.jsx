@@ -377,6 +377,6 @@ function Empty({ icon, text }) {
 }
 
 const iconBtnStyle = {
-  width: 26, height: 26, borderRadius: "50%", border: "none", background: "#F4F1EA",
+  width: 26, height: 26, borderRadius: "50%", border: "none", background: C.cream,
   display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
 };

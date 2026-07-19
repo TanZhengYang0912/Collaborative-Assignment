@@ -7,14 +7,14 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 import io
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from services.downloader import download_audio, validate_url, scrape_profile
 from services.transcriber import transcribe_audio
 from services.summarizer import summarize_transcript
 from services.extractor import extract_info
-from services.supabase_client import geocode_address, upsert_vendor
+from services.supabase_client import geocode_address, upsert_vendor, find_duplicate_vendors
 
 router = APIRouter()
 
@@ -68,6 +68,107 @@ class VendorSaveEntry(BaseModel):
 
 class SaveToDatabaseRequest(BaseModel):
     vendors: list[VendorSaveEntry]
+
+
+class ReviewRequest(BaseModel):
+    summary: Optional[str] = ""
+    extracted: dict = Field(default_factory=dict)
+
+
+class DraftRequest(ReviewRequest):
+    duplicate_acknowledged: bool = False
+
+
+def _load_job(job_id: str):
+    if job_id in jobs:
+        return jobs[job_id]
+
+    job_file = OUTPUTS_DIR / job_id / "status.json"
+    if not job_file.exists():
+        return None
+
+    with open(job_file, "r", encoding="utf-8") as f:
+        jobs[job_id] = json.load(f)
+    return jobs[job_id]
+
+
+def _review_extracted(job: dict, extracted: dict):
+    allowed_fields = {
+        "vendor_name", "address", "city", "state", "country", "price_range",
+        "operating_hours_raw", "cuisine_types", "signature_dishes", "special_notes",
+        "sentiment_score", "is_in_malacca",
+    }
+    current = dict(job.get("extracted") or {})
+    for key, value in (extracted or {}).items():
+        if key in allowed_fields and value is not None:
+            current[key] = value
+    return current
+
+
+def _is_malacca_location(extracted: dict):
+    location = " ".join(str(extracted.get(key) or "") for key in ("address", "city", "state")).lower()
+    if "malacca" in location or "melaka" in location:
+        return True
+    return bool(extracted.get("is_in_malacca"))
+
+
+def _persist_review(job_id: str, summary: str, extracted: dict):
+    job = _load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Job is not ready for review")
+
+    reviewed_summary = str(summary or "").strip()
+    reviewed_extracted = _review_extracted(job, extracted)
+    reviewed_extracted["is_in_malacca"] = _is_malacca_location(reviewed_extracted)
+    job_dir = OUTPUTS_DIR / job_id
+    job_dir.mkdir(exist_ok=True)
+    with open(job_dir / "summary.txt", "w", encoding="utf-8") as f:
+        f.write(reviewed_summary)
+    with open(job_dir / "extraction.json", "w", encoding="utf-8") as f:
+        json.dump(reviewed_extracted, f, ensure_ascii=False, indent=2)
+
+    update_job(
+        job_id,
+        summary=reviewed_summary,
+        extracted=reviewed_extracted,
+        review_status="reviewed",
+        reviewed_at=datetime.now().isoformat(),
+    )
+    return jobs[job_id]
+
+
+def _draft_vendor_row(job: dict, extracted: dict, summary: str):
+    vendor_name = extracted.get("vendor_name")
+    if not vendor_name:
+        raise HTTPException(status_code=400, detail="Vendor name is required before creating a draft")
+
+    address = extracted.get("address") or ""
+    city = extracted.get("city") or ""
+    state = extracted.get("state") or ""
+    geo = geocode_address(vendor_name, address, city, state)
+    platform = "TikTok" if "tiktok" in (job.get("url") or "").lower() else "YouTube"
+
+    return {
+        "vendor_name": vendor_name,
+        "address": geo["formatted_address"] if geo else address,
+        "city": city,
+        "state": state,
+        "latitude": geo["latitude"] if geo else None,
+        "longitude": geo["longitude"] if geo else None,
+        "location_precision": geo["precision"] if geo else "unknown",
+        "cuisine_types": ", ".join(extracted.get("cuisine_types") or []),
+        "signature_dishes": ", ".join(extracted.get("signature_dishes") or []),
+        "price_range": extracted.get("price_range"),
+        "sentiment_score": extracted.get("sentiment_score"),
+        "ai_review_summary": summary,
+        "operating_hours_raw": extracted.get("operating_hours_raw"),
+        "source_video_url": job.get("url"),
+        "source_platform": platform,
+        "status": "draft",
+        "last_updated": datetime.now().isoformat(),
+    }
 
 
 def update_job(job_id: str, **kwargs):
@@ -385,6 +486,8 @@ async def api_process(req: URLRequest, background_tasks: BackgroundTasks):
         "summary": None,
         "extracted": None,
         "error": None,
+        "review_status": "pending",
+        "retry_count": 0,
         "created_at": datetime.now().isoformat(),
         "completed_at": None,
     }
@@ -396,14 +499,107 @@ async def api_process(req: URLRequest, background_tasks: BackgroundTasks):
 
 @router.get("/status/{job_id}")
 async def api_status(job_id: str):
-    if job_id not in jobs:
-        # Try to load from disk
-        job_file = OUTPUTS_DIR / job_id / "status.json"
-        if job_file.exists():
-            with open(job_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+    job = _load_job(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return jobs[job_id]
+    return job
+
+
+@router.post("/retry/{job_id}")
+async def api_retry(job_id: str, background_tasks: BackgroundTasks):
+    job = _load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") != "error":
+        raise HTTPException(status_code=400, detail="Only failed jobs can be retried")
+
+    retry_count = int(job.get("retry_count") or 0) + 1
+    update_job(
+        job_id,
+        status="queued",
+        step=0,
+        step_label="Queued for retry",
+        progress=0,
+        transcript=None,
+        detected_language=None,
+        segments=[],
+        summary=None,
+        extracted=None,
+        error=None,
+        completed_at=None,
+        review_status="pending",
+        retry_count=retry_count,
+    )
+    background_tasks.add_task(run_pipeline, job_id, job["url"])
+    return {"job_id": job_id, "status": "queued", "retry_count": retry_count}
+
+
+@router.post("/review/{job_id}")
+async def api_review_job(job_id: str, req: ReviewRequest):
+    return _persist_review(job_id, req.summary or "", req.extracted or {})
+
+
+@router.post("/duplicate-check/{job_id}")
+async def api_duplicate_check(job_id: str, req: ReviewRequest):
+    job = _load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Job is not ready for duplicate checking")
+
+    extracted = _review_extracted(job, req.extracted or {})
+    vendor_name = extracted.get("vendor_name") or ""
+    try:
+        candidates = find_duplicate_vendors(
+            vendor_name,
+            extracted.get("address") or "",
+            extracted.get("city") or "",
+            extracted.get("state") or "",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Duplicate check failed: {e}")
+    return {"job_id": job_id, "candidates": candidates, "has_duplicates": bool(candidates)}
+
+
+@router.post("/create-draft/{job_id}")
+async def api_create_draft(job_id: str, req: DraftRequest):
+    job = _load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    reviewed = _persist_review(job_id, req.summary or "", req.extracted or {})
+    extracted = reviewed.get("extracted") or {}
+    if not _is_malacca_location(extracted):
+        raise HTTPException(status_code=400, detail="Only Malacca locations can be created as vendor drafts")
+
+    try:
+        candidates = find_duplicate_vendors(
+            extracted.get("vendor_name") or "",
+            extracted.get("address") or "",
+            extracted.get("city") or "",
+            extracted.get("state") or "",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Duplicate check failed: {e}")
+
+    if candidates and not req.duplicate_acknowledged:
+        return {
+            "job_id": job_id,
+            "status": "duplicate_review_required",
+            "candidates": candidates,
+        }
+
+    try:
+        upsert_vendor(_draft_vendor_row(reviewed, extracted, reviewed.get("summary") or ""))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Draft vendor save failed: {e}")
+
+    update_job(job_id, review_status="draft_created", draft_created_at=datetime.now().isoformat())
+    return {
+        "job_id": job_id,
+        "status": "draft_created",
+        "candidates": candidates,
+    }
 
 
 @router.get("/results/{job_id}")
@@ -534,6 +730,7 @@ async def api_save_to_database(req: SaveToDatabaseRequest):
             "operating_hours_raw": entry.operating_hours_raw or ext.get("operating_hours_raw"),
             "source_video_url": job.get("url"),
             "source_platform": platform,
+            "status": "draft",
             "last_updated": datetime.now().isoformat(),
         }
 

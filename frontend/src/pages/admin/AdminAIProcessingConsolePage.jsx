@@ -1,6 +1,8 @@
-import { Database, Download } from "lucide-react";
+import { Check, Database, Download, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getAdminAiRecords } from "../../api/admin";
+import { getSelectionSummary, togglePageSelection, toggleSelection } from "../../lib/batchSelection";
+import { getAiApiBase } from "../../lib/aiApi";
 
 // ── AI module step components (reuse from /ai page) ──────────────────────────
 import StepIndicator     from "../../components/ai/StepIndicator";
@@ -14,7 +16,7 @@ import BatchResultsStep  from "../../components/ai/BatchResultsStep";
 // Import the ai-module styles (needed for step components)
 import "../../ai-module.css";
 
-const AI_BASE  = "http://localhost:8000/api";
+const AI_BASE  = getAiApiBase(import.meta.env.VITE_AI_API_BASE);
 const POLL_MS  = 2000;
 
 const PAGE_TO_STEP = {
@@ -49,6 +51,7 @@ function AIWorkflowPanel() {
   const [page,      setPage]     = useState("submit");
   const [jobId,     setJobId]    = useState(null);
   const [jobData,   setJobData]  = useState({});
+  const [reviewSummary, setReviewSummary] = useState('');
   const [batchId,   setBatchId]  = useState(null);
   const [batchData, setBatchData] = useState({});
   const pollerRef      = useRef(null);
@@ -62,6 +65,7 @@ function AIWorkflowPanel() {
         if (!res.ok) return;
         const data = await res.json();
         setJobData(data);
+        if (data.summary) setReviewSummary((current) => current || data.summary);
         if (data.status === "completed" || data.status === "error")
           clearInterval(pollerRef.current);
       } catch { /* ignore */ }
@@ -85,6 +89,7 @@ function AIWorkflowPanel() {
 
   const handleJobStarted = (newJobId, url, platform) => {
     setJobId(newJobId);
+    setReviewSummary('');
     setJobData({ status: "queued", progress: 0, step: 0, step_label: "Starting…", url, platform });
     setPage("processing");
   };
@@ -98,9 +103,36 @@ function AIWorkflowPanel() {
   const handleReset = () => {
     clearInterval(pollerRef.current);
     clearInterval(batchPollerRef.current);
-    setJobId(null);   setJobData({});
+    setJobId(null);   setJobData({}); setReviewSummary('');
     setBatchId(null); setBatchData({});
     setPage("submit");
+  };
+
+  const handleRetry = async () => {
+    if (!jobId) return;
+    try {
+      const response = await fetch(`${AI_BASE}/retry/${jobId}`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'Unable to retry processing');
+      setJobData((current) => ({ ...current, ...result, status: 'queued', progress: 0, step: 0, step_label: 'Queued for retry', error: null }));
+      setReviewSummary('');
+      setPage('processing');
+    } catch (error) {
+      setJobData((current) => ({ ...current, status: 'error', error: error.message }));
+    }
+  };
+
+  const handleCreateDraft = async ({ summary, extracted, duplicate_acknowledged }) => {
+    if (!jobId) throw new Error('No processing job is selected');
+    const response = await fetch(`${AI_BASE}/create-draft/${jobId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary, extracted, duplicate_acknowledged }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Unable to create draft vendor');
+    setJobData((current) => ({ ...current, ...result }));
+    return result;
   };
 
   const completedSteps = [];
@@ -120,13 +152,25 @@ function AIWorkflowPanel() {
         <URLSubmissionStep onJobStarted={handleJobStarted} onBatchStarted={handleBatchStarted} />
       )}
       {page === "processing" && (
-        <TranscriptStep jobData={jobData} onTranscriptReady={() => setPage("summary")} />
+        <TranscriptStep jobData={jobData} onTranscriptReady={() => setPage("summary")} onRetry={handleRetry} />
       )}
       {page === "summary" && (
-        <SummaryStep jobData={jobData} onNext={() => setPage("extraction")} onBack={() => setPage("processing")} />
+        <SummaryStep
+          jobData={jobData}
+          summaryValue={reviewSummary}
+          onSummaryChange={setReviewSummary}
+          onNext={() => setPage("extraction")}
+          onBack={() => setPage("processing")}
+        />
       )}
       {page === "extraction" && (
-        <ExtractionStep jobData={jobData} onBack={() => setPage("summary")} onReset={handleReset} />
+        <ExtractionStep
+          jobData={jobData}
+          reviewSummary={reviewSummary || jobData.summary || ''}
+          onBack={() => setPage("summary")}
+          onReset={handleReset}
+          onCreateDraft={handleCreateDraft}
+        />
       )}
       {page === "batch_progress" && (
         <BatchProgressStep batchData={batchData} onResultsReady={() => setPage("batch_results")} />
@@ -200,6 +244,8 @@ export default function AdminAIProcessingConsolePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
   const [detailItem, setDetailItem] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const selectAllRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -214,6 +260,25 @@ export default function AdminAIProcessingConsolePage() {
   }, [data.pagination.page]);
 
   const totalProcessed = useMemo(() => data.pagination.total || data.items.length, [data]);
+  const pageIds = useMemo(() => data.items.map((item) => String(item.id)), [data.items]);
+  const selection = useMemo(() => getSelectionSummary(selectedIds, pageIds), [selectedIds, pageIds]);
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = selection.someOnPageSelected;
+  }, [selection.someOnPageSelected]);
+
+  const handlePageSelection = (checked) => {
+    setSelectedIds((current) => togglePageSelection(current, pageIds, checked));
+  };
+
+  const handleItemSelection = (id, checked) => {
+    setSelectedIds((current) => toggleSelection(current, String(id), checked));
+  };
+
+  const handlePageChange = (page) => {
+    setSelectedIds(new Set());
+    setData((current) => ({ ...current, pagination: { ...current.pagination, page } }));
+  };
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -224,12 +289,8 @@ export default function AdminAIProcessingConsolePage() {
           <Database size={22} />
         </div>
         <div className="admin-hero-copy">
-          <div className="admin-hero-label">AI Content Processing Module</div>
+          <div className="admin-hero-label">AI content queue</div>
           <h2>Food Influencer Content Analyzer</h2>
-          <p>
-            Powered by OpenAI Whisper + Groq Llama 3.1 8b — extract, transcribe and summarise
-            food recommendations from TikTok &amp; YouTube into your Supabase vendor records.
-          </p>
         </div>
         <div className="admin-model-strip">
           <div><strong>small</strong><span>Whisper</span></div>
@@ -267,9 +328,43 @@ export default function AdminAIProcessingConsolePage() {
           </div>
         </div>
 
+        {selection.selectedCount > 0 && (
+          <div className="admin-batch-toolbar" role="region" aria-label="AI content batch actions">
+            <div className="admin-batch-summary">
+              <span className="admin-batch-check"><Check size={14} /></span>
+              <strong>{selection.selectedCount} selected</strong>
+              <span>on this page</span>
+            </div>
+            <div className="admin-batch-actions">
+              <button
+                className="admin-secondary-btn compact"
+                type="button"
+                onClick={() => exportCsv(data.items.filter((item) => selectedIds.has(String(item.id))))}
+              >
+                <Download size={14} />
+                Export selected
+              </button>
+              <button className="admin-batch-clear" type="button" onClick={() => setSelectedIds(new Set())}>
+                <X size={14} />
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         <table className="admin-table admin-results-table">
           <thead>
             <tr>
+              <th className="admin-selection-column">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={selection.allOnPageSelected}
+                  onChange={(event) => handlePageSelection(event.target.checked)}
+                  disabled={!pageIds.length || loading}
+                  aria-label="Select all AI records on this page"
+                />
+              </th>
               <th>Video Title</th>
               <th>Vendor</th>
               <th>Location</th>
@@ -280,10 +375,18 @@ export default function AdminAIProcessingConsolePage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6"><div className="admin-feedback">Loading AI records…</div></td></tr>
+              <tr><td colSpan="7"><div className="admin-feedback">Loading AI records…</div></td></tr>
             ) : data.items.length ? (
               data.items.map((item) => (
                 <tr key={item.id}>
+                  <td className="admin-selection-column">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(String(item.id))}
+                      onChange={(event) => handleItemSelection(item.id, event.target.checked)}
+                      aria-label={`Select ${item.vendor || item.title}`}
+                    />
+                  </td>
                   <td className="admin-result-title">
                     <div className="admin-table-clamp clamp-3">{item.title}</div>
                   </td>
@@ -310,7 +413,7 @@ export default function AdminAIProcessingConsolePage() {
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="6"><div className="admin-empty-state">No processed AI records saved yet.</div></td></tr>
+              <tr><td colSpan="7"><div className="admin-empty-state">No processed AI records saved yet.</div></td></tr>
             )}
           </tbody>
         </table>
@@ -324,9 +427,7 @@ export default function AdminAIProcessingConsolePage() {
               type="button"
               className="admin-secondary-btn compact"
               disabled={data.pagination.page <= 1}
-              onClick={() =>
-                setData((cur) => ({ ...cur, pagination: { ...cur.pagination, page: cur.pagination.page - 1 } }))
-              }
+              onClick={() => handlePageChange(data.pagination.page - 1)}
             >
               Previous
             </button>
@@ -335,9 +436,7 @@ export default function AdminAIProcessingConsolePage() {
               type="button"
               className="admin-secondary-btn compact"
               disabled={data.pagination.page >= data.pagination.totalPages}
-              onClick={() =>
-                setData((cur) => ({ ...cur, pagination: { ...cur.pagination, page: cur.pagination.page + 1 } }))
-              }
+              onClick={() => handlePageChange(data.pagination.page + 1)}
             >
               Next
             </button>

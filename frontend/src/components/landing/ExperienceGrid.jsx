@@ -40,8 +40,8 @@ export default function ExperienceGrid() {
           <BentoCell img={BENTO_IMAGES[0]} rowSpan />
 
           {/* Two smaller cells stacked */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <BentoCell img={BENTO_IMAGES[1]} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, gridRow: "1 / -1", minHeight: 0 }}>
+            <BentoCell img={BENTO_IMAGES[1]} grow />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, flex: 1 }}>
               <BentoCell img={BENTO_IMAGES[2]} />
               <BentoCell img={BENTO_IMAGES[3]} />
@@ -53,11 +53,13 @@ export default function ExperienceGrid() {
   );
 }
 
-function BentoCell({ img, rowSpan }) {
+function BentoCell({ img, rowSpan, grow }) {
   return (
     <div style={{
       position: "relative", overflow: "hidden", borderRadius: 4,
       gridRow: rowSpan ? "1 / -1" : undefined,
+      flex: grow ? "1 1 0" : undefined,
+      minHeight: 0,
     }}>
       <img
         src={img.url}

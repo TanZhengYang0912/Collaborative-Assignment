@@ -9,8 +9,9 @@ import SummaryStep         from '../components/ai/SummaryStep';
 import ExtractionStep      from '../components/ai/ExtractionStep';
 import BatchProgressStep   from '../components/ai/BatchProgressStep';
 import BatchResultsStep    from '../components/ai/BatchResultsStep';
+import { getAiApiBase } from '../lib/aiApi';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = getAiApiBase(import.meta.env.VITE_AI_API_BASE);
 const POLL_MS  = 2000;
 
 const PAGE_TO_STEP = {

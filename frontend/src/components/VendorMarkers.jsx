@@ -7,6 +7,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { C } from "../lib/theme";
 
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
@@ -99,11 +100,11 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
               zIndex={isSelected ? 999 : undefined}
             >
               <Pin
-                background={isSelected ? "#e63946" : stopNum ? "#D85A30" : isApproximate ? "#f5a623" : "#2a9d8f"}
+                background={isSelected ? C.danger : stopNum ? C.terracotta : isApproximate ? C.warning : C.success}
                 glyphColor="#fff"
                 borderColor="#fff"
                 scale={isSelected ? 1.5 : 1}
-                glyph={stopNum ? String(stopNum) : isSelected ? undefined : isApproximate ? "?" : "🍜"}
+                glyph={stopNum ? String(stopNum) : isSelected ? undefined : isApproximate ? "?" : ""}
               />
             </AdvancedMarker>
           </div>
@@ -133,7 +134,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: "inline-block", marginTop: 8, padding: "6px 12px", background: "#D85A30", color: "#fff", borderRadius: 6, fontSize: 12, textDecoration: "none" }}
+                  style={{ display: "inline-block", marginTop: 8, padding: "6px 12px", background: C.navy, color: "#fff", borderRadius: 4, fontSize: 12, textDecoration: "none" }}
                 >
                   View details ↗
                 </a>
@@ -143,7 +144,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
                     disabled={tripOrder?.has(v.id)}
                     style={{
                       display: "inline-block", marginTop: 8, marginLeft: 6, padding: "6px 12px",
-                      background: tripOrder?.has(v.id) ? "#eee" : "#2a9d8f",
+                      background: tripOrder?.has(v.id) ? "#eee" : C.success,
                       color: tripOrder?.has(v.id) ? "#777" : "#fff",
                       border: "none", borderRadius: 6, fontSize: 12,
                       cursor: tripOrder?.has(v.id) ? "default" : "pointer",

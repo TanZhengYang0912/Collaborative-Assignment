@@ -1,21 +1,28 @@
-// Shared design tokens — navy/gold/cream identity (Collab-Testing Figma pass).
-// All discovery, modal, trip-panel, and landing components read from here so a
-// single palette update propagates everywhere.
+// Shared design tokens — contemporary shophouse catalog identity.
+// Every surface should read from this file so the customer, admin and AI
+// experiences feel like one product rather than separate templates.
 export const C = {
-  navy:      "#1B2A4A",   // primary dark — buttons, badges, active toggles, stats band, footer
-  navyLight: "#243659",   // slightly lighter navy for hover states
-  gold:      "#B8933F",   // accent — eyebrows, AI-review border + label, one accent per section
-  goldLight: "#D4AA58",   // lighter gold for hover/active
-  cream:     "#F4F1EA",   // page background
+  navy:      "#40544A",   // forest — primary actions and active navigation
+  navyLight: "#566D60",   // forest hover state
+  gold:      "#A35D47",   // terracotta — restrained editorial accent
+  goldLight: "#C17C65",   // terracotta hover state
+  cream:     "#FAF8F4",   // chalk page background
   card:      "#FFFFFF",   // card / modal surface
-  text:      "#1B2A4A",   // primary text (navy for strong contrast on cream)
-  muted:     "#6B6B6B",   // secondary / meta text
-  border:    "#E2DACE",   // subtle dividers on cream
-  success:   "#2a9d8f",   // kept for transit/GPS indicator
+  text:      "#202A35",   // ink primary text
+  muted:     "#69717A",   // secondary / meta text
+  border:    "#D8D2C8",   // soft sand dividers
+  success:   "#557A67",   // semantic success / GPS indicator
+  warning:   "#A35D47",
+  danger:    "#B44E4E",
+  ink:       "#202A35",
+  forest:    "#40544A",
+  terracotta:"#A35D47",
+  sand:      "#DDD3C5",
+  chalk:     "#FAF8F4",
 
   // Aliases for backwards compatibility with components that used old names
-  accent:     "#B8933F",  // gold
-  accentDark: "#8C6D2F",  // darker gold
+  accent:     "#40544A",  // primary action
+  accentDark: "#2E3D34",  // darker forest
 };
 
 export const FONT_DISPLAY = "'Playfair Display', Georgia, serif";

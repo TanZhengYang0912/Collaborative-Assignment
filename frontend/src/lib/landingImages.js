@@ -1,83 +1,94 @@
-// Curated, URL-verified Unsplash landmark image constants for the Melaka
-// editorial landing page. Keeping these in one place makes it trivial to swap
-// in real licensed photography later without touching any component.
-//
-// All URLs use Unsplash's image CDN with explicit crop dimensions so they
-// don't shift aspect-ratios on slow connections.
+// Curated, Melaka-specific image constants for the editorial landing page.
+// Every image is sourced from Wikimedia Commons so the subject matches the
+// copy instead of relying on generic travel photography with a misleading alt.
+
+const COMMONS_FILE = "https://commons.wikimedia.org/wiki/Special:FilePath/";
+
+const commonsImage = (fileName, width) =>
+  `${COMMONS_FILE}${encodeURIComponent(fileName)}?width=${width}`;
 
 // ─── Hero carousel (4 slides) ─────────────────────────────────────────────────
-// Full-bleed portrait/landscape, shown one at a time behind the giant "MELAKA"
-// wordmark. Choose images with readable sky/shadow areas where the text overlays.
-
+// The sequence moves from place → street → dish → dish: a compact visual
+// introduction to what makes Melaka a hidden gem.
 export const HERO_SLIDES = [
   {
     id: 1,
-    url:     "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1600&h=900&fit=crop&q=85",
-    eyebrow: "Christ Church Melaka",
-    caption: "Est. 1753 — Dutch Colonial Heritage",
-    alt:     "Christ Church Melaka, the iconic red Dutch colonial church",
+    url: commonsImage("CHRIST CHURCH MELAKA.jpg", 1600),
+    eyebrow: "Dutch Square",
+    caption: "The red heart of Melaka's heritage",
+    alt: "Christ Church Melaka and the red Dutch Square in the historic centre",
+    source: "https://commons.wikimedia.org/wiki/File:CHRIST_CHURCH_MELAKA.jpg",
   },
   {
     id: 2,
-    url:     "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1600&h=900&fit=crop&q=85",
+    url: commonsImage("Jonker Walk.JPG", 1600),
     eyebrow: "Jonker Walk",
-    caption: "Est. 1650s — The Heritage Bazaar",
-    alt:     "Jonker Walk night market, colourful shophouses in Melaka",
+    caption: "Where the night market comes alive",
+    alt: "Jonker Walk night market in Melaka with its illuminated heritage arch",
+    source: "https://commons.wikimedia.org/wiki/File:Jonker_Walk.JPG",
   },
   {
     id: 3,
-    url:     "https://images.unsplash.com/photo-1551009175-8a68da93d5f9?w=1600&h=900&fit=crop&q=85",
-    eyebrow: "Street Art Quarter",
-    caption: "A canvas of culture on every wall",
-    alt:     "Vibrant street art murals in the heritage streets of Melaka",
+    url: commonsImage("Nyonya Laksa.jpg", 1200),
+    eyebrow: "Nyonya Table",
+    caption: "A bowl of heritage, one spoonful at a time",
+    alt: "A bowl of Nyonya laksa, a signature Peranakan dish from Melaka",
+    source: "https://commons.wikimedia.org/wiki/File:Nyonya_Laksa.jpg",
   },
   {
     id: 4,
-    url:     "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=1600&h=900&fit=crop&q=85",
-    eyebrow: "Festival Lanterns",
-    caption: "Where six centuries of tradition glow",
-    alt:     "Golden lanterns hanging in Melaka's heritage quarter at dusk",
+    url: commonsImage("Chicken rice balls in Melaka.jpg", 1400),
+    eyebrow: "Melaka Flavours",
+    caption: "The city's most iconic comfort food",
+    alt: "Chicken and rice balls served as a traditional Melaka meal",
+    source: "https://commons.wikimedia.org/wiki/File:Chicken_rice_balls_in_Melaka.jpg",
   },
 ];
 
 // ─── Heritage section ─────────────────────────────────────────────────────────
-// Large captioned image beside the editorial copy block.
 export const HERITAGE_IMAGE = {
-  url: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=900&h=680&fit=crop&q=85",
-  alt: "Traditional red lanterns hanging in Melaka, symbolising centuries of Chinese-Malay cultural heritage",
-  caption: "Lanterns of the Jonker Heritage Quarter",
+  url: commonsImage("Melaka, Malaysia - Restoran Nyonya Ole Sayang.jpg", 1200),
+  alt: "Restoran Nyonya Ole Sayang, a traditional Peranakan restaurant in Melaka",
+  caption: "Ole Sayang — a taste of Nyonya heritage",
+  source:
+    "https://commons.wikimedia.org/wiki/File:Melaka,_Malaysia_-_Restoran_Nyonya_Ole_Sayang.jpg",
 };
 
 // ─── Bento / Experience grid (4 cells) ───────────────────────────────────────
 export const BENTO_IMAGES = [
   {
-    id: "jonker",
-    url:   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop&q=80",
-    label: "Jonker Walk",
-    alt:   "The famous Jonker Walk heritage street",
+    id: "melaka-river",
+    url: commonsImage("Melaka (Malacca) River.jpg", 1400),
+    label: "Melaka River",
+    alt: "The Melaka River flowing past colourful riverside buildings and boats",
+    source: "https://commons.wikimedia.org/wiki/File:Melaka_(Malacca)_River.jpg",
   },
   {
-    id: "church",
-    url:   "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&h=600&fit=crop&q=80",
-    label: "Christ Church",
-    alt:   "Christ Church Melaka, red colonial landmark",
+    id: "trishaw",
+    url: commonsImage("Malacca Trishaw (2494244181).jpg", 1200),
+    label: "Melaka Trishaw",
+    alt: "A colourful decorated trishaw outside the red heritage buildings of Melaka",
+    source: "https://commons.wikimedia.org/wiki/File:Malacca_Trishaw_(2494244181).jpg",
   },
   {
-    id: "hawker",
-    url:   "https://images.unsplash.com/photo-1543353071-873f17a7a088?w=800&h=600&fit=crop&q=80",
-    label: "Hawker Culture",
-    alt:   "Hawker stalls serving authentic Malaysian street food",
+    id: "street-art",
+    url: commonsImage("Street Art at Melaka City (3).jpg", 1200),
+    label: "Mural Lane",
+    alt: "A street art mural in Melaka's historic Chinatown quarter",
+    source: "https://commons.wikimedia.org/wiki/File:Street_Art_at_Melaka_City_(3).jpg",
   },
   {
-    id: "mural",
-    url:   "https://images.unsplash.com/photo-1551009175-8a68da93d5f9?w=800&h=600&fit=crop&q=80",
-    label: "Street Art",
-    alt:   "Melaka street art murals celebrating local culture",
+    id: "cendol",
+    url: commonsImage("Akaka Cendol.jpg", 1200),
+    label: "Cendol Culture",
+    alt: "A colourful cendol dessert shop in Melaka",
+    source: "https://commons.wikimedia.org/wiki/File:Akaka_Cendol.jpg",
   },
 ];
 
 // ─── Full-bleed quote / shophouse backdrop ────────────────────────────────────
 export const QUOTE_IMAGE = {
-  url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&h=900&fit=crop&q=85",
-  alt: "A colourful Peranakan shophouse street in Melaka at golden hour",
+  url: commonsImage("Jonker Walk.JPG", 1600),
+  alt: "The illuminated Jonker Walk heritage street in Melaka at night",
+  source: "https://commons.wikimedia.org/wiki/File:Jonker_Walk.JPG",
 };

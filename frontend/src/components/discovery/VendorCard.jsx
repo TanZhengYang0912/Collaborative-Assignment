@@ -1,172 +1,74 @@
-import { Heart, Bot, Play, Wallet, Footprints, MapPin, Plus, Check, Star } from "lucide-react";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
+import { Bookmark, Check, Footprints, MapPin, Play, Plus, Star, Wallet } from "lucide-react";
+import { C, FONT_BODY, FONT_DISPLAY } from "../../lib/theme";
 import {
-  categoryLabel, placeholderImage, creatorHandle,
-  priceLabel, walkLabel, distanceLabel,
+  categoryLabel, distanceLabel, placeholderImage, creatorHandle,
+  priceLabel, walkLabel,
 } from "../../lib/vendorDisplay";
 
-// Figma card layout:
-// - Photo (top, ~190px) with:
-//   - navy "+" / "✓" circle top-LEFT (add-to-trip)
-//   - heart icon top-RIGHT (bookmark)
-//   - navy category badge bottom-LEFT over photo
-// - Name in Playfair Display
-// - Gold-bordered AI Review box with "AI REVIEW" gold label
-// - Compact meta row: 📍 walk-min · RM price (left), @creator (right)
-// Ratings row stays omitted (data is mostly null).
 export default function VendorCard({ vendor, inTrip, bookmarked, onToggleBookmark, onAddStop, onOpenDetail }) {
   const handle = creatorHandle(vendor);
   const price = priceLabel(vendor);
   const walk = walkLabel(vendor);
   const dist = distanceLabel(vendor);
+  const area = vendor.address?.split(",")[0]?.trim() || "Melaka";
+  const description = vendor.ai_review_summary || vendor.signature_dishes || "A local place worth taking the long way for.";
 
   return (
-    <div style={{
-      background: C.card, borderRadius: 14, overflow: "hidden",
-      border: `1px solid ${C.border}`, display: "flex", flexDirection: "column",
-      fontFamily: FONT_BODY, boxShadow: "0 2px 8px rgba(27,42,74,0.06)",
-    }}>
-      {/* Photo */}
-      <div
-        onClick={() => onOpenDetail(vendor)}
-        style={{ position: "relative", height: 190, cursor: "pointer", background: C.cream, flexShrink: 0 }}
-      >
-        <img
-          src={placeholderImage(vendor)}
-          alt={vendor.name}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+    <article className="catalog-card" style={{ fontFamily: FONT_BODY }}>
+      <div className="catalog-card-image" onClick={() => onOpenDetail(vendor)}>
+        <img src={placeholderImage(vendor)} alt={vendor.name} loading="lazy" />
 
-        {/* Add-to-trip circle — top-left */}
         <button
-          onClick={(e) => { e.stopPropagation(); onAddStop(vendor); }}
-          aria-label={inTrip ? "Already in trip" : "Add to trip"}
-          style={{
-            position: "absolute", top: 10, left: 10,
-            width: 30, height: 30, borderRadius: "50%",
-            background: inTrip ? C.gold : C.navy, border: "none", cursor: inTrip ? "default" : "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
-          }}
+          type="button"
+          className="catalog-card-save"
+          onClick={(event) => { event.stopPropagation(); onToggleBookmark(vendor.id); }}
+          aria-label={bookmarked ? "Remove saved place" : "Save place"}
+          title={bookmarked ? "Remove saved place" : "Save place"}
         >
-          {inTrip
-            ? <Check size={14} color="#fff" strokeWidth={2.5} />
-            : <Plus size={14} color="#fff" strokeWidth={2.5} />
-          }
+          <Bookmark size={16} fill={bookmarked ? C.gold : "none"} color={bookmarked ? C.gold : C.text} strokeWidth={1.7} />
         </button>
 
-        {/* Heart bookmark — top-right */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleBookmark(vendor.id); }}
-          aria-label={bookmarked ? "Remove bookmark" : "Save vendor"}
-          style={{
-            position: "absolute", top: 10, right: 10,
-            width: 30, height: 30, borderRadius: "50%",
-            background: "rgba(255,255,255,0.92)", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-          }}
-        >
-          <Heart size={15} color={bookmarked ? "#e84040" : C.muted} fill={bookmarked ? "#e84040" : "none"} />
-        </button>
-
-        {/* Category badge — bottom-left over photo */}
-        <span style={{
-          position: "absolute", bottom: 10, left: 10,
-          padding: "4px 10px", borderRadius: 20,
-          background: C.navy, color: "#fff",
-          fontSize: 11, fontWeight: 600, letterSpacing: 0.4,
-          textTransform: "uppercase",
-        }}>
-          {categoryLabel(vendor)}
-        </span>
+        <span className="catalog-card-category">{categoryLabel(vendor)}</span>
       </div>
 
-      {/* Card body */}
-      <div style={{ padding: "13px 14px 14px", display: "flex", flexDirection: "column", gap: 9, flex: 1 }}>
-        {/* Vendor name */}
-        <div
-          onClick={() => onOpenDetail(vendor)}
-          style={{
-            fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16.5,
-            color: C.navy, cursor: "pointer", lineHeight: 1.25,
-          }}
-        >
+      <div className="catalog-card-body">
+        <h2 className="catalog-card-title" style={{ fontFamily: FONT_DISPLAY }} onClick={() => onOpenDetail(vendor)}>
           {vendor.name}
-        </div>
+        </h2>
+        <p className="catalog-card-description">{description}</p>
 
-        {/* Rating — only for vendors with at least one real review */}
         {vendor.review_count > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12.5, color: C.muted }}>
+          <div className="catalog-card-rating">
             <Star size={12} color={C.gold} fill={C.gold} />
-            <span style={{ fontWeight: 600, color: C.navy }}>{Number(vendor.average_rating).toFixed(1)}</span>
+            <strong>{Number(vendor.average_rating).toFixed(1)}</strong>
             <span>({vendor.review_count})</span>
           </div>
         )}
 
-        {/* AI Review block — gold left border */}
-        {vendor.ai_review_summary && (
-          <div style={{
-            background: "#FAFAF7",
-            borderLeft: `3px solid ${C.gold}`,
-            borderRadius: "0 8px 8px 0",
-            padding: "8px 11px",
-            fontSize: 12.5,
-          }}>
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              marginBottom: 4,
-            }}>
-              <span style={{
-                display: "flex", alignItems: "center", gap: 4,
-                color: C.gold, fontWeight: 700, fontSize: 10, letterSpacing: 0.8,
-                textTransform: "uppercase",
-              }}>
-                <Bot size={11} /> AI Review
-              </span>
-              {handle && (
-                <span style={{ display: "flex", alignItems: "center", gap: 3, color: C.muted, fontSize: 10.5 }}>
-                  <Play size={8} fill={C.muted} /> {handle}
-                </span>
-              )}
-            </div>
-            <div style={{
-              color: C.text, lineHeight: 1.45,
-              display: "-webkit-box", WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>
-              "{vendor.ai_review_summary}"
-            </div>
-          </div>
-        )}
+        <div className="catalog-card-meta">
+          <MapPin size={12} />
+          <span>{area}</span>
+          {dist && <><span className="catalog-card-meta-divider">·</span><span>{dist}</span></>}
+          {walk && <><Footprints size={12} /><span>{walk}</span></>}
+          {price && <><Wallet size={12} /><span>{price}</span></>}
+        </div>
 
-        {/* Compact meta row */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          fontSize: 12, color: C.muted, marginTop: "auto",
-        }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {dist && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <MapPin size={11} /> {dist}
-              </span>
-            )}
-            {walk && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <Footprints size={11} /> {walk}
-              </span>
-            )}
-            {price && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <Wallet size={11} /> {price}
-              </span>
-            )}
-          </div>
-          {handle && (
-            <span style={{ color: C.gold, fontSize: 11, fontWeight: 500 }}>{handle}</span>
-          )}
+        <div className="catalog-card-source" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <Play size={11} fill={C.navy} /> {handle || "TrueBites guide"}
+          </span>
+          <button
+            type="button"
+            onClick={() => !inTrip && onAddStop(vendor)}
+            disabled={inTrip}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: 0, border: 0, background: "transparent", color: inTrip ? C.muted : C.navy, fontSize: 11, fontWeight: 600, cursor: inTrip ? "default" : "pointer" }}
+            aria-label={inTrip ? "Already added to trip" : "Add to trip"}
+          >
+            {inTrip ? <Check size={12} /> : <Plus size={12} />}
+            {inTrip ? "Added" : "Add to trip"}
+          </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

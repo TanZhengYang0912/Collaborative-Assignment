@@ -3,8 +3,9 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Bot, Utensils } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import { C as THEME, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 
 const C = {
   cream: THEME.cream,
@@ -23,7 +24,7 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     minHeight: "100vh",
-    fontFamily: "system-ui",
+    fontFamily: FONT_BODY,
     background: C.cream,
     gap: 32,
     padding: 24,
@@ -37,7 +38,7 @@ const styles = {
   button: {
     width: 260,
     height: 200,
-    borderRadius: 12,
+    borderRadius: 4,
     border: `1px solid ${C.border}`,
     background: C.card,
     color: C.text,
@@ -47,7 +48,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+    boxShadow: "0 10px 30px rgba(32,42,53,0.07)",
     transition: "transform 0.15s ease, box-shadow 0.15s ease",
   },
   icon: { fontSize: 48 },
@@ -103,7 +104,7 @@ export default function AdminHomePage() {
   return (
     <div style={styles.page}>
       <h1 style={{
-        fontFamily: "'Courier New', Courier, monospace", fontSize: 30, fontWeight: 700,
+        fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 500,
         color: C.text, margin: 0, lineHeight: 1.2, textAlign: "center",
       }}>
         Welcome, admin
@@ -116,7 +117,7 @@ export default function AdminHomePage() {
           onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
         >
-          <span style={styles.icon}>🤖</span>
+          <Bot size={32} color={C.accent} strokeWidth={1.5} />
           <span style={styles.label}>AI Module</span>
           <span style={styles.sub}>Review AI-generated content</span>
         </button>
@@ -127,7 +128,7 @@ export default function AdminHomePage() {
           onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
         >
-          <span style={styles.icon}>🍜</span>
+          <Utensils size={32} color={C.accent} strokeWidth={1.5} />
           <span style={styles.label}>Vendor Management</span>
           <span style={styles.sub}>Create and publish eatery records</span>
         </button>

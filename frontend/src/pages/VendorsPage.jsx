@@ -3,7 +3,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Store } from "lucide-react";
 import { adminHomePath } from "../lib/adminNav";
+import { C as THEME, FONT_BODY } from "../lib/theme";
 
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const API = `${BASE}/api/vendors`;
@@ -58,17 +60,17 @@ function validateForm(f) {
 }
 
 const C = {
-  cream: "#FBF4EA",
-  card: "#FFFFFF",
-  accent: "#D85A30",
-  accentDark: "#993C1D",
-  text: "#3E2C23",
-  muted: "#9A8478",
-  border: "#EADBCB",
+  cream: THEME.cream,
+  card: THEME.card,
+  accent: THEME.navy,
+  accentDark: THEME.navyLight,
+  text: THEME.text,
+  muted: THEME.muted,
+  border: THEME.border,
 };
 
 const S = {
-  page: { minHeight: "100vh", background: C.cream, fontFamily: "system-ui, -apple-system, sans-serif", color: C.text },
+  page: { minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY, color: C.text },
   wrap: { maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" },
   input: { width: "100%", padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, background: C.card, color: C.text, boxSizing: "border-box", outline: "none" },
   label: { display: "block", fontSize: 12.5, fontWeight: 600, color: C.text, marginBottom: 5 },
@@ -376,7 +378,7 @@ export default function VendorsPage() {
 
   const counts = meta.statusCounts || {};
   const stats = [
-    { label: "Total vendors", value: meta.total ?? 0, color: "#3E2C23" },
+    { label: "Total vendors", value: meta.total ?? 0, color: C.text },
     { label: "Active", value: counts.active ?? 0, color: STATUS_META.active.dot },
     { label: "Draft", value: counts.draft ?? 0, color: STATUS_META.draft.dot },
     { label: "Suspended", value: counts.suspended ?? 0, color: STATUS_META.suspended.dot },
@@ -386,7 +388,7 @@ export default function VendorsPage() {
     <div style={S.page}>
       {/* Brand top bar — same look as the user-facing Dashboard header */}
       <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}>🍜 TrueBites</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}><Store size={18} strokeWidth={1.7} /> TrueBites</div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 13, color: C.muted }}>Admin · Vendor Management</span>
           <button style={S.btn} onClick={handleBack}>← Back</button>
@@ -473,7 +475,7 @@ export default function VendorsPage() {
                             <img src={v.storefront_image_url} alt="" loading="lazy"
                               style={{ width: 46, height: 46, borderRadius: 8, objectFit: "cover", border: "1px solid #EADBCB", flexShrink: 0 }} />
                           ) : (
-                            <div style={{ width: 46, height: 46, borderRadius: 8, background: "#FBF4EA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🍜</div>
+                            <div style={{ width: 46, height: 46, borderRadius: 8, background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Store size={20} color={C.accent} strokeWidth={1.6} /></div>
                           )}
                           <div>
                             <div style={{ fontWeight: 600 }}>{v.vendor_name}</div>
@@ -546,7 +548,7 @@ export default function VendorsPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: toast.isError ? "#dc2626" : "#3E2C23", color: "#fff",
+          background: toast.isError ? "#B44E4E" : C.text, color: "#fff",
           padding: "11px 20px", borderRadius: 10, fontSize: 14, zIndex: 2000,
           boxShadow: "0 8px 24px rgba(0,0,0,.3)", maxWidth: "90vw",
         }}>

@@ -1,4 +1,6 @@
 import os
+import re
+from difflib import SequenceMatcher
 import httpx
 from dotenv import load_dotenv
 
@@ -7,6 +9,67 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+
+def _normalize_match_text(value: str = ""):
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _location_match_score(left: str, right: str):
+    left_tokens = set(_normalize_match_text(left).split())
+    right_tokens = set(_normalize_match_text(right).split())
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / max(len(left_tokens), len(right_tokens))
+
+
+def find_duplicate_vendors(vendor_name: str, address: str = "", city: str = "", state: str = ""):
+    """Return likely existing vendors for the administrator's duplicate review step."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY or not vendor_name:
+        return []
+
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+    }
+    safe_name = re.sub(r"[^a-zA-Z0-9 ]+", " ", vendor_name).strip()
+    params = {
+        "select": "id,vendor_name,address,city,state,status,source_video_url",
+        "limit": "1000",
+    }
+    if safe_name:
+        params["vendor_name"] = f"ilike.*{safe_name}*"
+
+    response = httpx.get(
+        f"{SUPABASE_URL}/rest/v1/vendors",
+        params=params,
+        headers=headers,
+        timeout=10,
+    )
+    response.raise_for_status()
+    candidates = response.json()
+
+    normalized_name = _normalize_match_text(vendor_name)
+    location = " ".join(part for part in [address, city, state] if part)
+    results = []
+    for candidate in candidates:
+        candidate_name = _normalize_match_text(candidate.get("vendor_name"))
+        name_score = SequenceMatcher(None, normalized_name, candidate_name).ratio()
+        location_score = _location_match_score(location, " ".join(
+            part for part in [candidate.get("address"), candidate.get("city"), candidate.get("state")] if part
+        ))
+        combined_score = name_score if not location else (name_score * 0.7) + (location_score * 0.3)
+
+        if name_score < 0.55 or combined_score < 0.55:
+            continue
+
+        results.append({
+            **candidate,
+            "match_score": round(combined_score, 3),
+            "match_type": "exact" if combined_score >= 0.9 else "possible",
+        })
+
+    return sorted(results, key=lambda item: item["match_score"], reverse=True)[:10]
 
 
 def geocode_address(vendor_name: str, address: str = "", city: str = "", state: str = ""):

@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import DiscoveryHeader from "./discovery/DiscoveryHeader";
 import FilterChips from "./discovery/FilterChips";
 import VendorCard from "./discovery/VendorCard";
 import VendorDetailModal from "./discovery/VendorDetailModal";
 import GuestPrompt from "./discovery/GuestPrompt";
-import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
-import { categoryOf } from "../lib/vendorDisplay";
+import { FONT_DISPLAY, FONT_BODY } from "../lib/theme";
+import { categoryMatches, creatorHandle } from "../lib/vendorDisplay";
+import { pageNumbers, paginate } from "../lib/pagination";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
+
+const PAGE_SIZE = 12;
 
 // The map-page discovery dashboard. DiscoveryHeader (logo/search/List·Map/avatar)
 // + Vendors/Bookmarks/My reviews tab strip. Vendors come from Supabase.
@@ -17,6 +21,8 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
   const [session, setSession] = useState(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [creator, setCreator] = useState("all");
+  const [page, setPage] = useState(1);
   const [detailVendor, setDetailVendor] = useState(null);
   const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const navigate = useNavigate();
@@ -38,6 +44,10 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, category, creator]);
+
   const meta = session?.user?.user_metadata || {};
   const userEmail = session?.user?.email || "";
   const avatarUrl = meta.avatar_url || "";
@@ -54,29 +64,33 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
       || (v.signature_dishes || "").toLowerCase().includes(q);
   }
   function matchesCategory(v) {
-    return category === "all" || categoryOf(v) === category;
+    return categoryMatches(v, category);
+  }
+  function matchesCreator(v) {
+    return creator === "all" || creatorHandle(v) === creator;
   }
 
-  const displayed = vendors.filter((v) => matchesSearch(v) && matchesCategory(v));
+  const displayed = vendors.filter((v) => matchesSearch(v) && matchesCategory(v) && matchesCreator(v));
+  const pageData = paginate(displayed, page, PAGE_SIZE);
+  useEffect(() => {
+    if (page > pageData.totalPages) setPage(pageData.totalPages);
+  }, [page, pageData.totalPages]);
   const isInTrip = (id) => tripVendorIds?.has(id) ?? false;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY }}>
+    <div className="discovery-page" style={{ fontFamily: FONT_BODY }}>
       <DiscoveryHeader
-        search={search} onSearchChange={setSearch}
         onOpenMap={onOpenMap}
-        session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl}
+        session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl} savedCount={bookmarked.length}
         onLogin={() => navigate("/login")} onOpenProfile={() => navigate("/profile")}
+        onOpenSaved={requireAuth(() => navigate("/engagement"))}
         onSignUp={() => navigate("/login")}
       />
 
       {/* Tab strip */}
-      <nav style={{
-        background: C.card, borderBottom: `1px solid ${C.border}`,
-        display: "flex", gap: 24, padding: "0 24px",
-      }}>
+      <nav className="discovery-tabs">
         {[
-          ["vendors",   "Vendors"],
+          ["vendors",   "Discover"],
           ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
           ["reviews",   "My reviews"],
         ].map(([key, label]) => (
@@ -85,58 +99,66 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
             if (key === "reviews") { requireAuth(() => navigate("/engagement?tab=reviews"))(); return; }
             setTab(key);
           }}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: "12px 2px", fontSize: 14, fontFamily: FONT_BODY,
-              color: tab === key ? C.navy : C.muted,
-              borderBottom: tab === key ? `2px solid ${C.gold}` : "2px solid transparent",
-              fontWeight: tab === key ? 600 : 400,
-            }}>
+            className={`discovery-tab${tab === key ? " discovery-tab-active" : ""}`}>
             {label}
           </button>
         ))}
       </nav>
 
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>
+      <main className="discovery-main">
         {tab === "vendors" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 4 }}>
+            <div className="discovery-hero">
               <div>
-                <h1 style={{
-                  fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700,
-                  color: C.navy, margin: 0, lineHeight: 1.2,
-                }}>
+                <p className="discovery-kicker">A local guide to Melaka</p>
+                <h1 className="discovery-title" style={{ fontFamily: FONT_DISPLAY }}>
                   Hidden gems,{" "}
-                  <span style={{ color: C.gold, fontStyle: "italic" }}>authentic flavours</span>
+                  <span className="discovery-title-emphasis">authentic flavours</span>
                 </h1>
-                <p style={{ color: C.muted, fontSize: 14, margin: "4px 0 0" }}>
+                <p className="discovery-subtitle">
                   {vendors.length} places waiting to be discovered
                 </p>
               </div>
-              <div style={{ color: C.gold, fontSize: 14 }}>♡ {bookmarked.length} saved</div>
+              <label className="discovery-search">
+                <Search size={18} />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search Nasi Lemak, Jonker, Kopitiam…"
+                  aria-label="Search places"
+                />
+              </label>
             </div>
 
-            <div style={{ margin: "16px -24px 0" }}>
-              <FilterChips active={category} onSelect={setCategory} />
-            </div>
+            <FilterChips
+              active={category}
+              onSelect={setCategory}
+              creator={creator}
+              onCreatorSelect={setCreator}
+              vendors={vendors}
+            />
 
             {displayed.length === 0 ? (
-              <Empty icon="🍽" text="No vendors match your search yet." />
+              <Empty onClear={() => { setSearch(""); setCategory("all"); setCreator("all"); }} />
             ) : (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: 20, marginTop: 20,
-              }}>
-                {displayed.map((v) => (
-                  <VendorCard
-                    key={v.id} vendor={v}
-                    inTrip={isInTrip(v.id)} bookmarked={bookmarks.has(v.id)}
-                    onToggleBookmark={guardedToggleBookmark} onAddStop={onAddStop}
-                    onOpenDetail={setDetailVendor}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="discovery-grid">
+                  {pageData.items.map((v) => (
+                    <VendorCard
+                      key={v.id} vendor={v}
+                      inTrip={isInTrip(v.id)} bookmarked={bookmarks.has(v.id)}
+                      onToggleBookmark={guardedToggleBookmark} onAddStop={onAddStop}
+                      onOpenDetail={setDetailVendor}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={pageData.page}
+                  totalPages={pageData.totalPages}
+                  total={pageData.total}
+                  onChange={setPage}
+                />
+              </>
             )}
           </>
         )}
@@ -156,14 +178,58 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
   );
 }
 
-function Empty({ icon, text }) {
+function Empty({ onClear }) {
   return (
-    <div style={{
-      background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
-      padding: "48px 24px", textAlign: "center", color: C.muted, marginTop: 20,
-    }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 14 }}>{text}</div>
+    <div className="discovery-empty">
+      <h2 className="discovery-empty-title">No places found</h2>
+      <p className="discovery-empty-copy">Try a different category, creator, or search term.</p>
+      <button type="button" className="discovery-clear-button" onClick={onClear}>Clear filters</button>
     </div>
+  );
+}
+
+function Pagination({ page, totalPages, total, onChange }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav className="discovery-pagination" aria-label="Vendor pages">
+      <span className="discovery-pagination-meta">
+        {total} places · Page {page} of {totalPages}
+      </span>
+      <div className="discovery-pagination-controls">
+        <button
+          type="button"
+          className="discovery-pagination-button"
+          aria-label="Previous page"
+          disabled={page === 1}
+          onClick={() => onChange(page - 1)}
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+        </button>
+        {pageNumbers(page, totalPages).map((item, index) => item === "ellipsis" ? (
+          <span key={`ellipsis-${index}`} className="discovery-pagination-ellipsis" aria-hidden="true">…</span>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            className={`discovery-pagination-page${item === page ? " discovery-pagination-page-active" : ""}`}
+            aria-label={`Page ${item}`}
+            aria-current={item === page ? "page" : undefined}
+            onClick={() => onChange(item)}
+          >
+            {item}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="discovery-pagination-button"
+          aria-label="Next page"
+          disabled={page === totalPages}
+          onClick={() => onChange(page + 1)}
+        >
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
+    </nav>
   );
 }

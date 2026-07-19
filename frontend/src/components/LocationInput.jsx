@@ -1,13 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-
-const C = {
-  cream: "#FBF4EA",
-  text: "#3E2C23",
-  muted: "#9A8478",
-  border: "#EADBCB",
-  accent: "#D85A30",
-};
+import { C, FONT_BODY } from "../lib/theme";
 
 // Google Places Autocomplete box for typing a start location manually,
 // instead of relying on GPS. Restricted to Malaysia to match app coverage.
@@ -37,7 +30,7 @@ export default function LocationInput({ onSelect }) {
     <input
       ref={inputRef}
       type="text"
-      placeholder="📍 Search start address…"
+      placeholder="Search start address…"
       style={{
         width: "100%",
         boxSizing: "border-box",
@@ -48,7 +41,7 @@ export default function LocationInput({ onSelect }) {
         background: C.cream,
         color: C.text,
         fontSize: 13,
-        fontFamily: "system-ui",
+        fontFamily: FONT_BODY,
         outline: "none",
       }}
       onFocus={(e) => (e.target.style.borderColor = C.accent)}

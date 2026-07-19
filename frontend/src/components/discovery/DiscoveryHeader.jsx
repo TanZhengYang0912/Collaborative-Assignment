@@ -1,138 +1,65 @@
-import { Search, LayoutGrid, Map as MapIcon, User } from "lucide-react";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
+import { Bookmark, LayoutGrid, Map as MapIcon, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
+import { FONT_BODY } from "../../lib/theme";
 
-// Top bar: TRUEBITES/MELAKA·MALAYSIA stacked lockup, centred search, List/Map
-// toggle (active = navy), user avatar.
+// Shared customer header for discovery and map surfaces. Search now lives in
+// the discovery hero so the top bar stays quiet and consistent across screens.
 export default function DiscoveryHeader({
-  search, onSearchChange,
   onOpenMap,
   session, userEmail, initials, firstName, avatarUrl, onLogin, onOpenProfile, onSignUp,
+  onOpenSaved,
+  savedCount = 0,
 }) {
   return (
-    <header
-      style={{
-        display: "flex", alignItems: "center", gap: 20,
-        padding: "12px 24px", background: C.card,
-        borderBottom: `1px solid ${C.border}`, fontFamily: FONT_BODY,
-      }}
-    >
-      {/* Stacked wordmark: TRUEBITES / MELAKA · MALAYSIA */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 8, background: C.navy,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ color: C.gold, fontSize: 15, fontWeight: 700, fontFamily: FONT_DISPLAY }}>TB</span>
+    <header className="discovery-header" style={{ fontFamily: FONT_BODY }}>
+      <Link
+        to="/"
+        className="discovery-wordmark"
+        aria-label="Back to TrueBites home"
+        title="Back to home"
+        style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, textDecoration: "none" }}
+      >
+        <div className="discovery-wordmark-mark">TB</div>
+        <div style={{ lineHeight: 1.1 }}>
+          <div className="discovery-wordmark-title">TRUEBITES</div>
+          <div className="discovery-wordmark-sub">Melaka · Malaysia</div>
         </div>
-        <div style={{ lineHeight: 1.15 }}>
-          <div style={{
-            fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 17,
-            color: C.navy, letterSpacing: 0.5,
-          }}>
-            TRUEBITES
-          </div>
-          <div style={{
-            fontFamily: FONT_BODY, fontWeight: 500, fontSize: 10,
-            color: C.gold, letterSpacing: 1.5, textTransform: "uppercase",
-          }}>
-            MELAKA · MALAYSIA
-          </div>
-        </div>
+      </Link>
+
+      <div className="discovery-header-spacer" />
+
+      <button type="button" className="discovery-header-action" onClick={() => onOpenSaved?.()} aria-label="Open saved places">
+        <Bookmark size={15} strokeWidth={1.7} />
+        <span>Saved{savedCount ? ` ${savedCount}` : ""}</span>
+      </button>
+
+      <div className="discovery-view-toggle" aria-label="View mode">
+        <span className="discovery-view-toggle-active"><LayoutGrid size={14} /> List</span>
+        <button type="button" className="discovery-view-toggle-button" onClick={onOpenMap}>
+          <MapIcon size={14} /> Map
+        </button>
       </div>
 
-      {/* Search */}
-      <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-        <div style={{ position: "relative", width: "100%", maxWidth: 440 }}>
-          <Search
-            size={16} color={C.muted}
-            style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}
-          />
-          <input
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Nasi Lemak, Jonker, Kopitiam…"
-            style={{
-              width: "100%", boxSizing: "border-box", padding: "9px 14px 9px 38px",
-              borderRadius: 10, border: `1px solid ${C.border}`, background: C.cream,
-              color: C.text, fontSize: 14, fontFamily: FONT_BODY, outline: "none",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* LIST/MAP toggle + avatar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-        <div style={{
-          display: "flex", background: C.cream, borderRadius: 10,
-          padding: 3, border: `1px solid ${C.border}`,
-        }}>
-          <span style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-            borderRadius: 8, background: C.navy, color: "#fff",
-            fontSize: 13, fontWeight: 500,
-          }}>
-            <LayoutGrid size={14} /> List
-          </span>
-          <button
-            onClick={onOpenMap}
-            style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-              borderRadius: 8, background: "none", border: "none", cursor: "pointer",
-              fontSize: 13, fontWeight: 500, color: C.muted, fontFamily: FONT_BODY,
-            }}
-          >
-            <MapIcon size={14} /> Map
+      {session ? (
+        <button
+          type="button"
+          className="discovery-avatar"
+          onClick={onOpenProfile}
+          title={userEmail}
+          aria-label={`Open profile${firstName ? ` for ${firstName}` : ""}`}
+        >
+          {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
+        </button>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button type="button" onClick={onSignUp} className="discovery-header-action" style={{ borderColor: "var(--tb-forest)", color: "var(--tb-forest)", fontWeight: 600 }}>
+            Sign up
+          </button>
+          <button type="button" onClick={onLogin} className="discovery-avatar" style={{ background: "transparent", color: "var(--tb-forest)" }} aria-label="Open sign in">
+            <UserRound size={16} />
           </button>
         </div>
-
-        {session ? (
-          <div
-            onClick={onOpenProfile}
-            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-          >
-            {firstName && (
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.navy, fontFamily: FONT_BODY, whiteSpace: "nowrap" }}>
-                Welcome, {firstName}
-              </span>
-            )}
-            <div
-              title={userEmail}
-              style={{
-                width: 34, height: 34, borderRadius: "50%", background: C.navy, color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                fontFamily: FONT_BODY, fontWeight: 600, flexShrink: 0, overflow: "hidden",
-              }}
-            >
-              {avatarUrl
-                ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : initials}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button
-              onClick={onSignUp}
-              style={{
-                padding: "8px 18px", borderRadius: 20, background: C.navy,
-                border: "none", cursor: "pointer", color: "#fff",
-                fontSize: 13, fontWeight: 600, fontFamily: FONT_BODY, whiteSpace: "nowrap",
-              }}
-            >
-              Sign Up
-            </button>
-            <button
-              onClick={onLogin}
-              style={{
-                width: 34, height: 34, borderRadius: "50%", background: C.cream,
-                border: `1px solid ${C.border}`, display: "flex", alignItems: "center",
-                justifyContent: "center", cursor: "pointer", color: C.muted, flexShrink: 0,
-              }}
-            >
-              <User size={16} />
-            </button>
-          </div>
-        )}
-      </div>
+      )}
     </header>
   );
 }

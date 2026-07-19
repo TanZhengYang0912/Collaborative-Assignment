@@ -84,7 +84,7 @@ function Toast({ message, onDone }) {
         zIndex: 100,
         padding: "10px 18px",
         borderRadius: 999,
-        background: "#20395f",
+        background: "var(--admin-success-text)",
         color: "#fff",
         fontSize: 13,
         fontWeight: 700,

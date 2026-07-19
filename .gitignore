@@ -31,6 +31,26 @@ backend/scripts/geocode_log.json
 # Python bytecode cache
 __pycache__/
 *.pyc
+*.pyo
 
 # AI pipeline runtime outputs (audio files, transcripts) — large binary files
 backend/outputs/
+
+# Python virtual environments — large, never commit
+venv/
+venv-new/
+venv312/
+venv313/
+.venv/
+backend/venv/
+backend/venv-new/
+backend/venv312/
+backend/venv313/
+backend/.venv/
+
+# Python cache
+backend/routes/__pycache__/
+backend/services/__pycache__/
+
+# Test files (local only)
+backend/tests/
