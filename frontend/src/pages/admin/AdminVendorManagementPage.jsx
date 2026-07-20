@@ -1,10 +1,13 @@
-import { Ban, Check, Eye, ImagePlus, MapPin, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Ban, Check, Eye, ImagePlus, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
-  createAdminVendor, deleteAdminVendor, geocodeVendorAddress, getAdminVendors,
+  createAdminVendor, deleteAdminVendor, getAdminVendors,
   updateAdminVendor, uploadVendorImage,
 } from "../../api/admin";
+
+const MAPS_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 
 const CATEGORIES = ["Malaysian / Local", "Nyonya / Peranakan", "Chinese", "Cafe / Dessert", "Western"];
 const STATUS_OPTIONS = ["all", "active", "draft", "suspended"];
@@ -287,50 +290,59 @@ function ImageDropzone({ form, onFileChange, disabled }) {
   );
 }
 
-// Calls the server-side geocoder to resolve the typed address to lat/lng —
-// writes the result back through the same `onChange` used by the plain text
-// inputs (synthetic `{ target: { name, value } }` events), so no extra prop
-// plumbing is needed through Add/Edit/View. Clears its "verified" state the
-// moment the address text changes, since a stale checkmark would be
-// misleading once the address no longer matches the filled-in coordinates.
-function AddressVerifyButton({ form, onChange, disabled }) {
-  const [status, setStatus] = useState("idle"); // idle | loading | success | error
-  const [message, setMessage] = useState("");
-  const [verifiedFor, setVerifiedFor] = useState("");
+// Google Places Autocomplete on the Address field, restricted to Melaka.
+// Picking a suggestion fires the standard form `onChange` three times (address,
+// latitude, longitude), so lat/lng auto-fill through the exact same plumbing
+// every other field uses — no extra prop wiring. Degrades to a plain text
+// input when the Maps `places` library isn't available (no key / offline).
+function AddressAutocomplete({ form, error, onChange, disabled }) {
+  const placesLib = useMapsLibrary("places");
+  const inputRef = useRef(null);
+  // Keep the latest onChange without re-running the effect (which would tear
+  // down and rebuild the Autocomplete widget on every keystroke).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
-    if (status === "success" && form.address !== verifiedFor) setStatus("idle");
-  }, [form.address, status, verifiedFor]);
+    if (!placesLib || !inputRef.current || disabled || !window.google?.maps) return;
 
-  const verify = async () => {
-    if (!form.address.trim()) {
-      setStatus("error");
-      setMessage("Enter an address first.");
-      return;
-    }
-    setStatus("loading");
-    try {
-      const result = await geocodeVendorAddress({ address: form.address, vendor_name: form.vendor_name });
-      onChange({ target: { name: "latitude", value: String(result.latitude) } });
-      onChange({ target: { name: "longitude", value: String(result.longitude) } });
-      setVerifiedFor(form.address);
-      setStatus("success");
-      setMessage(result.formatted_address);
-    } catch (err) {
-      setStatus("error");
-      setMessage(err.message);
-    }
-  };
+    const autocomplete = new placesLib.Autocomplete(inputRef.current, {
+      fields: ["formatted_address", "geometry", "name"],
+      componentRestrictions: { country: "my" },
+      bounds: new window.google.maps.LatLngBounds(
+        { lat: MELAKA_BOUNDS.latMin, lng: MELAKA_BOUNDS.lngMin },
+        { lat: MELAKA_BOUNDS.latMax, lng: MELAKA_BOUNDS.lngMax },
+      ),
+      strictBounds: true,
+    });
+
+    const listener = autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      const loc = place.geometry?.location;
+      if (!loc) return;
+      const fire = onChangeRef.current;
+      fire({ target: { name: "address", value: place.formatted_address || place.name || "" } });
+      fire({ target: { name: "latitude", value: String(loc.lat()) } });
+      fire({ target: { name: "longitude", value: String(loc.lng()) } });
+    });
+
+    return () => listener.remove();
+  }, [placesLib, disabled]);
 
   return (
-    <div className="admin-geocode-row">
-      <button type="button" className="admin-secondary-btn compact" onClick={verify} disabled={disabled || status === "loading"}>
-        <MapPin size={13} />
-        {status === "loading" ? "Verifying…" : "Verify Address"}
-      </button>
-      {status === "success" && <span className="admin-geocode-result success"><Check size={13} /> {message}</span>}
-      {status === "error" && <span className="admin-geocode-result error">{message}</span>}
-    </div>
+    <label>
+      <span>Address</span>
+      <input
+        ref={inputRef}
+        name="address"
+        value={form.address}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder="Start typing a Melaka address…"
+      />
+      {!disabled && <span className="admin-field-hint">Pick a suggestion to auto-fill the map coordinates.</span>}
+      <FieldError message={error} />
+    </label>
   );
 }
 
@@ -345,13 +357,7 @@ function VendorFormFields({ form, errors, onChange, onFileChange, disabled }) {
         <FieldError message={errors?.vendor_name} />
       </label>
 
-      <label>
-        <span>Address</span>
-        <textarea name="address" value={form.address} onChange={onChange} disabled={disabled} rows={2} placeholder="Full address" />
-        <FieldError message={errors?.address} />
-      </label>
-
-      <AddressVerifyButton form={form} onChange={onChange} disabled={disabled} />
+      <AddressAutocomplete form={form} error={errors?.address} onChange={onChange} disabled={disabled} />
 
       <div className="admin-modal-grid">
         <label>
@@ -804,7 +810,7 @@ export default function AdminVendorManagementPage() {
     resetToFirstPage();
   };
 
-  return (
+  const content = (
     <section className="admin-vendors-page">
       <div className="admin-toolbar">
         <div className="admin-search">
@@ -1058,4 +1064,11 @@ export default function AdminVendorManagementPage() {
       )}
     </section>
   );
+
+  // Load the Google Maps `places` library for the address autocomplete only
+  // when a browser key is configured; otherwise render as-is and the address
+  // field falls back to a plain text input.
+  return MAPS_KEY ? (
+    <APIProvider apiKey={MAPS_KEY} libraries={["places"]}>{content}</APIProvider>
+  ) : content;
 }
