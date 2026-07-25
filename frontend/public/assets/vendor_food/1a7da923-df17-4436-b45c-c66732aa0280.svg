@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Beger Diraja">
+  <title>Beger Diraja</title>
+  <defs>
+    <filter id="fb99bc42b" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-4"/>
+      <feColorMatrix type="saturate" values="1.19"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncG type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncB type="linear" slope="0.93" intercept="0.035"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.06"/>
+        <feFuncG type="linear" slope="1.06"/>
+        <feFuncB type="linear" slope="1.06"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.12"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/07-healthy-cafe-bowl.png" x="-148" y="-32" width="786" height="590" preserveAspectRatio="none" filter="url(#fb99bc42b)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

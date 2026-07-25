@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import PasswordField from "../components/PasswordField";
 
 function GoogleIcon() {
   return (
@@ -154,7 +155,11 @@ export default function LoginPage() {
           error?.statusText ||
           error?.status ||
           (error && Object.keys(error).length > 0 ? JSON.stringify(error) : "Unknown error from Supabase");
-        setErrorMsg(errorMessage);
+        const friendlyMessage =
+          mode !== "signup" && errorMessage === "Invalid login credentials"
+            ? "Sorry, you may have entered a wrong email or password! Try checking again!"
+            : errorMessage;
+        setErrorMsg(friendlyMessage);
         return;
       }
 
@@ -168,7 +173,7 @@ export default function LoginPage() {
         } else {
           setInfoMsg("Account created! Check your email to confirm before signing in.");
           setEmail("");
-          setPassword("");
+          setPassword("");login
         }
       } else {
         navigate("/map", { replace: true });
@@ -274,9 +279,8 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <input
+            <PasswordField
               style={styles.input}
-              type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

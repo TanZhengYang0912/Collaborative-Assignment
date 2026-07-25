@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Cara Berlawak Inti Melimpah">
+  <title>Cara Berlawak Inti Melimpah</title>
+  <defs>
+    <filter id="f9c40f19b" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="7"/>
+      <feColorMatrix type="saturate" values="0.97"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncG type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncB type="linear" slope="0.95" intercept="0.025"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.95"/>
+        <feFuncG type="linear" slope="0.95"/>
+        <feFuncB type="linear" slope="0.95"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.13"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/06-creamy-chicken-rice-cake.png" x="-281" y="-34" width="899" height="674" preserveAspectRatio="none" filter="url(#f9c40f19b)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

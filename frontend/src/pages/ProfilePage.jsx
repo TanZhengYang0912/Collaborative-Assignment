@@ -44,11 +44,8 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [resetSaving, setResetSaving] = useState(false);
   const [resetError, setResetError] = useState("");
-  const [resetDone, setResetDone] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -243,32 +240,18 @@ export default function ProfilePage() {
     setEditing(false);
   }
 
-  function startResettingPassword() {
-    setNewPassword("");
-    setConfirmPassword("");
+  // Being logged into the profile already proves ownership of the account,
+  // so no separate current-password check is needed before emailing the link.
+  async function startResettingPassword() {
     setResetError("");
-    setResetDone(false);
     setResettingPassword(true);
-  }
-
-  const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
-
-  async function handleResetPassword() {
-    if (!PASSWORD_RE.test(newPassword)) {
-      setResetError("Password must be at least 8 characters and include a letter and a number.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setResetError("Passwords do not match.");
-      return;
-    }
-
     setResetSaving(true);
-    setResetError("");
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}/reset-password?redirect=profile`,
+    });
     setResetSaving(false);
-    if (error) { setResetError(error.message); return; }
-    setResetDone(true);
+    if (error) setResetError(error.message);
   }
 
   return (
@@ -401,9 +384,28 @@ export default function ProfilePage() {
 
             {resettingPassword && (
               <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, marginBottom: 10, textAlign: "left" }}>
-                {resetDone ? (
+                {resetSaving ? (
+                  <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Sending reset email…</p>
+                ) : resetError ? (
                   <>
-                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>Your password has been updated.</p>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, color: "#c0392b" }}>{resetError}</p>
+                    <button
+                      onClick={() => setResettingPassword(false)}
+                      style={{
+                        width: "100%", padding: "10px 16px", fontSize: 13.5,
+                        background: "#fff", color: C.text, border: `1px solid ${C.border}`,
+                        borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
+                      }}
+                    >
+                      Close
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>
+                      We've sent a password reset link to <strong>{userEmail}</strong>. Open it to set a new
+                      password — you'll be brought back here once it's done.
+                    </p>
                     <button
                       onClick={() => setResettingPassword(false)}
                       style={{
@@ -414,50 +416,6 @@ export default function ProfilePage() {
                     >
                       Done
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-                      <input
-                        type="password"
-                        placeholder="New password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        style={{ width: "100%", padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Confirm new password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        style={{ width: "100%", padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
-                      />
-                    </div>
-                    {resetError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 12px" }}>{resetError}</p>}
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        onClick={() => setResettingPassword(false)}
-                        disabled={resetSaving}
-                        style={{
-                          flex: 1, padding: "10px 16px", fontSize: 13.5,
-                          background: "#fff", color: C.text, border: `1px solid ${C.border}`,
-                          borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleResetPassword}
-                        disabled={resetSaving}
-                        style={{
-                          flex: 1, padding: "10px 16px", fontSize: 13.5,
-                          background: C.accent, color: "#fff", border: "none",
-                          borderRadius: 6, cursor: resetSaving ? "default" : "pointer", fontWeight: 600, fontFamily: "system-ui",
-                        }}
-                      >
-                        {resetSaving ? "Saving…" : "Save"}
-                      </button>
-                    </div>
                   </>
                 )}
               </div>

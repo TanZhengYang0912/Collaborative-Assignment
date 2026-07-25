@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Izahar Durian Murah Melakuk">
+  <title>Izahar Durian Murah Melakuk</title>
+  <defs>
+    <filter id="fc6cb456" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="4"/>
+      <feColorMatrix type="saturate" values="0.92"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncG type="linear" slope="1.11" intercept="-0.055"/>
+        <feFuncB type="linear" slope="1.11" intercept="-0.055"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.92"/>
+        <feFuncG type="linear" slope="0.92"/>
+        <feFuncB type="linear" slope="0.92"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.17"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/05-cendol-coconut-shake.png" x="-26" y="-143" width="911" height="684" preserveAspectRatio="none" filter="url(#fc6cb456)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

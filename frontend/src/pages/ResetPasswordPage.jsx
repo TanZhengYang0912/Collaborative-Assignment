@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import PasswordField from "../components/PasswordField";
 
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
@@ -25,6 +26,11 @@ export default function ResetPasswordPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [done, setDone] = useState(false);
   const navigate = useNavigate();
+
+  // Present when this link was requested from the Profile page's "Reset
+  // Password" flow (see ProfilePage.jsx) rather than the logged-out
+  // "Forgot password?" flow — determines where we send the user afterwards.
+  const fromProfile = new URLSearchParams(window.location.search).get("redirect") === "profile";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -54,6 +60,13 @@ export default function ResetPasswordPage() {
     setLoading(false);
     if (error) { setErrorMsg(error.message); return; }
     setDone(true);
+
+    // The recovery link already left us with a live session, so a reset
+    // triggered from the profile page can go straight back in — no separate
+    // sign-in step needed.
+    if (fromProfile) {
+      setTimeout(() => navigate("/profile", { replace: true }), 1500);
+    }
   }
 
   if (!ready) {
@@ -74,19 +87,20 @@ export default function ResetPasswordPage() {
         {done ? (
           <>
             <p style={{ fontSize: 13.5, color: C.muted, margin: "8px 0 20px" }}>
-              Your password has been updated. You can now sign in with it.
+              {fromProfile
+                ? "Your password has been updated. Taking you back to your profile…"
+                : "Your password has been updated. You can now sign in with it."}
             </p>
             <button
-              onClick={() => navigate("/login", { replace: true })}
+              onClick={() => navigate(fromProfile ? "/profile" : "/login", { replace: true })}
               style={{ width: "100%", padding: "10px 16px", fontSize: 14, border: "none", borderRadius: 4, background: C.accent, color: "#fff", cursor: "pointer", fontWeight: 500 }}
             >
-              Go to Sign In
+              {fromProfile ? "Back to Profile" : "Go to Sign In"}
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-            <input
-              type="password"
+            <PasswordField
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -94,8 +108,7 @@ export default function ResetPasswordPage() {
               required
               autoFocus
             />
-            <input
-              type="password"
+            <PasswordField
               placeholder="Confirm new password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

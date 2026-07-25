@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Warung Cikgu Jalal &amp; Cik Ida">
+  <title>Warung Cikgu Jalal &amp; Cik Ida</title>
+  <defs>
+    <filter id="fd4ed38d1" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="0"/>
+      <feColorMatrix type="saturate" values="1.02"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncG type="linear" slope="0.95" intercept="0.025"/>
+        <feFuncB type="linear" slope="0.95" intercept="0.025"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.94"/>
+        <feFuncG type="linear" slope="0.94"/>
+        <feFuncB type="linear" slope="0.94"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.14"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/09-nyonya-heritage-meal.png" x="-235" y="-1" width="804" height="603" preserveAspectRatio="none" filter="url(#fd4ed38d1)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

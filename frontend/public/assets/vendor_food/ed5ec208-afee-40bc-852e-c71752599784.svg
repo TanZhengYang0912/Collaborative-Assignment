@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Kocai Roti Canai Dulang">
+  <title>Kocai Roti Canai Dulang</title>
+  <defs>
+    <filter id="f18e0500a" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="4"/>
+      <feColorMatrix type="saturate" values="0.95"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.08" intercept="-0.040"/>
+        <feFuncG type="linear" slope="1.08" intercept="-0.040"/>
+        <feFuncB type="linear" slope="1.08" intercept="-0.040"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.09"/>
+        <feFuncG type="linear" slope="1.09"/>
+        <feFuncB type="linear" slope="1.09"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.16"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/05-cendol-coconut-shake.png" x="-224" y="-69" width="834" height="625" preserveAspectRatio="none" filter="url(#f18e0500a)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.035"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Restoran Terapung">
+  <title>Restoran Terapung</title>
+  <defs>
+    <filter id="f65b5a8fb" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="3"/>
+      <feColorMatrix type="saturate" values="1.10"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.96" intercept="0.020"/>
+        <feFuncG type="linear" slope="0.96" intercept="0.020"/>
+        <feFuncB type="linear" slope="0.96" intercept="0.020"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.09"/>
+        <feFuncG type="linear" slope="1.09"/>
+        <feFuncB type="linear" slope="1.09"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.14"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g transform="translate(512 0) scale(-1 1)">
+    <image href="/assets/vendor_food_sources/10-coconut-shake-stall.png" x="-355" y="-169" width="911" height="684" preserveAspectRatio="none" filter="url(#f65b5a8fb)"/>
+  </g>
+  <rect width="512" height="512" fill="#14335f" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Kuali Ice Cafe">
+  <title>Kuali Ice Cafe</title>
+  <defs>
+    <filter id="f96c28b97" color-interpolation-filters="sRGB">
+      <feColorMatrix type="hueRotate" values="-1"/>
+      <feColorMatrix type="saturate" values="1.01"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncG type="linear" slope="0.93" intercept="0.035"/>
+        <feFuncB type="linear" slope="0.93" intercept="0.035"/>
+      </feComponentTransfer>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.01"/>
+        <feFuncG type="linear" slope="1.01"/>
+        <feFuncB type="linear" slope="1.01"/>
+      </feComponentTransfer>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="46%" r="68%">
+      <stop offset="58%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.10"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#f4efe5"/>
+  <g>
+    <image href="/assets/vendor_food_sources/01-ikan-bakar.png" x="-14" y="-9" width="823" height="618" preserveAspectRatio="none" filter="url(#f96c28b97)"/>
+  </g>
+  <rect width="512" height="512" fill="#c08b2c" opacity="0.045"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>
