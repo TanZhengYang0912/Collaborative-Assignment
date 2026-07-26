@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
+import { C, FONT_BODY } from "../../lib/theme";
+import TrueBitesLogo from "../TrueBitesLogo";
 
 // Transparent over the hero, transitions to solid cream on scroll.
 // Logo: TRUEBITES (Playfair) + MELAKA · MALAYSIA sub-label (Inter caps).
@@ -20,7 +21,7 @@ export default function LandingNav({ heroRef }) {
   }
 
   return (
-    <nav style={{
+    <nav className="landing-nav" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
       padding: "16px 48px",
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -35,23 +36,7 @@ export default function LandingNav({ heroRef }) {
         aria-label="Back to TrueBites home"
         style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}
       >
-        <div style={{
-          width: 34, height: 34, borderRadius: 7, background: C.navy,
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>
-          <span style={{ color: C.gold, fontSize: 13, fontWeight: 700, fontFamily: FONT_DISPLAY }}>TB</span>
-        </div>
-        <div style={{ lineHeight: 1.2 }}>
-          <div style={{
-            fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16,
-            color: scrolled ? C.navy : "#fff", letterSpacing: 0.4,
-          }}>TRUEBITES</div>
-          <div style={{
-            fontFamily: FONT_BODY, fontWeight: 500, fontSize: 9,
-            color: scrolled ? C.gold : "rgba(255,255,255,0.8)",
-            letterSpacing: 1.8, textTransform: "uppercase",
-          }}>MELAKA · MALAYSIA</div>
-        </div>
+        <TrueBitesLogo size="header" tone={scrolled ? "default" : "light"} />
       </Link>
 
       {/* Links */}
@@ -63,6 +48,7 @@ export default function LandingNav({ heroRef }) {
           <button
             key={label}
             onClick={action}
+            className="landing-nav-link"
             style={{
               background: "none", border: "none", cursor: "pointer",
               fontFamily: FONT_BODY, fontSize: 11.5, fontWeight: 600, letterSpacing: 1.8,
@@ -74,7 +60,7 @@ export default function LandingNav({ heroRef }) {
           </button>
         ))}
 
-        <Link to="/map" style={{
+        <Link to="/map" className="landing-nav-cta" style={{
           padding: "9px 22px", borderRadius: 24,
           background: C.navy, color: "#fff",
           fontFamily: FONT_BODY, fontSize: 12, fontWeight: 600, letterSpacing: 1,

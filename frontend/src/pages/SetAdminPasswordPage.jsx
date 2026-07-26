@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import PasswordField from "../components/PasswordField";
 import "../ai-module.css";
 
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -67,17 +68,15 @@ export default function SetAdminPasswordPage() {
 
         <div className="card" style={{ width: "100%" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <input
+            <PasswordField
               className="url-input"
-              type="password"
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <input
+            <PasswordField
               className="url-input"
-              type="password"
               placeholder="Confirm password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

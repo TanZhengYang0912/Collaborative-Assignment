@@ -17,7 +17,6 @@ const PAGE_SIZE = 12;
 // The map-page discovery dashboard. DiscoveryHeader (logo/search/List·Map/avatar)
 // + Vendors/Bookmarks/My reviews tab strip. Vendors come from Supabase.
 export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpenMap, tripVendorIds, onAddStop }) {
-  const [tab, setTab] = useState("vendors");
   const [session, setSession] = useState(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -83,31 +82,15 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
         onOpenMap={onOpenMap}
         session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl} savedCount={bookmarked.length}
         onLogin={() => navigate("/login")} onOpenProfile={() => navigate("/profile")}
+        activeSection="discover"
+        onOpenDiscover={() => navigate("/map")}
         onOpenSaved={requireAuth(() => navigate("/engagement"))}
+        onOpenReviews={requireAuth(() => navigate("/engagement?tab=reviews"))}
         onSignUp={() => navigate("/login")}
       />
 
-      {/* Tab strip */}
-      <nav className="discovery-tabs">
-        {[
-          ["vendors",   "Discover"],
-          ["bookmarks", `Bookmarks${bookmarked.length ? ` (${bookmarked.length})` : ""}`],
-          ["reviews",   "My reviews"],
-        ].map(([key, label]) => (
-          <button key={key} onClick={() => {
-            if (key === "bookmarks") { requireAuth(() => navigate("/engagement"))(); return; }
-            if (key === "reviews") { requireAuth(() => navigate("/engagement?tab=reviews"))(); return; }
-            setTab(key);
-          }}
-            className={`discovery-tab${tab === key ? " discovery-tab-active" : ""}`}>
-            {label}
-          </button>
-        ))}
-      </nav>
-
       <main className="discovery-main">
-        {tab === "vendors" && (
-          <>
+        <>
             <div className="discovery-hero">
               <div>
                 <p className="discovery-kicker">A local guide to Melaka</p>
@@ -160,8 +143,7 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
                 />
               </>
             )}
-          </>
-        )}
+        </>
       </main>
 
       {detailVendor && (

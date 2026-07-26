@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { APIProvider, Map as GMap, useMap } from "@vis.gl/react-google-maps";
 import { getRestaurants, getTrip } from "../api";
 import { supabase } from "../supabaseClient";
@@ -54,7 +54,8 @@ function FocusOnUser({ pos }) {
 
 export default function MapPage() {
   const navigate = useNavigate();
-  const [view, setView] = useState("dashboard");     // "dashboard" | "map"
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState(() => searchParams.get("view") === "map" ? "map" : "dashboard");     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
   const [session, setSession] = useState(null);
   const [bookmarkRows, setBookmarkRows] = useState([]); // {vendor_id, folder_id, folder} from the server

@@ -1,14 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
+  color-scheme: light;
   --admin-bg: #F7F8FA;
   --admin-panel: #ffffff;
   --admin-panel-soft: #F1F4F8;
   --admin-navy: #3658D4;
   --admin-navy-strong: #2743B6;
+  --admin-hero: #26364F;
   --admin-text: #17212B;
   --admin-muted: #667281;
   --admin-border: #E3E7ED;
+  --admin-hover: #F5F7FB;
+  --admin-focus: rgba(54, 88, 212, 0.18);
   --admin-success-bg: #E6F4EF;
   --admin-success-text: #198A70;
   --admin-warning-bg: #FFF4DD;
@@ -19,6 +23,7 @@
   --admin-draft-text: #667281;
   --admin-shadow: 0 8px 24px rgba(23, 33, 43, 0.05);
   --admin-radius: 12px;
+  --admin-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* ── Shell ──────────────────────────────────────────────── */
@@ -34,6 +39,11 @@
 
 /* ── Sidebar ────────────────────────────────────────────── */
 .admin-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
   background: #fff;
   border-right: 1px solid var(--admin-border);
   display: flex;
@@ -82,7 +92,7 @@
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
-  transition: 140ms ease;
+  transition: background-color 160ms var(--admin-ease-out), color 160ms var(--admin-ease-out), transform 160ms var(--admin-ease-out);
 }
 
 .admin-nav-item svg {
@@ -90,8 +100,12 @@
 }
 
 .admin-nav-item:hover {
-  background: #f5f7fb;
+  background: var(--admin-hover);
   color: var(--admin-navy);
+}
+
+.admin-nav-item:active {
+  transform: scale(0.985);
 }
 
 .admin-nav-item.active {
@@ -164,7 +178,10 @@
 }
 
 .admin-topbar {
-  padding: 12px 22px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 13px 22px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -204,7 +221,7 @@
   border-radius: 999px;
   font-weight: 700;
   font-size: 12px;
-  transition: 140ms ease;
+  transition: background-color 160ms var(--admin-ease-out), border-color 160ms var(--admin-ease-out), color 160ms var(--admin-ease-out), transform 120ms var(--admin-ease-out);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -219,7 +236,7 @@
 }
 
 .admin-icon-btn:hover {
-  background: #f5f7fb;
+  background: var(--admin-hover);
   color: var(--admin-navy);
 }
 
@@ -244,7 +261,7 @@
 
 .admin-view-site:hover,
 .admin-secondary-btn:hover:not(:disabled) {
-  background: #f5f7fb;
+  background: var(--admin-hover);
   color: var(--admin-navy);
 }
 
@@ -258,6 +275,26 @@
 
 .admin-primary-btn:hover:not(:disabled) {
   background: var(--admin-navy-strong);
+}
+
+.admin-icon-btn:active,
+.admin-view-site:active,
+.admin-primary-btn:active,
+.admin-secondary-btn:active,
+.admin-detail-btn:active {
+  transform: scale(0.97);
+}
+
+.admin-icon-btn:focus-visible,
+.admin-view-site:focus-visible,
+.admin-primary-btn:focus-visible,
+.admin-secondary-btn:focus-visible,
+.admin-detail-btn:focus-visible,
+.admin-nav-item:focus-visible,
+.admin-signout:focus-visible,
+.admin-link-btn:focus-visible {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: 2px;
 }
 
 .admin-primary-btn.danger {
@@ -309,6 +346,10 @@
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow);
+}
+
+.admin-panel {
+  transition: border-color 160ms var(--admin-ease-out), box-shadow 160ms var(--admin-ease-out);
 }
 
 .admin-stat-card {
@@ -558,6 +599,12 @@
   background: #fff;
   border-radius: 999px;
   padding: 9px 14px;
+  transition: border-color 160ms var(--admin-ease-out), box-shadow 160ms var(--admin-ease-out);
+}
+
+.admin-search:focus-within {
+  border-color: var(--admin-navy);
+  box-shadow: 0 0 0 3px var(--admin-focus);
 }
 
 .admin-search input,
@@ -598,12 +645,13 @@
 }
 
 .admin-filter-cluster select:hover {
-  background-color: #f5f7fb;
+  background-color: var(--admin-hover);
 }
 
 .admin-filter-cluster select:focus {
   outline: none;
   border-color: var(--admin-navy);
+  box-shadow: 0 0 0 3px var(--admin-focus);
 }
 
 .admin-segmented-control {
@@ -634,7 +682,7 @@
 
 .admin-segmented-control button:hover:not(.active),
 .admin-ai-tabs button:hover:not(.active) {
-  background: #f5f7fb;
+  background: var(--admin-hover);
   color: var(--admin-navy);
 }
 
@@ -666,7 +714,7 @@
 }
 
 .admin-table tbody tr:hover td {
-  background: #fafbfc;
+  background: var(--admin-hover);
 }
 
 .admin-table-vendor {
@@ -904,7 +952,7 @@
 /* ── Hero banner (AI page) ──────────────────────────────── */
 .admin-hero-banner {
   grid-column: 1 / -1;
-  background: var(--admin-navy);
+  background: var(--admin-hero);
   color: #fff;
   padding: 18px 20px;
   display: flex;
@@ -1228,6 +1276,7 @@
   justify-content: center;
   padding: 24px;
   z-index: 50;
+  animation: adminBackdropIn 160ms var(--admin-ease-out) both;
 }
 
 .admin-modal-card {
@@ -1238,6 +1287,8 @@
   border: 1px solid var(--admin-border);
   border-radius: 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+  transform-origin: center;
+  animation: adminModalIn 180ms var(--admin-ease-out) both;
 }
 
 .admin-modal-header {
@@ -1311,6 +1362,7 @@
 .admin-modal-form textarea:focus,
 .admin-modal-form select:focus {
   border-color: var(--admin-navy);
+  box-shadow: 0 0 0 3px var(--admin-focus);
 }
 
 .admin-modal-grid {
@@ -1341,6 +1393,17 @@
 .admin-field-error {
   font-size: 11.5px;
   color: var(--admin-danger-text);
+}
+
+.admin-field-hint {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--admin-muted);
+}
+
+/* Keep Google's suggestion menu above the admin modal. */
+.pac-container {
+  z-index: 10000;
 }
 
 .admin-geocode-row {
@@ -1381,6 +1444,11 @@
 .admin-dropzone.drag-over {
   border-color: var(--admin-navy);
   background: #eef2f8;
+}
+
+.admin-dropzone:focus-within {
+  border-color: var(--admin-navy);
+  box-shadow: 0 0 0 3px var(--admin-focus);
 }
 
 .admin-dropzone.disabled {
@@ -1430,7 +1498,9 @@
 
 /* ── Settings ───────────────────────────────────────────── */
 .admin-settings-grid {
-  max-width: 860px;
+  width: 100%;
+  max-width: 1240px;
+  gap: 16px;
 }
 
 .admin-settings-hint {
@@ -1464,6 +1534,251 @@
   color: var(--admin-muted);
   text-align: right;
   font-size: 12px;
+}
+
+.admin-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-settings-main,
+.admin-settings-side {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.admin-settings-overview {
+  overflow: hidden;
+}
+
+.admin-settings-overview .admin-panel-header {
+  min-height: 70px;
+}
+
+.admin-settings-live-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-success-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-settings-live-label span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--admin-success-text);
+  box-shadow: 0 0 0 4px rgba(44, 151, 118, 0.12);
+}
+
+.admin-settings-status-list {
+  display: grid;
+  padding: 4px 18px 10px;
+}
+
+.admin-settings-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-settings-status-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-settings-status-label,
+.admin-settings-status-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-settings-status-value {
+  justify-content: flex-end;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.admin-settings-status-icon,
+.admin-settings-metric-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--admin-panel-soft);
+  color: var(--admin-navy);
+}
+
+.admin-settings-status-icon.success,
+.admin-settings-metric-icon.success {
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+}
+
+.admin-settings-status-icon.warning,
+.admin-settings-metric-icon.warning {
+  background: var(--admin-warning-bg);
+  color: var(--admin-warning-text);
+}
+
+.admin-settings-status-icon.danger,
+.admin-settings-metric-icon.danger {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
+}
+
+.admin-settings-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 16px 18px 18px;
+}
+
+.admin-settings-metric-card {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-panel-soft);
+}
+
+.admin-settings-metric-card strong {
+  color: var(--admin-text);
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.admin-settings-metric-card > span:last-child {
+  color: var(--admin-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-settings-quick-actions {
+  display: grid;
+  padding: 6px 18px 14px;
+}
+
+.admin-settings-quick-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--admin-border);
+  background: transparent;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: color 160ms var(--admin-ease-out), transform 120ms var(--admin-ease-out);
+}
+
+.admin-settings-quick-actions button:last-child {
+  border-bottom: 0;
+}
+
+.admin-settings-quick-actions button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-settings-quick-actions button svg:last-child {
+  color: var(--admin-muted);
+}
+
+.admin-settings-quick-actions button:hover {
+  color: var(--admin-navy);
+  transform: translateX(2px);
+}
+
+.admin-settings-quick-actions button:active {
+  transform: scale(0.98);
+}
+
+.admin-settings-jobs {
+  min-width: 0;
+}
+
+.admin-settings-jobs .admin-panel-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-settings-jobs-summary {
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .admin-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-settings-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .admin-settings-side .admin-settings-overview:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-settings-side {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-settings-side .admin-settings-overview:last-child {
+    grid-column: auto;
+  }
+
+  .admin-settings-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-settings-value {
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+  }
+
+  .admin-settings-status-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .admin-settings-status-value {
+    justify-content: flex-start;
+    padding-left: 36px;
+    text-align: left;
+  }
 }
 
 /* ── Skeleton ───────────────────────────────────────────── */
@@ -1505,6 +1820,16 @@
   to { background-position-x: -200%; }
 }
 
+@keyframes adminBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes adminModalIn {
+  from { opacity: 0; transform: scale(0.97) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 /* ── AI Module embedded in admin ────────────────────────── */
 .admin-ai-module-wrap {
   grid-column: 1 / -1;
@@ -1537,9 +1862,23 @@
 
 @media (max-width: 1080px) {
   .admin-shell { grid-template-columns: 1fr; }
-  .admin-sidebar { border-right: none; border-bottom: 1px solid var(--admin-border); }
+  .admin-sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--admin-border);
+  }
   .admin-nav { flex-direction: row; flex-wrap: wrap; }
-  .admin-sidebar-footer { display: none; }
+  .admin-sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px 12px;
+  }
+  .admin-user-card { margin-bottom: 0; }
+  .admin-signout { margin-left: auto; }
   .admin-content, .admin-topbar { padding-inline: 16px; }
 }
 
@@ -1568,7 +1907,7 @@
 /* ── Graphite + Cobalt dashboard ───────────────────────── */
 .admin-dashboard {
   display: grid;
-  gap: 20px;
+  gap: 22px;
 }
 
 .admin-dashboard-heading {
@@ -1628,6 +1967,13 @@
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow);
+  transition: border-color 160ms var(--admin-ease-out), box-shadow 160ms var(--admin-ease-out), transform 160ms var(--admin-ease-out);
+}
+
+.admin-kpi-card:hover {
+  border-color: #C9D3E5;
+  box-shadow: 0 10px 28px rgba(23, 33, 43, 0.08);
+  transform: translateY(-1px);
 }
 
 .admin-kpi-icon {
@@ -1778,10 +2124,12 @@
   font-size: 10px;
   font-weight: 800;
   cursor: pointer;
+  transition: background-color 160ms var(--admin-ease-out), color 160ms var(--admin-ease-out), transform 120ms var(--admin-ease-out);
 }
 
 .admin-range-control button:last-child { border-right: 0; }
 .admin-range-control button.active { background: var(--admin-navy); color: #fff; }
+.admin-range-control button:active { transform: scale(0.96); }
 
 .admin-bar-chart,
 .admin-pipeline-chart { padding: 18px 20px 20px; }
@@ -1883,7 +2231,7 @@
   font-size: 12px;
 }
 
-.admin-activity-row:hover { background: #F9FAFC; }
+.admin-activity-row:hover { background: var(--admin-hover); }
 .admin-activity-row strong,
 .admin-activity-row small { display: block; }
 .admin-activity-row small { margin-top: 3px; color: var(--admin-muted); font-size: 11px; }
@@ -1925,7 +2273,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  background: #F5F7FC;
+  background: var(--admin-panel-soft);
   border-bottom: 1px solid var(--admin-border);
 }
 
@@ -2016,3 +2364,89 @@
   .admin-batch-toolbar { flex-direction: column; }
   .admin-batch-actions { flex-wrap: wrap; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Readable admin type scale ────────────────────────────
+   Keep the dashboard information-dense, but give labels and supporting copy
+   enough size and line-height to scan comfortably at normal desktop zoom. */
+.admin-shell .admin-nav-item { font-size: 14px; }
+.admin-shell .admin-user-name { font-size: 14px; }
+.admin-shell .admin-user-email { font-size: 12px; }
+.admin-shell .admin-signout { font-size: 13px; }
+
+.admin-shell .admin-topbar h1 { font-size: 17px; }
+.admin-shell .admin-topbar p { font-size: 13px; line-height: 1.4; }
+
+.admin-shell .admin-panel-header h2 {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.admin-shell .admin-panel-header p,
+.admin-shell .admin-panel-header span {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.admin-shell .admin-stat-label { font-size: 14px; }
+.admin-shell .admin-stat-note { font-size: 12px; }
+
+.admin-shell .admin-list-title { font-size: 13px; line-height: 1.35; }
+.admin-shell .admin-list-meta { font-size: 12px; }
+.admin-shell .admin-status-pill { font-size: 11px; }
+
+.admin-shell .admin-table thead th {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  font-size: 11px;
+}
+
+.admin-shell .admin-table tbody td {
+  padding-top: 15px;
+  padding-bottom: 15px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-shell .admin-kpi-label { font-size: 12px; }
+.admin-shell .admin-kpi-footer { font-size: 12px; }
+
+.admin-shell .admin-bar-label,
+.admin-shell .admin-pipeline-chart-label { font-size: 12px; }
+
+.admin-shell .admin-bar-label strong,
+.admin-shell .admin-pipeline-chart-label strong { font-size: 13px; }
+
+.admin-shell .admin-attention-row {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-shell .admin-attention-row strong { font-size: 14px; }
+
+.admin-shell .admin-activity-table-head {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.admin-shell .admin-activity-row {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-shell .admin-activity-row small,
+.admin-shell .admin-activity-type { font-size: 12px; }
+
+.admin-shell .admin-settings-row strong { font-size: 14px; }
+.admin-shell .admin-settings-value { font-size: 13px; }
+.admin-shell .admin-settings-hint { font-size: 12px; }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Heart, Trash2, FolderInput, Pencil, Plus } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import {
@@ -10,6 +10,7 @@ import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import StarRating from "../components/engagement/StarRating";
 import ReviewForm from "../components/engagement/ReviewForm";
 import Toast from "../components/engagement/Toast";
+import DiscoveryHeader from "../components/discovery/DiscoveryHeader";
 import { useToast, sleep } from "../lib/useToast";
 import VendorCard from "../components/discovery/VendorCard";
 import VendorDetailModal from "../components/discovery/VendorDetailModal";
@@ -78,6 +79,13 @@ export default function EngagementPage() {
   const visibleBookmarks = activeFolder === "all"
     ? bookmarks
     : bookmarks.filter((b) => b.folder_id === activeFolder);
+  const meta = session?.user?.user_metadata || {};
+  const userEmail = session?.user?.email || "";
+  const avatarUrl = meta.avatar_url || "";
+  const firstName = meta.first_name || "";
+  const initials = firstName
+    ? (meta.first_name?.[0] || "") + (meta.last_name?.[0] || "")
+    : (userEmail ? userEmail.slice(0, 2).toUpperCase() : "?");
 
   async function handleCreateFolder() {
     const name = newFolderName.trim();
@@ -149,27 +157,30 @@ export default function EngagementPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY }}>
-      <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "18px 24px" }}>
-        <Link to="/map" style={{ fontSize: 12.5, color: C.muted, textDecoration: "none" }}>← Back to TrueBites</Link>
-        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, color: C.navy, margin: "6px 0 0" }}>My Bookmarks &amp; Reviews</h1>
-      </header>
+    <div className="engagement-page" style={{ minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY }}>
+      <DiscoveryHeader
+        onOpenMap={() => navigate("/map?view=map")}
+        session={session}
+        userEmail={userEmail}
+        initials={initials}
+        firstName={firstName}
+        avatarUrl={avatarUrl}
+        savedCount={bookmarks.length}
+        activeSection={tab === "reviews" ? "reviews" : "saved"}
+        onOpenDiscover={() => navigate("/map")}
+        onOpenSaved={() => { setTab("bookmarks"); navigate("/engagement"); }}
+        onOpenReviews={() => { setTab("reviews"); navigate("/engagement?tab=reviews"); }}
+        onLogin={() => navigate("/login")}
+        onSignUp={() => navigate("/login")}
+        onOpenProfile={() => navigate("/profile")}
+      />
 
-      <nav style={{ background: C.card, borderBottom: `1px solid ${C.border}`, display: "flex", gap: 24, padding: "0 24px" }}>
-        {[["bookmarks", "Bookmarks"], ["reviews", `My Reviews${reviews.length ? ` (${reviews.length})` : ""}`]].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)}
-            style={{
-              background: "none", border: "none", cursor: "pointer", padding: "12px 2px",
-              fontSize: 14, color: tab === key ? C.navy : C.muted,
-              borderBottom: tab === key ? `2px solid ${C.gold}` : "2px solid transparent",
-              fontWeight: tab === key ? 600 : 400,
-            }}>
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
+      <main className="engagement-main" style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
+        <div className="engagement-heading">
+          <p className="discovery-kicker">Your TrueBites collection</p>
+          <h1 style={{ fontFamily: FONT_DISPLAY }}>{tab === "reviews" ? "My reviews" : "Saved places"}</h1>
+          <p>{tab === "reviews" ? "Keep track of the places and flavours you have shared." : "Keep the Melaka places you want to return to."}</p>
+        </div>
         {tab === "bookmarks" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Folder tabs — horizontal row, Instagram-style */}

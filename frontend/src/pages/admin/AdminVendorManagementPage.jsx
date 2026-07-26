@@ -1,6 +1,7 @@
 import { Ban, Check, Eye, ImagePlus, MapPin, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
   createAdminVendor, deleteAdminVendor, geocodeVendorAddress, getAdminVendors,
   updateAdminVendor, uploadVendorImage,
@@ -334,6 +335,83 @@ function AddressVerifyButton({ form, onChange, disabled }) {
   );
 }
 
+const MAPS_BROWSER_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY || "";
+
+function AddressInput({ form, errors, onChange, disabled }) {
+  return (
+    <label>
+      <span>Address</span>
+      <textarea name="address" value={form.address} onChange={onChange} disabled={disabled} rows={2} placeholder="Full address" />
+      <FieldError message={errors?.address} />
+    </label>
+  );
+}
+
+function GoogleAddressInput({ form, errors, onChange, disabled }) {
+  const placesLibrary = useMapsLibrary("places");
+  const inputRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!placesLibrary || !inputRef.current || disabled) return undefined;
+
+    const bounds = new window.google.maps.LatLngBounds(
+      { lat: MELAKA_BOUNDS.latMin, lng: MELAKA_BOUNDS.lngMin },
+      { lat: MELAKA_BOUNDS.latMax, lng: MELAKA_BOUNDS.lngMax },
+    );
+    const autocomplete = new placesLibrary.Autocomplete(inputRef.current, {
+      bounds,
+      componentRestrictions: { country: "my" },
+      fields: ["formatted_address", "geometry", "name"],
+      strictBounds: true,
+    });
+
+    const listener = autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      const address = place.formatted_address || place.name || inputRef.current?.value || "";
+      onChangeRef.current({ target: { name: "address", value: address } });
+
+      const location = place.geometry?.location;
+      if (location) {
+        onChangeRef.current({ target: { name: "latitude", value: String(location.lat()) } });
+        onChangeRef.current({ target: { name: "longitude", value: String(location.lng()) } });
+      }
+    });
+
+    return () => listener.remove();
+  }, [placesLibrary, disabled]);
+
+  return (
+    <label>
+      <span>Address</span>
+      <input
+        ref={inputRef}
+        name="address"
+        value={form.address}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder="Start typing a Melaka address…"
+        autoComplete="off"
+      />
+      <div className="admin-field-hint">Select a Melaka place to fill in the coordinates automatically.</div>
+      <FieldError message={errors?.address} />
+    </label>
+  );
+}
+
+function AddressField(props) {
+  if (!MAPS_BROWSER_KEY) return <AddressInput {...props} />;
+  return (
+    <APIProvider apiKey={MAPS_BROWSER_KEY} libraries={["places"]}>
+      <GoogleAddressInput {...props} />
+    </APIProvider>
+  );
+}
+
 // Shared by the Add Vendor modal, the Edit form, AND the read-only View —
 // `disabled` greys every control out for View, without duplicating markup.
 function VendorFormFields({ form, errors, onChange, onFileChange, disabled }) {
@@ -345,11 +423,7 @@ function VendorFormFields({ form, errors, onChange, onFileChange, disabled }) {
         <FieldError message={errors?.vendor_name} />
       </label>
 
-      <label>
-        <span>Address</span>
-        <textarea name="address" value={form.address} onChange={onChange} disabled={disabled} rows={2} placeholder="Full address" />
-        <FieldError message={errors?.address} />
-      </label>
+      <AddressField form={form} errors={errors} onChange={onChange} disabled={disabled} />
 
       <AddressVerifyButton form={form} onChange={onChange} disabled={disabled} />
 

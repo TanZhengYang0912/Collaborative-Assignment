@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import PasswordField from "../components/PasswordField";
+import TrueBitesLogo from "../components/TrueBitesLogo";
 
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
@@ -25,6 +27,7 @@ export default function ResetPasswordPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [done, setDone] = useState(false);
   const navigate = useNavigate();
+  const fromProfile = new URLSearchParams(window.location.search).get("redirect") === "profile";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -54,39 +57,46 @@ export default function ResetPasswordPage() {
     setLoading(false);
     if (error) { setErrorMsg(error.message); return; }
     setDone(true);
+    if (fromProfile) setTimeout(() => navigate("/profile", { replace: true }), 1500);
   }
 
   if (!ready) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: "system-ui" }}>
+      <div className="auth-page" style={{ minHeight: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: "Inter, system-ui, sans-serif", padding: "40px 16px" }}>
         <div style={{ color: C.muted, fontSize: 14 }}>Verifying your reset link…</div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: "system-ui", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 340, background: C.card, borderRadius: 8, padding: 32, boxShadow: "0 2px 10px rgba(0,0,0,0.15)" }}>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, color: C.text, margin: "0 0 4px" }}>
+    <div className="auth-page" style={{ minHeight: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: "Inter, system-ui, sans-serif", padding: "40px 16px" }}>
+      <div className="auth-stack reset-stack" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "100%" }}>
+        <Link className="auth-brand" to="/" aria-label="Back to TrueBites home">
+          <TrueBitesLogo />
+        </Link>
+        <div className="auth-card reset-card" style={{ width: "min(100%, 460px)", background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 32, boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)" }}>
+        <h2 className="auth-title" style={{ fontFamily: FONT_DISPLAY, fontSize: 24, color: C.text, margin: "0 0 4px" }}>
           {done ? "Password reset" : "Set a new password"}
         </h2>
 
         {done ? (
           <>
             <p style={{ fontSize: 13.5, color: C.muted, margin: "8px 0 20px" }}>
-              Your password has been updated. You can now sign in with it.
+              {fromProfile
+                ? "Your password has been updated. Taking you back to your profile…"
+                : "Your password has been updated. You can now sign in with it."}
             </p>
-            <button
-              onClick={() => navigate("/login", { replace: true })}
+            <button className="auth-primary-button"
+              onClick={() => navigate(fromProfile ? "/profile" : "/login", { replace: true })}
               style={{ width: "100%", padding: "10px 16px", fontSize: 14, border: "none", borderRadius: 4, background: C.accent, color: "#fff", cursor: "pointer", fontWeight: 500 }}
             >
-              Go to Sign In
+              {fromProfile ? "Back to Profile" : "Go to Sign In"}
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-            <input
-              type="password"
+            <PasswordField
+              className="auth-control"
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -94,8 +104,8 @@ export default function ResetPasswordPage() {
               required
               autoFocus
             />
-            <input
-              type="password"
+            <PasswordField
+              className="auth-control"
               placeholder="Confirm new password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -103,7 +113,7 @@ export default function ResetPasswordPage() {
               required
             />
             {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
-            <button
+            <button className="auth-primary-button"
               type="submit"
               disabled={loading}
               style={{ padding: 10, fontSize: 14, border: "none", borderRadius: 4, background: C.accent, color: "#fff", cursor: loading ? "default" : "pointer", fontWeight: 500 }}
@@ -112,6 +122,7 @@ export default function ResetPasswordPage() {
             </button>
           </form>
         )}
+        </div>
       </div>
     </div>
   );

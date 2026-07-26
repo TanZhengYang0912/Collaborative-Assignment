@@ -2,9 +2,11 @@
 // Login / register UI backed directly by Supabase Auth (no custom Express routes).
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import PasswordField from "../components/PasswordField";
+import TrueBitesLogo from "../components/TrueBitesLogo";
 
 function GoogleIcon() {
   return (
@@ -32,54 +34,66 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    height: "100vh",
-    fontFamily: "system-ui",
+    minHeight: "100svh",
+    padding: "40px 16px",
+    fontFamily: "Inter, system-ui, sans-serif",
     background: C.cream,
     position: "relative",
   },
   card: {
-    width: 320,
+    width: "min(100%, 460px)",
     padding: 32,
-    borderRadius: 8,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+    border: `1px solid ${C.border}`,
+    borderRadius: 16,
+    boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)",
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 16,
     background: C.card,
   },
-  tabs: { display: "flex", gap: 8, marginBottom: 8 },
+  tabs: { display: "flex", gap: 8, marginBottom: 4 },
   tab: {
     flex: 1,
-    padding: 8,
+    minHeight: 52,
+    padding: "12px 14px",
     textAlign: "center",
     cursor: "pointer",
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: C.border,
-    borderRadius: 4,
-    background: "#f5f5f5",
+    borderRadius: 8,
+    background: "#F7F6F3",
     color: C.text,
+    fontSize: 14,
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   tabActive: { background: C.accent, color: "#fff", borderColor: C.accent, borderStyle: "solid", borderWidth: 1 },
-  input: { padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4 },
+  input: { padding: "12px 13px", fontSize: 15, border: `1px solid ${C.border}`, borderRadius: 8, width: "100%", boxSizing: "border-box" },
   button: {
-    padding: 10,
-    fontSize: 14,
+    minHeight: 46,
+    padding: "12px 16px",
+    fontSize: 15,
     border: "none",
-    borderRadius: 4,
+    borderRadius: 8,
     background: C.accent,
     color: "#fff",
     cursor: "pointer",
-    fontWeight: 500,
+    fontWeight: 600,
   },
   googleButton: {
-    padding: 10,
-    fontSize: 14,
+    minHeight: 46,
+    padding: "12px 16px",
+    fontSize: 15,
     border: `1px solid ${C.border}`,
-    borderRadius: 4,
+    borderRadius: 8,
     background: C.card,
     cursor: "pointer",
     color: C.text,
+    fontWeight: 600,
   },
   backLink: {
     background: "none",
@@ -154,7 +168,11 @@ export default function LoginPage() {
           error?.statusText ||
           error?.status ||
           (error && Object.keys(error).length > 0 ? JSON.stringify(error) : "Unknown error from Supabase");
-        setErrorMsg(errorMessage);
+        const friendlyMessage =
+          mode !== "signup" && errorMessage === "Invalid login credentials"
+            ? "Sorry, you may have entered a wrong email or password! Try checking again!"
+            : errorMessage;
+        setErrorMsg(friendlyMessage);
         return;
       }
 
@@ -211,21 +229,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+    <div className="auth-page" style={styles.page}>
+      <div className="auth-stack" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "100%" }}>
+        <Link className="auth-brand" to="/" aria-label="Back to TrueBites home">
+          <TrueBitesLogo />
+        </Link>
         <h1 style={{
-          fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700,
+          fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 700,
           color: C.text, margin: 0, lineHeight: 1.2, textAlign: "center",
-        }}>
+        }} className="auth-heading">
           One step closer for a
           <br />
           <span style={{ color: THEME.gold, fontStyle: "italic" }}>better experience</span>...
         </h1>
-        <div style={styles.card}>
-        {mode !== "forgot" && (
-          <div style={styles.tabs}>
-            <div
+        <div className="auth-card" style={styles.card}>
+          {mode !== "forgot" && (
+          <div className="auth-tabs" style={styles.tabs} role="tablist" aria-label="Account access">
+            <button
+              className={`auth-tab${mode === "signin" ? " is-active" : ""}`}
               style={{ ...styles.tab, ...(mode === "signin" ? styles.tabActive : {}) }}
+              role="tab"
+              aria-selected={mode === "signin"}
+              type="button"
               onClick={() => {
                 setMode("signin");
                 setErrorMsg("");
@@ -233,9 +258,13 @@ export default function LoginPage() {
               }}
             >
               Sign In
-            </div>
-            <div
+            </button>
+            <button
+              className={`auth-tab${mode === "signup" ? " is-active" : ""}`}
               style={{ ...styles.tab, ...(mode === "signup" ? styles.tabActive : {}) }}
+              role="tab"
+              aria-selected={mode === "signup"}
+              type="button"
               onClick={() => {
                 setMode("signup");
                 setErrorMsg("");
@@ -243,7 +272,7 @@ export default function LoginPage() {
               }}
             >
               Create Account
-            </div>
+            </button>
           </div>
         )}
 
@@ -253,6 +282,7 @@ export default function LoginPage() {
               Enter your account email and we'll send you a link to reset your password.
             </p>
             <input
+              className="auth-control"
               style={styles.input}
               type="email"
               placeholder="Email"
@@ -260,13 +290,14 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <button style={styles.button} type="submit" disabled={loading}>
+            <button className="auth-primary-button" style={styles.button} type="submit" disabled={loading}>
               {loading ? "Sending…" : "Send reset link"}
             </button>
           </form>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
+              className="auth-control"
               style={styles.input}
               type="email"
               placeholder="Email"
@@ -274,9 +305,9 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <input
+            <PasswordField
+              className="auth-control"
               style={styles.input}
-              type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -284,6 +315,7 @@ export default function LoginPage() {
               minLength={6}
             />
             <button
+              className="auth-primary-button"
               style={mode === "signup" ? { ...styles.button, background: THEME.gold } : styles.button}
               type="submit"
               disabled={loading}
@@ -317,7 +349,7 @@ export default function LoginPage() {
           <>
             <div style={styles.divider}>— or —</div>
 
-            <button style={{ ...styles.googleButton, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
+            <button className="auth-google-button" style={{ ...styles.googleButton, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
               <GoogleIcon />
               Continue with Google
             </button>

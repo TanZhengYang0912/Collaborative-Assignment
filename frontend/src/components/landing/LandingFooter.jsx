@@ -1,4 +1,5 @@
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
+import { C, FONT_BODY } from "../../lib/theme";
+import TrueBitesLogo from "../TrueBitesLogo";
 
 // Navy footer: TRUEBITES wordmark + official tagline + location/AI/year.
 export default function LandingFooter() {
@@ -16,18 +17,13 @@ export default function LandingFooter() {
         <div style={{
           display: "flex", alignItems: "flex-start",
           justifyContent: "space-between", flexWrap: "wrap", gap: 32,
-        }}>
-          {/* Wordmark */}
+          }}>
+            {/* Wordmark */}
           <div>
-            <div style={{
-              fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 28,
-              color: "#fff", letterSpacing: 0.5, marginBottom: 6,
-            }}>
-              TRUEBITES
-            </div>
+            <TrueBitesLogo size="footer" tone="light" />
             <div style={{
               fontFamily: FONT_BODY, fontSize: 12, color: C.gold,
-              letterSpacing: 1.5, textTransform: "uppercase",
+              letterSpacing: 1.1, textTransform: "uppercase", marginTop: 14,
             }}>
               Official Food Discovery Platform · Melaka Tourism
             </div>
