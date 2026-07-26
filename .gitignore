@@ -24,6 +24,13 @@ Thumbs.db
 
 # Coverage
 coverage/
+.coverage
+*.coverage
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Migration script progress — local only
 backend/scripts/geocode_log.json
@@ -54,3 +61,11 @@ backend/services/__pycache__/
 
 # Test files (local only)
 backend/tests/
+
+# Local QA captures and generated review notes
+design-qa*.png
+design-qa.md
+
+# Frontend tooling metadata
+.vite/
+*.tsbuildinfo
