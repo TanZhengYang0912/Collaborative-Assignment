@@ -194,14 +194,14 @@ export default function AdminLoginPage() {
             required
           />
           <PasswordField
-            style={styles.input}
-            iconColor={C.muted}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+              style={styles.input}
+              iconColor={C.muted}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
           <button style={styles.button} type="submit" disabled={loading}>
             {loading ? "Please wait…" : "Sign In"}
           </button>

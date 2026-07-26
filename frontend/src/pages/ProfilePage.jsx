@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [resetSaving, setResetSaving] = useState(false);
   const [resetError, setResetError] = useState("");
+  const [resetDone, setResetDone] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -240,34 +241,38 @@ export default function ProfilePage() {
     setEditing(false);
   }
 
-  // Being logged into the profile already proves ownership of the account,
-  // so no separate current-password check is needed before emailing the link.
-  async function startResettingPassword() {
+  function startResettingPassword() {
     setResetError("");
+    setResetDone(false);
     setResettingPassword(true);
-    setResetSaving(true);
+  }
 
+  async function handleResetPassword() {
+    setResetSaving(true);
+    setResetError("");
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
       redirectTo: `${window.location.origin}/reset-password?redirect=profile`,
     });
     setResetSaving(false);
-    if (error) setResetError(error.message);
+    if (error) { setResetError(error.message); return; }
+    setResetDone(true);
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div style={{
+    <div className="profile-page" style={{ minHeight: "100svh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
+      <div className="profile-card" style={{
         background: C.card,
-        borderRadius: 12,
-        padding: "32px 24px",
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        padding: "40px",
         width: "100%",
-        maxWidth: 340,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-        textAlign: "center",
-        fontFamily: "system-ui",
+        maxWidth: 560,
+        boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)",
+        textAlign: "left",
+        fontFamily: "Inter, system-ui, sans-serif",
         position: "relative",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div className="profile-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <button
             onClick={() => navigate("/map")}
             style={{
@@ -281,14 +286,14 @@ export default function ProfilePage() {
           >
             ←
           </button>
-          <h2 style={{ margin: 0, color: C.text, fontSize: 18, fontWeight: 600 }}>My Profile</h2>
+          <h2 style={{ margin: 0, color: C.text, fontSize: 20, fontWeight: 700 }}>My Profile</h2>
           <div style={{ width: 20 }} />
         </div>
 
-        <div style={{ position: "relative", width: 64, margin: "0 auto 24px" }}>
+        <div className="profile-avatar-wrap" style={{ position: "relative", width: 72, margin: "0 auto 28px" }}>
           <div style={{
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             borderRadius: "50%",
             background: C.accent,
             color: "#fff",
@@ -336,27 +341,27 @@ export default function ProfilePage() {
 
         {!editing ? (
           <>
-            <div style={{ marginBottom: 20 }}>
+            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Email</div>
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{userEmail}</div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
+            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Full Name</div>
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{fullName || "Not set"}</div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
+            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Date of Birth</div>
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{savedDob ? formatDob(savedDob) : "Not set"}</div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
+            <div className="profile-detail-row" style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Gender</div>
               <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{meta.gender || "Not set"}</div>
             </div>
 
-            <button
+            <button className="profile-action profile-action-primary"
               onClick={startEditing}
               style={{
                 width: "100%", padding: "12px 16px", fontSize: 14,
@@ -369,7 +374,7 @@ export default function ProfilePage() {
             </button>
 
             {hasPassword && (
-              <button
+              <button className="profile-action profile-action-secondary"
                 onClick={startResettingPassword}
                 style={{
                   width: "100%", padding: "12px 16px", fontSize: 14,
@@ -384,28 +389,9 @@ export default function ProfilePage() {
 
             {resettingPassword && (
               <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, marginBottom: 10, textAlign: "left" }}>
-                {resetSaving ? (
-                  <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Sending reset email…</p>
-                ) : resetError ? (
+                {resetDone ? (
                   <>
-                    <p style={{ margin: "0 0 12px", fontSize: 13, color: "#c0392b" }}>{resetError}</p>
-                    <button
-                      onClick={() => setResettingPassword(false)}
-                      style={{
-                        width: "100%", padding: "10px 16px", fontSize: 13.5,
-                        background: "#fff", color: C.text, border: `1px solid ${C.border}`,
-                        borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                      }}
-                    >
-                      Close
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>
-                      We've sent a password reset link to <strong>{userEmail}</strong>. Open it to set a new
-                      password — you'll be brought back here once it's done.
-                    </p>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>Your password has been updated.</p>
                     <button
                       onClick={() => setResettingPassword(false)}
                       style={{
@@ -417,19 +403,50 @@ export default function ProfilePage() {
                       Done
                     </button>
                   </>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5, color: C.text }}>
+                      We’ll email you a secure link to choose a new password.
+                    </p>
+                    {resetError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 12px" }}>{resetError}</p>}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => setResettingPassword(false)}
+                        disabled={resetSaving}
+                        style={{
+                          flex: 1, padding: "10px 16px", fontSize: 13.5,
+                          background: "#fff", color: C.text, border: `1px solid ${C.border}`,
+                          borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleResetPassword}
+                        disabled={resetSaving}
+                        style={{
+                          flex: 1, padding: "10px 16px", fontSize: 13.5,
+                          background: C.accent, color: "#fff", border: "none",
+                          borderRadius: 6, cursor: resetSaving ? "default" : "pointer", fontWeight: 600, fontFamily: "system-ui",
+                        }}
+                      >
+                        {resetSaving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
-            <button
+            <button className="profile-action profile-action-danger"
               onClick={handleLogout}
               style={{
                 width: "100%",
                 padding: "12px 16px",
                 fontSize: 14,
-                background: "#D64545",
-                color: "#fff",
-                border: "none",
+                background: "#fff",
+                color: C.accentDark,
+                border: `1px solid ${C.border}`,
                 borderRadius: 6,
                 cursor: "pointer",
                 fontWeight: 500,
@@ -440,13 +457,13 @@ export default function ProfilePage() {
               Log out
             </button>
 
-            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 16, textAlign: "left" }}>
+            <div className="profile-danger-zone" style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, textAlign: "left" }}>
               <div style={{ fontSize: 12, color: C.muted, marginBottom: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>
                 Danger Zone
               </div>
 
               {!confirmingDelete ? (
-                <button
+                <button className="profile-action profile-action-danger-outline"
                   onClick={() => { setConfirmingDelete(true); setDeleteError(""); }}
                   style={{
                     width: "100%", padding: "10px 16px", fontSize: 13.5,

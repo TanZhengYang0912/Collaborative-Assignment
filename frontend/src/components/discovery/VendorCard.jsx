@@ -59,6 +59,7 @@ export default function VendorCard({ vendor, inTrip, bookmarked, onToggleBookmar
           </span>
           <button
             type="button"
+            className="catalog-card-add"
             onClick={() => !inTrip && onAddStop(vendor)}
             disabled={inTrip}
             style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: 0, border: 0, background: "transparent", color: inTrip ? C.muted : C.navy, fontSize: 11, fontWeight: 600, cursor: inTrip ? "default" : "pointer" }}
