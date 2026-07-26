@@ -45,7 +45,7 @@ Auth is backed directly by **Supabase Auth** (no custom sessions/JWTs of our own
 | Role | Value in `app_metadata.role` | Who creates the account | Lands on |
 |---|---|---|---|
 | Customer | *(none)* | Self-service — `/login` (email/password or Google) | `/map` |
-| Admin | `"admin"` | Invited by a superadmin | `/admin-home` |
+| Admin | `"admin"` | Invited by a superadmin | `/admin` |
 | Superadmin | `"superadmin"` | Seeded manually (see below) | `/superadmin` |
 
 ### Customer auth — `/login`
@@ -59,9 +59,9 @@ Auth is backed directly by **Supabase Auth** (no custom sessions/JWTs of our own
 
 - Separate login form (`AdminLoginPage.jsx`) — same Supabase `signInWithPassword` call as customers, but afterward checks `app_metadata.role`. Anyone without `"admin"` or `"superadmin"` is immediately signed back out with "This account is not authorized for admin access."
 - **First login after being invited**: every new admin is created with `user_metadata.must_change_password: true` and an initial password equal to their email address. On first successful sign-in they're forced to `/admin-set-password` before reaching anything else (`SetAdminPasswordPage.jsx`).
-- After that, regular admins land on **`/admin-home`** — a hub with two large buttons, **AI Module** (`/ai`) and **Vendor Management** (`/vendors`). Superadmins skip the hub and land directly on **`/superadmin`**.
-- **Logout is only available from `/admin-home` (admins) or `/superadmin` (superadmin)** — the AI and Vendor pages only show a **← Back** button that returns to whichever of those two pages the signed-in role belongs on (`frontend/src/lib/adminNav.js` resolves this). This is enforced by convention in the UI, not by removing `supabase.auth.signOut()` capability elsewhere.
-- **Route guard**: `AuthGate` in `App.jsx` runs on every route change. If the signed-in session has an admin/superadmin role and the current path isn't one of `/admin-login`, `/admin-home`, `/superadmin`, `/admin-set-password`, `/ai`, `/vendors`, it's redirected back to the role's home page. Admin/superadmin accounts can never reach `/map`, `/profile`, `/onboarding`, or any other customer page — even by typing the URL directly.
+- After that, regular admins land on **`/admin`**, the operational console containing Overview, Vendors, AI Content Queue, Reviews, and Settings. Superadmins land on **`/superadmin`** for admin-account management.
+- **Logout is available from the admin landing pages** — the AI and Vendor pages use a Back action to return to the appropriate admin area. This is enforced by convention in the UI, not by removing `supabase.auth.signOut()` capability elsewhere.
+- **Route guard**: `AuthGate` in `App.jsx` runs on every route change. Admin/superadmin sessions are restricted to the admin login, password setup, `/admin`, `/admin/*`, `/ai`, and `/vendors` routes. They cannot reach `/map`, `/profile`, `/onboarding`, or other customer pages by typing the URL directly.
 
 ### Superadmin — admin management
 
@@ -139,10 +139,20 @@ npm run dev
 
 # Terminal 3 — AI processing service
 cd backend
+# Recommended: use the Python 3.12 environment with the AI dependencies installed.
+# Create it once if it does not exist:
+# python3.12 -m venv venv-new
+source venv-new/bin/activate
 python -m pip install -r requirements.txt
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 # Runs at http://localhost:8000
 ```
+
+The AI service requires Python 3.12 with the packages in `backend/requirements.txt`.
+`backend/venv-new` is the recommended local environment. `backend/venv312` is an older
+`uv`-managed Python 3.12 environment with the same dependencies, while `backend/venv313`
+is only a bare Python 3.13 environment and is not sufficient for this service. Virtual
+environments are local-only and must not be committed.
 
 ### 5. When your feature is ready, push and open a PR
 
@@ -275,7 +285,6 @@ Collaborative-Assignment/
 │   │   │   ├── LoginPage.jsx           # Auth module        (Joshua)         — customer sign in / create account
 │   │   │   ├── OnboardingPage.jsx      # Auth module        (Joshua)         — forced name/DOB collection
 │   │   │   ├── AdminLoginPage.jsx      # Auth module        (Joshua)         — admin/superadmin sign in
-│   │   │   ├── AdminHomePage.jsx       # Auth module        (Joshua)         — admin hub (AI / Vendors) + logout
 │   │   │   ├── SuperAdminPage.jsx      # Auth module        (Joshua)         — invite/list/remove admins + logout
 │   │   │   ├── SetAdminPasswordPage.jsx# Auth module        (Joshua)         — forced first-login password change
 │   │   │   ├── ProfilePage.jsx         # Auth module        (Joshua)         — profile + account deletion
@@ -284,9 +293,10 @@ Collaborative-Assignment/
 │   │   │   └── EngagementPage.jsx      # Engagement module  (Khor Yik Qi)    — wishlist, reviews, likes
 │   │   └── components/
 │   │       ├── DobScrollPicker.jsx     # Auth module        (Joshua)         — DOB input for onboarding
-│   │       ├── RestaurantMarkers.jsx   # Custom SVG markers
-│   │       ├── RoutePolyline.jsx       # Two-layer polyline (day + night)
-│   │       └── RoutePanel.jsx          # Sidebar — navigate, clear, dark toggle
+│   │       ├── admin/                  # Admin console layout, charts, and pages
+│   │       ├── ai/                     # AI processing workflow steps
+│   │       ├── discovery/              # Discovery filters, cards, and vendor detail
+│   │       └── engagement/             # Reviews, ratings, folders, and toast UI
 │   ├── .env                    # Real keys — never committed
 │   └── .env.example            # Template for teammates
 └── README.md
