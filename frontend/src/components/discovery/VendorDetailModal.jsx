@@ -262,7 +262,9 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
               <div style={{ fontSize: 13, color: C.muted }}>Loading reviews…</div>
             ) : (
               <ReviewList
-                reviews={reviews.filter((r) => editingReview !== r)}
+                reviews={[...reviews]
+                  .filter((r) => editingReview !== r)
+                  .sort((a, b) => Number(b.isOwn) - Number(a.isOwn))}
                 onVote={handleVote}
                 onEdit={setEditingReview}
                 onDelete={handleDeleteReview}
