@@ -1,21 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Heart, Trash2, FolderInput, Pencil, Plus } from "lucide-react";
+import { Heart, Trash2, FolderInput, Plus } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import {
   getBookmarks, getFolders, addBookmark, removeBookmark, moveBookmark, createFolder, deleteFolder,
-  getMyReviews, deleteReview,
+  getMyReviews,
 } from "../api/engagement";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
-import StarRating from "../components/engagement/StarRating";
-import ReviewForm from "../components/engagement/ReviewForm";
 import Toast from "../components/engagement/Toast";
 import DiscoveryHeader from "../components/discovery/DiscoveryHeader";
 import { useToast, sleep } from "../lib/useToast";
 import VendorCard from "../components/discovery/VendorCard";
 import VendorDetailModal from "../components/discovery/VendorDetailModal";
 import FolderPickerModal from "../components/engagement/FolderPickerModal";
-import ImageLightbox from "../components/engagement/ImageLightbox";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 
 export default function EngagementPage() {
@@ -31,10 +28,8 @@ export default function EngagementPage() {
   const [creatingFolder, setCreatingFolder] = useState(false);
 
   const [reviews, setReviews] = useState([]);
-  const [editingReview, setEditingReview] = useState(null);
   const [detailVendor, setDetailVendor] = useState(null);
   const [pendingSaveVendor, setPendingSaveVendor] = useState(null); // vendor awaiting a folder pick
-  const [openPhoto, setOpenPhoto] = useState(null);
   const [toast, notify] = useToast();
   const bookmarkedVendorIds = new Set(bookmarks.map((b) => b.vendor_id));
 
@@ -132,6 +127,13 @@ export default function EngagementPage() {
     setPendingSaveVendor(detailVendor);
   }
 
+  // Heart toggle for a vendor card outside the bookmark grid (e.g. the Reviews
+  // tab), where the vendor may or may not already be bookmarked.
+  function toggleBookmarkForVendor(vendor) {
+    if (bookmarkedVendorIds.has(vendor.id)) { handleRemoveBookmark(vendor.id); return; }
+    setPendingSaveVendor(vendor);
+  }
+
   async function confirmSaveBookmark(folderId) {
     await addBookmark(pendingSaveVendor.id, folderId);
     setPendingSaveVendor(null);
@@ -145,15 +147,6 @@ export default function EngagementPage() {
     refreshBookmarks();
     await sleep(1200);
     await confirmSaveBookmark(folder.id);
-  }
-
-  async function handleDeleteReview(id) {
-    if (!window.confirm("Are you sure you want to delete this review?")) return;
-    try {
-      await deleteReview(id);
-      refreshReviews();
-      notify("Review deleted successfully!");
-    } catch (e) { notify(e.message, true); }
   }
 
   return (
@@ -248,64 +241,25 @@ export default function EngagementPage() {
         )}
 
         {tab === "reviews" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640, margin: "0 auto" }}>
-            {reviews.length === 0 ? (
+          <section>
+            {reviews.filter((r) => r.vendor).length === 0 ? (
               <Empty icon="⭐" text="No reviews yet. Be the first to review!" />
             ) : (
-              reviews.map((r) => (
-                <div key={r.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
-                  {editingReview === r.id ? (
-                    <ReviewForm
-                      vendorId={r.vendor_id}
-                      initial={r}
-                      onSaved={(updated) => { setReviews((prev) => prev.map((x) => (x.id === r.id ? { ...x, ...updated } : x))); setEditingReview(null); }}
-                      onCancel={() => setEditingReview(null)}
-                      notify={notify}
-                    />
-                  ) : (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div>
-                          <button
-                            onClick={() => r.vendor && setDetailVendor(r.vendor)}
-                            disabled={!r.vendor}
-                            style={{
-                              background: "none", border: "none", padding: 0, textAlign: "left",
-                              fontFamily: FONT_DISPLAY, fontSize: 16, color: C.navy, fontWeight: 700,
-                              cursor: r.vendor ? "pointer" : "default",
-                            }}
-                          >
-                            {r.vendor?.name || "Vendor"}
-                          </button>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-                            <StarRating value={r.rating} size={13} />
-                            <span style={{ fontSize: 11.5, color: C.muted }}>{new Date(r.created_at).toLocaleDateString()}</span>
-                            {r.is_hidden && <span style={{ fontSize: 11, color: "#c0392b" }}>Hidden{r.hidden_reason === "profanity" ? " (flagged for language)" : " by admin"}</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => setEditingReview(r.id)} style={iconBtnStyle} aria-label="Edit review"><Pencil size={13} color={C.muted} /></button>
-                          <button onClick={() => handleDeleteReview(r.id)} style={iconBtnStyle} aria-label="Delete review"><Trash2 size={13} color={C.muted} /></button>
-                        </div>
-                      </div>
-                      {r.body && <div style={{ fontSize: 13.5, color: C.text, marginTop: 8, lineHeight: 1.5 }}>{r.body}</div>}
-                      {r.review_photos?.length > 0 && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                          {r.review_photos.map((p) => (
-                            <img
-                              key={p.id} src={p.url} alt=""
-                              onClick={() => setOpenPhoto(p.url)}
-                              style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}`, cursor: "zoom-in" }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                {reviews.filter((r) => r.vendor).map((r) => (
+                  <VendorCard
+                    key={r.id}
+                    vendor={r.vendor}
+                    inTrip={false}
+                    bookmarked={bookmarkedVendorIds.has(r.vendor.id)}
+                    onToggleBookmark={() => toggleBookmarkForVendor(r.vendor)}
+                    onAddStop={() => notify("Open this vendor from the map to add it to your trip.")}
+                    onOpenDetail={setDetailVendor}
+                  />
+                ))}
+              </div>
             )}
-          </div>
+          </section>
         )}
       </main>
 
@@ -330,7 +284,6 @@ export default function EngagementPage() {
         />
       )}
 
-      <ImageLightbox src={openPhoto} onClose={() => setOpenPhoto(null)} />
       <Toast toast={toast} />
     </div>
   );
@@ -386,8 +339,3 @@ function Empty({ icon, text }) {
     </div>
   );
 }
-
-const iconBtnStyle = {
-  width: 26, height: 26, borderRadius: "50%", border: "none", background: C.cream,
-  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-};
