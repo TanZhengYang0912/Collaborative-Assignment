@@ -59,6 +59,7 @@ export default function AdminReviewModerationPage() {
   const [toast, setToast] = useState(null); // { message, isError }
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [confirmBulkAction, setConfirmBulkAction] = useState(null); // { isHidden, count }
+  const [confirmToggle, setConfirmToggle] = useState(null); // single review pending hide/unhide
   const [bulkAction, setBulkAction] = useState(null);
   const selectAllRef = useRef(null);
 
@@ -111,6 +112,13 @@ export default function AdminReviewModerationPage() {
   const handlePageChange = (page) => {
     setSelectedIds(new Set());
     load(page);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmToggle) return;
+    const review = confirmToggle;
+    setConfirmToggle(null);
+    await handleToggle(review);
   };
 
   const handleToggle = async (review) => {
@@ -255,7 +263,7 @@ export default function AdminReviewModerationPage() {
                     <div className="admin-table-actions">
                       <button
                         type="button"
-                        onClick={() => handleToggle(r)}
+                        onClick={() => setConfirmToggle(r)}
                         disabled={updatingId === r.id}
                         aria-label={r.isHidden ? "Unhide review" : "Hide review"}
                       >
@@ -293,6 +301,33 @@ export default function AdminReviewModerationPage() {
                 <button type="button" className="admin-secondary-btn compact" onClick={() => setConfirmBulkAction(null)}>Cancel</button>
                 <button type="button" className={`admin-primary-btn compact${confirmBulkAction.isHidden ? " danger" : ""}`} onClick={handleBulkVisibility}>
                   {confirmBulkAction.isHidden ? "Hide reviews" : "Restore reviews"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmToggle && (
+        <div className="admin-modal-backdrop" role="presentation" onClick={() => setConfirmToggle(null)}>
+          <div className="admin-modal-card admin-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="toggle-review-title" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-modal-header">
+              <div>
+                <h2 id="toggle-review-title">{confirmToggle.isHidden ? "Unhide this review?" : "Hide this review?"}</h2>
+                <p>Review by {confirmToggle.authorName || "Anonymous"}{confirmToggle.vendorName ? ` on ${confirmToggle.vendorName}` : ""}.</p>
+              </div>
+              <button type="button" className="admin-icon-btn subtle" onClick={() => setConfirmToggle(null)} aria-label="Close confirmation">×</button>
+            </div>
+            <div className="admin-modal-form">
+              <p className="admin-confirm-message">
+                {confirmToggle.isHidden
+                  ? "This review will be visible to users again."
+                  : "This review will no longer appear in the public vendor experience. You can restore it later."}
+              </p>
+              <div className="admin-modal-actions">
+                <button type="button" className="admin-secondary-btn compact" onClick={() => setConfirmToggle(null)}>Cancel</button>
+                <button type="button" className={`admin-primary-btn compact${confirmToggle.isHidden ? "" : " danger"}`} onClick={handleConfirmToggle}>
+                  {confirmToggle.isHidden ? "Unhide review" : "Hide review"}
                 </button>
               </div>
             </div>
