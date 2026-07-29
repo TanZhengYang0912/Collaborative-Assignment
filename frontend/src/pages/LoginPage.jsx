@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
+import { randomDisplayName } from "../lib/randomName";
 import PasswordField from "../components/PasswordField";
 import TrueBitesLogo from "../components/TrueBitesLogo";
 
@@ -108,8 +109,14 @@ const styles = {
     textDecoration: "underline",
   },
   divider: { textAlign: "center", color: C.muted, fontSize: 12 },
-  error: { color: "#c0392b", fontSize: 13 },
-  info: { color: "#2c7a4b", fontSize: 13 },
+  error: {
+    color: "#9a2820", fontSize: 13, lineHeight: 1.45, margin: 0,
+    background: "#fdecea", border: "1px solid #f5c6c0", borderRadius: 8, padding: "10px 12px",
+  },
+  info: {
+    color: "#1f6b40", fontSize: 13, lineHeight: 1.45, margin: 0,
+    background: "#e9f7ee", border: "1px solid #b9e3c6", borderRadius: 8, padding: "10px 12px",
+  },
 };
 
 export default function LoginPage() {
@@ -142,26 +149,20 @@ export default function LoginPage() {
     try {
       const response =
         mode === "signup"
-          ? await supabase.auth.signUp({ email, password })
+          ? await supabase.auth.signUp({
+              email,
+              password,
+              // Auto display name so reviews have something to show without
+              // forcing onboarding (users can change it later in Profile).
+              options: { data: { first_name: randomDisplayName() } },
+            })
           : await supabase.auth.signInWithPassword({ email, password });
 
       const { error, data } = response;
 
-      console.log("Full auth response:", response);
-      console.log("Error:", error);
-      console.log("Data:", data);
-
       setLoading(false);
 
       if (error) {
-        console.error("Full error object:", error);
-        console.error("Error keys:", Object.keys(error));
-        console.error("Error toString:", error.toString());
-        console.error("Error name:", error.name);
-        console.error("Error status:", error.status);
-        console.error("Error code:", error.code);
-        console.error("Error details:", error.__isAuthError);
-
         const errorMessage =
           error?.message ||
           error?.error_description ||
@@ -184,7 +185,7 @@ export default function LoginPage() {
           setJustSignedUp(true);
           navigate("/onboarding", { replace: true });
         } else {
-          setInfoMsg("Account created! Check your email to confirm before signing in.");
+          setInfoMsg("Account created! Check your email — including your spam folder — for a confirmation link, then come back and sign in.");
           setEmail("");
           setPassword("");
         }
@@ -193,7 +194,6 @@ export default function LoginPage() {
       }
     } catch (err) {
       setLoading(false);
-      console.error("Unexpected error:", err);
       setErrorMsg(err.message || "An unexpected error occurred");
     }
   }
@@ -209,7 +209,7 @@ export default function LoginPage() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
-    setInfoMsg("If that email is registered, we've sent a password reset link.");
+    setInfoMsg("If that email is registered, we've sent a password reset link. Check your inbox and spam folder — the link opens a page to set a new password.");
   }
 
   async function handleGoogleLogin() {

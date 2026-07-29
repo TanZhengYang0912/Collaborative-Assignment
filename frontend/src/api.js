@@ -41,33 +41,15 @@ export async function deleteAccount(accessToken) {
   return r.json();
 }
 
-// Superadmin: list all admin accounts.
-export async function listAdmins(accessToken) {
-  const r = await fetch(`${BASE}/api/admin/admins`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to load admins");
-  return r.json(); // { admins: [...] }
-}
-
-// Superadmin: invite a new admin. Initial password equals their email.
-export async function addAdmin(accessToken, email) {
-  const r = await fetch(`${BASE}/api/admin/admins`, {
+// Upload the current user's avatar through the backend (three-tier: the
+// browser never touches Storage directly). Returns { avatar_url }.
+export async function uploadAvatar(accessToken, file) {
+  const r = await fetch(`${BASE}/api/profile/avatar`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ email }),
+    headers: { "Content-Type": file.type, Authorization: `Bearer ${accessToken}` },
+    body: file,
   });
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to add admin");
-  return r.json();
-}
-
-// Superadmin: remove an admin account.
-export async function removeAdmin(accessToken, id) {
-  const r = await fetch(`${BASE}/api/admin/admins/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to remove admin");
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Failed to upload photo");
   return r.json();
 }
 

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Navigation, MapPin, GripVertical, X, Pencil, Sparkles, Route, Clock } from "lucide-react";
+import { Navigation, MapPin, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink } from "lucide-react";
 import LocationInput from "./LocationInput";
 import TransitDetails from "./TransitDetails";
 import RouteOptions from "./RouteOptions";
 import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import { placeholderImage, priceLabel, distanceLabel } from "../lib/vendorDisplay";
+import { buildGoogleMapsUrl } from "../lib/googleMapsHandoff";
 
 const NAV_MODES = [
   { mode: "DRIVING",     label: "Car",        icon: "🚗",  color: "#1d72e8" },
@@ -38,12 +39,13 @@ export default function TripPanel({
   onManualLocation,
   routeOptions, routeIndex, onSelectRoute,
   transitLegs,
-  nearbyToAdd, onAddStop,
+  nearbyToAdd, onAddStop, onAddCustomStop,
   onSuggestBestOrder,
 }) {
   const [dragIdx, setDragIdx] = useState(null);
   const [showNav, setShowNav] = useState(false);
   const [editingLocation, setEditingLocation] = useState(false);
+  const [addingPlace, setAddingPlace] = useState(false);
 
   function handleDrop(i) {
     if (dragIdx === null || dragIdx === i) return;
@@ -57,6 +59,7 @@ export default function TripPanel({
   const meStop = trip.find((s) => s.isMe);
   const vendorStops = trip.filter((s) => !s.isMe);
   const activeMode = NAV_MODES.find((m) => m.mode === travelMode);
+  const gmaps = buildGoogleMapsUrl(trip, travelMode);
 
   return (
     <div style={panel}>
@@ -163,6 +166,27 @@ export default function TripPanel({
         </ol>
       )}
 
+      {/* Add an arbitrary typed place — not tied to a vendor listing */}
+      {onAddCustomStop && (
+        addingPlace ? (
+          <LocationInput
+            placeholder="Search a place to add…"
+            onSelect={(place) => { onAddCustomStop(place); setAddingPlace(false); }}
+          />
+        ) : (
+          <button
+            onClick={() => setAddingPlace(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
+              cursor: "pointer", color: C.gold, fontSize: 12.5, fontWeight: 500, fontFamily: FONT_BODY,
+              padding: "2px 0 8px",
+            }}
+          >
+            <Plus size={13} /> Add a place
+          </button>
+        )
+      )}
+
       {/* Nearby to add */}
       {nearbyToAdd && nearbyToAdd.length > 0 && (
         <div style={{ marginTop: 10 }}>
@@ -252,6 +276,24 @@ export default function TripPanel({
         <Navigation size={15} />
         {activeMode ? `Navigating by ${activeMode.label}` : "Start Navigation"}
       </button>
+
+      {/* Hands off to Google Maps for real turn-by-turn navigation — we don't
+          build in-app navigation ourselves. */}
+      {gmaps && (
+        <a
+          href={gmaps.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ ...outlineBtn, marginTop: 8, marginBottom: 0, textDecoration: "none" }}
+        >
+          <ExternalLink size={14} /> Open in Google Maps
+        </a>
+      )}
+      {gmaps?.truncated && (
+        <div style={{ fontSize: 10.5, color: C.muted, textAlign: "center", marginTop: 4 }}>
+          Google Maps supports up to 9 stops after your start — the rest are left out.
+        </div>
+      )}
 
       {trip.length > 0 && (
         <button

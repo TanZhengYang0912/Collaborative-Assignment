@@ -2,9 +2,8 @@
 // Mirrors LoginPage.jsx but drops Google OAuth and lands on /ai instead of /map.
 
 import { useEffect, useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import SuperAdminPage from "./SuperAdminPage";
 import { C as THEME, FONT_DISPLAY } from "../lib/theme";
 import PasswordField from "../components/PasswordField";
 
@@ -87,7 +86,6 @@ export default function AdminLoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [initializing, setInitializing] = useState(true);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setInitializing(false); });
@@ -122,7 +120,7 @@ export default function AdminLoginPage() {
       // app_metadata can only be set via the service key (see admin setup docs),
       // so a user can never grant themselves admin by editing their own profile.
       const role = data.user?.app_metadata?.role;
-      if (role !== "admin" && role !== "superadmin") {
+      if (role !== "admin") {
         await supabase.auth.signOut();
         setLoading(false);
         setErrorMsg("This account is not authorized for admin access.");
@@ -136,8 +134,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const dest = role === "superadmin" ? "/superadmin" : "/admin";
-      navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
+      navigate("/admin", { replace: true });
     } catch (err) {
       setLoading(false);
       setErrorMsg(err.message || "An unexpected error occurred");
@@ -147,28 +144,14 @@ export default function AdminLoginPage() {
   // Wait for session to load before rendering anything
   if (initializing) return null;
 
-  // Decode the r param and render admin content at this URL (keeps address bar scrambled)
-  const r = searchParams.get("r");
-  if (r && session) {
-    const role = session.user?.app_metadata?.role;
-    try {
-      const dest = atob(decodeURIComponent(r));
-      if (dest === "/superadmin" && role === "superadmin") return <SuperAdminPage />;
-      if (dest === "/admin" && (role === "admin" || role === "superadmin")) return <Navigate to="/admin" replace />;
-    } catch {
-      // malformed r — fall through to login form
-    }
-  }
-
-  // Already logged in as admin but no r param — add it
+  // Already logged in as an admin — send them straight to the console.
   if (session) {
     const role = session.user?.app_metadata?.role;
-    if (role === "admin" || role === "superadmin") {
+    if (role === "admin") {
       if (session.user?.user_metadata?.must_change_password) {
         navigate("/admin-set-password", { replace: true });
       } else {
-        const dest = role === "superadmin" ? "/superadmin" : "/admin";
-        navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
+        navigate("/admin", { replace: true });
       }
       return null;
     }

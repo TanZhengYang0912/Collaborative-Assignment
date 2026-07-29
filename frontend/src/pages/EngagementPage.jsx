@@ -45,11 +45,11 @@ export default function EngagementPage() {
   }, [session]);
 
   function refreshBookmarks() {
-    getFolders().then((f) => setFolders(f.folders)).catch((e) => console.error(e.message));
-    getBookmarks().then((b) => setBookmarks(b.bookmarks)).catch((e) => console.error(e.message));
+    getFolders().then((f) => setFolders(f.folders)).catch((e) => { console.error(e.message); notify("Couldn't load your folders.", true); });
+    getBookmarks().then((b) => setBookmarks(b.bookmarks)).catch((e) => { console.error(e.message); notify("Couldn't load your bookmarks.", true); });
   }
   function refreshReviews() {
-    getMyReviews().then((r) => setReviews(r.reviews)).catch((e) => console.error(e.message));
+    getMyReviews().then((r) => setReviews(r.reviews)).catch((e) => { console.error(e.message); notify("Couldn't load your reviews.", true); });
   }
 
   if (session === undefined) return null;

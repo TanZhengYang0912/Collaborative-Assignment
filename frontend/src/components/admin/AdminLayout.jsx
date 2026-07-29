@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
   BrainCircuit,
@@ -10,6 +10,7 @@ import {
   SquareArrowOutUpRight,
   Store,
 } from "lucide-react";
+import { supabase } from "../../supabaseClient";
 import "../../admin-console.css";
 
 const navItems = [
@@ -22,7 +23,18 @@ const navItems = [
 
 export default function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [topbarAction, setTopbarAction] = useState(null);
+  const [adminEmail, setAdminEmail] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAdminEmail(data.session?.user?.email || ""));
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    navigate("/wsdasabi123&admin-login", { replace: true });
+  }
   const pageName = navItems.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   )?.label || "Overview";
@@ -63,13 +75,13 @@ export default function AdminLayout() {
 
         <div className="admin-sidebar-footer">
           <div className="admin-user-card">
-            <div className="admin-avatar">A</div>
+            <div className="admin-avatar">{(adminEmail[0] || "A").toUpperCase()}</div>
             <div>
               <div className="admin-user-name">Admin</div>
-              <div className="admin-user-email">admin@truebites.my</div>
+              <div className="admin-user-email">{adminEmail || "—"}</div>
             </div>
           </div>
-          <button className="admin-signout">
+          <button className="admin-signout" onClick={handleSignOut}>
             <LogOut size={15} />
             <span>Sign out</span>
           </button>

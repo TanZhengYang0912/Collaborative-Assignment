@@ -1,3 +1,5 @@
+import { supabase } from "../supabaseClient";
+
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 async function parseResponse(response) {
@@ -13,9 +15,16 @@ async function parseResponse(response) {
   throw new Error(message || "Request failed");
 }
 
-async function requestJson(path, options) {
+// Every admin call attaches the signed-in admin's access token so the
+// requireRole("admin") gate on /api/admin can verify the caller.
+async function requestJson(path, options = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers = { ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   try {
-    const response = await fetch(`${BASE}${path}`, options);
+    const response = await fetch(`${BASE}${path}`, { ...options, headers });
     return parseResponse(response);
   } catch (error) {
     if (error instanceof TypeError) {
