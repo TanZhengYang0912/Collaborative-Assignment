@@ -22,7 +22,10 @@ function isProfaneLoose(text) {
   return filter.isProfane(text) || filter.isProfane(text.replace(/(.)\1+/g, "$1"));
 }
 
-const TEST_MODE = false;
+// Local-testing escape hatch: DISABLE_AUTH=true in backend/.env makes every
+// engagement caller act as the fixed TEST_USER below (skips JWT verification
+// and the ownership boundary). Unset (default) = real per-user verification.
+const TEST_MODE = process.env.DISABLE_AUTH === "true";
 const TEST_USER = {
   id: "78c8682a-102e-4925-a2c1-71144f4aaace",
   email: "engagement-test@truebites.local",

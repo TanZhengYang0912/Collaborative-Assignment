@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { ThumbsUp, ThumbsDown, Pencil, Trash2 } from "lucide-react";
-import { C, FONT_BODY } from "../../lib/theme";
+import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import StarRating from "./StarRating";
 import ImageLightbox from "./ImageLightbox";
 
 export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
   const [openPhoto, setOpenPhoto] = useState(null);
-
-  function handleDelete(id) {
-    if (window.confirm("Are you sure you want to delete this review?")) onDelete(id);
-  }
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   if (!reviews.length) {
     return <div style={{ fontSize: 13, color: C.muted, padding: "8px 0" }}>No reviews yet. Be the first to review!</div>;
@@ -37,7 +34,7 @@ export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
             {r.isOwn && (
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => onEdit(r)} aria-label="Edit review" style={iconBtnStyle}><Pencil size={13} color={C.muted} /></button>
-                <button onClick={() => handleDelete(r.id)} aria-label="Delete review" style={iconBtnStyle}><Trash2 size={13} color={C.muted} /></button>
+                <button onClick={() => setPendingDelete(r.id)} aria-label="Delete review" style={iconBtnStyle}><Trash2 size={13} color={C.muted} /></button>
               </div>
             )}
           </div>
@@ -75,6 +72,22 @@ export default function ReviewList({ reviews, onVote, onEdit, onDelete }) {
         </div>
       ))}
       <ImageLightbox src={openPhoto} onClose={() => setOpenPhoto(null)} />
+
+      {pendingDelete && (
+        <div
+          onClick={() => setPendingDelete(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(27,42,74,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: C.card, borderRadius: 14, padding: 22, fontFamily: FONT_BODY, boxShadow: "0 20px 60px rgba(27,42,74,0.35)" }}>
+            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 17, color: C.navy, margin: "0 0 6px" }}>Delete this review?</h3>
+            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 18px" }}>This can't be undone.</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setPendingDelete(null)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY }}>Cancel</button>
+              <button onClick={() => { onDelete(pendingDelete); setPendingDelete(null); }} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#c0392b", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

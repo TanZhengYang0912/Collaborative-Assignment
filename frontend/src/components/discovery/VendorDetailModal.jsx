@@ -34,8 +34,9 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
     setEditingReview(null);
     getReviews(vendor.id)
       .then((r) => setReviews(r.reviews))
-      .catch((e) => console.error("failed to load reviews:", e.message))
+      .catch((e) => { console.error("failed to load reviews:", e.message); notify("Couldn't load reviews for this vendor.", true); })
       .finally(() => setReviewsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendor?.id]);
 
   const myReview = reviews.find((r) => r.isOwn);
@@ -46,7 +47,7 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
       isLike === null ? await removeVote(reviewId) : await voteReview(reviewId, isLike);
       const r = await getReviews(vendor.id);
       setReviews(r.reviews);
-    } catch (e) { console.error(e.message); }
+    } catch (e) { console.error(e.message); notify("Couldn't record your vote. Please try again.", true); }
   }
 
   async function handleDeleteReview(id) {

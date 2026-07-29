@@ -4,7 +4,7 @@ import { C, FONT_BODY } from "../lib/theme";
 
 // Google Places Autocomplete box for typing a start location manually,
 // instead of relying on GPS. Restricted to Malaysia to match app coverage.
-export default function LocationInput({ onSelect }) {
+export default function LocationInput({ onSelect, placeholder = "Search start address…" }) {
   const placesLib = useMapsLibrary("places");
   const inputRef = useRef(null);
 
@@ -20,7 +20,7 @@ export default function LocationInput({ onSelect }) {
       const place = autocomplete.getPlace();
       const loc = place.geometry?.location;
       if (!loc) return;
-      onSelect({ lat: loc.lat(), lng: loc.lng() });
+      onSelect({ lat: loc.lat(), lng: loc.lng(), label: place.name || inputRef.current.value });
     });
 
     return () => listener.remove();
@@ -30,7 +30,7 @@ export default function LocationInput({ onSelect }) {
     <input
       ref={inputRef}
       type="text"
-      placeholder="Search start address…"
+      placeholder={placeholder}
       style={{
         width: "100%",
         boxSizing: "border-box",

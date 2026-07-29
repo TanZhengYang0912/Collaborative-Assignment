@@ -15,6 +15,7 @@ import FolderPickerModal from "../components/engagement/FolderPickerModal";
 import Toast from "../components/engagement/Toast";
 import { useToast, sleep } from "../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
+import { loadTrip, saveTrip } from "../lib/tripStorage";
 import { C } from "../lib/theme";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
@@ -72,10 +73,12 @@ export default function MapPage() {
   const [mapMode, setMapMode] = useState("single");
   const [nearbyVendors, setNearbyVendors] = useState([]);
 
-  const [trip, setTrip] = useState([]);              // unified draggable stops
+  // Trip planning is unauthenticated, browser-local state — restored from
+  // localStorage on mount (see lib/tripStorage.js) so a reload doesn't lose it.
+  const [trip, setTrip] = useState(() => loadTrip()?.stops || []);              // unified draggable stops
   const [tripData, setTripData] = useState(null);
   const [tripLoading, setTripLoading] = useState(false);
-  const [travelMode, setTravelMode] = useState(null);   // null | "DRIVING" | "TWO_WHEELER" | "TRANSIT" | "WALKING"
+  const [travelMode, setTravelMode] = useState(() => loadTrip()?.travelMode || null);   // null | "DRIVING" | "TWO_WHEELER" | "TRANSIT" | "WALKING"
   const [dirSummary, setDirSummary] = useState(null);
   const [routeIndex, setRouteIndex] = useState(0);       // selected alt route (DRIVING)
   const [routeOptions, setRouteOptions] = useState([]);  // alt routes + toll flags (DRIVING)
@@ -87,7 +90,38 @@ export default function MapPage() {
   useEffect(() => {
     getRestaurants(MELAKA_CENTER.lat, MELAKA_CENTER.lng)
       .then(setVendors)
-      .catch((e) => console.error("failed to load vendors:", e.message));
+      .catch((e) => { console.error("failed to load vendors:", e.message); notify("Couldn't load vendors. Check your connection and try again.", true); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the trip on every change (id/name/lat/lng/isMe/source only — see
+  // lib/tripStorage.js for why the embedded `vendor` snapshot isn't saved).
+  useEffect(() => { saveTrip(trip, travelMode); }, [trip, travelMode]);
+
+  // A trip restored from storage carries vendor stops with no `vendor` object
+  // (it's never persisted). Re-attach it by id once the vendor list loads.
+  useEffect(() => {
+    if (!vendors.length) return;
+    setTrip((current) => {
+      let changed = false;
+      const next = current.map((s) => {
+        if (s.isMe || s.vendor) return s;
+        const v = vendors.find((vv) => vv.id === s.id);
+        if (!v) return s;
+        changed = true;
+        return { ...s, vendor: v };
+      });
+      return changed ? next : current;
+    });
+  }, [vendors]);
+
+  // Recompute the route for a trip restored from storage — path/distance/
+  // duration are never persisted (they're cheap to recompute and would
+  // otherwise go stale). Runs once; DirectionsRenderer already handles this
+  // reactively when a travelMode was also restored.
+  useEffect(() => {
+    if (trip.length >= 2 && !travelMode) planTrip(trip, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -123,7 +157,7 @@ export default function MapPage() {
       setTripData({ path: res.path, distance: res.distance, duration: res.duration });
     } catch (e) {
       console.error(e);
-      alert("Trip planning failed (free OSRM server may be busy). Try again.");
+      notify("Trip planning failed (the free routing server may be busy). Please try again.", true);
     } finally {
       setTripLoading(false);
     }
@@ -145,6 +179,15 @@ export default function MapPage() {
     const list = [...trip, vendorStop(vendor)];
     setTrip(list);
     planTrip(list, true);
+    notify(`${vendor.name} added to your trip.`);
+  }
+  // A typed place (not a vendor) — e.g. "pick up a friend on the way".
+  function addCustomStop(place) {
+    const stop = { id: `custom-${Date.now()}`, name: place.label, lat: place.lat, lng: place.lng, isMe: false, source: "custom" };
+    const list = [...trip, stop];
+    setTrip(list);
+    planTrip(list, true);
+    notify(`${place.label} added to your trip.`);
   }
   function reorderTrip(newList) { setTrip(newList); planTrip(newList, false); }
   function removeStop(id) { const list = trip.filter((s) => s.id !== id); setTrip(list); planTrip(list, false); }
@@ -214,7 +257,10 @@ export default function MapPage() {
       },
       () => {
         setUserPos(MELAKA_CENTER);
-        if (!silent) setLocateTarget(MELAKA_CENTER);
+        if (!silent) {
+          setLocateTarget(MELAKA_CENTER);
+          notify("Couldn't get your location — showing Melaka centre instead.", true);
+        }
       }
     );
   }
@@ -240,7 +286,7 @@ export default function MapPage() {
     if (userPos) { focusOn(userPos); return; }
     navigator.geolocation.getCurrentPosition(
       (p) => focusOn({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => focusOn(MELAKA_CENTER)
+      () => { focusOn(MELAKA_CENTER); notify("Couldn't get your location — showing vendors near Melaka centre.", true); }
     );
   }
 
@@ -392,6 +438,7 @@ export default function MapPage() {
           transitLegs={transitLegs}
           nearbyToAdd={nearbyToAdd}
           onAddStop={addStop}
+          onAddCustomStop={addCustomStop}
           onSuggestBestOrder={() => planTrip(trip, true)}
         />
 

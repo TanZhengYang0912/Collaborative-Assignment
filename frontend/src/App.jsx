@@ -19,20 +19,12 @@ import AdminAIProcessingConsolePage    from "./pages/admin/AdminAIProcessingCons
 import AdminReviewModerationPage       from "./pages/admin/AdminReviewModerationPage";
 import AdminSettingsPage               from "./pages/admin/AdminSettingsPage";
 import { DISABLE_AUTH } from "./lib/testMode";
+import { randomDisplayName } from "./lib/randomName";
 
-// Pages that can be visited without any session
-const AUTH_PUBLIC_PATHS = ["/", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password", "/reset-password"];
-
-const ONBOARDING_EXEMPT_PATHS = ["/onboarding", "/login", "/wsdasabi123&admin-login", "/admin-set-password", "/reset-password"];
-
-// Admin/superadmin accounts never have a customer-facing home — they only
-// ever belong on the admin auth pages or the AI/vendor management tools.
-const ADMIN_ALLOWED_PATHS = ["/wsdasabi123&admin-login", "/admin-set-password", "/admin", "/ai", "/vendors"];
-
-// Paths under /admin (the admin console) are always allowed for admin/superadmin accounts.
-function isAdminAllowedPath(pathname) {
-  return ADMIN_ALLOWED_PATHS.includes(pathname) || pathname.startsWith("/admin/");
-}
+// Pages that can be visited without any session. Guests can freely browse the
+// discovery map; login-only features (engagement hub, profile) stay gated and
+// redirect guests to /login. Admins may browse everything a guest can.
+const AUTH_PUBLIC_PATHS = ["/", "/map", "/login", "/onboarding", "/wsdasabi123&admin-login", "/admin-set-password", "/reset-password"];
 
 function AuthGate({ children }) {
   const location = useLocation();
@@ -49,22 +41,21 @@ function AuthGate({ children }) {
         }
         return;
       }
+
       const role = session.user.app_metadata?.role;
 
-      if (role === "admin" || role === "superadmin") {
-        if (!isAdminAllowedPath(location.pathname)) {
-          const dest = role === "superadmin" ? "/superadmin" : "/admin";
-          navigate(`/wsdasabi123&admin-login?r=${encodeURIComponent(btoa(dest))}`, { replace: true });
-        }
+      // Customers (non-admins) can never enter the admin console. Admins can go
+      // anywhere — including browsing the public site like a guest.
+      if (role !== "admin" && (location.pathname === "/admin" || location.pathname.startsWith("/admin/"))) {
+        navigate("/map", { replace: true });
         return;
       }
 
-      const meta = session.user.user_metadata || {};
-
-      // Any user (email or Google) missing name or DOB goes through onboarding
-      const needsOnboarding = !meta.first_name || !meta.date_of_birth;
-      if (needsOnboarding && !ONBOARDING_EXEMPT_PATHS.includes(location.pathname)) {
-        navigate("/onboarding", { replace: true });
+      // Onboarding is optional — we never force it. But every account should
+      // carry a display name for reviews, so lazily assign a random one to any
+      // account that has none (existing accounts, Google sign-ins, etc.).
+      if (role !== "admin" && !session.user.user_metadata?.first_name) {
+        supabase.auth.updateUser({ data: { first_name: randomDisplayName() } });
       }
     }
     supabase.auth.getSession().then(({ data }) => check(data.session));

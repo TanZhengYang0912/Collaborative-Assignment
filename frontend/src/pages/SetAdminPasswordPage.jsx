@@ -49,10 +49,8 @@ export default function SetAdminPasswordPage() {
       return;
     }
 
-    const { data } = await supabase.auth.getSession();
     setLoading(false);
-    const role = data.session?.user?.app_metadata?.role;
-    navigate(role === "superadmin" ? "/superadmin" : "/admin-home", { replace: true });
+    navigate("/admin", { replace: true });
   }
 
   if (!session) return null;

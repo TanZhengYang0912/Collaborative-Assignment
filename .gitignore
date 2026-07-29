@@ -69,3 +69,4 @@ design-qa.md
 # Frontend tooling metadata
 .vite/
 *.tsbuildinfo
+/docs

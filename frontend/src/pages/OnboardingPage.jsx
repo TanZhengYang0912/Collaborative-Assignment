@@ -8,6 +8,13 @@ const STEPS = ["Full Name", "Date of Birth", "Gender"];
 const CURRENT_YEAR = new Date().getFullYear();
 const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
 
+function parseDobIso(iso) {
+  if (!iso) return null;
+  const [year, month, day] = String(iso).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return { day, month, year };
+}
+
 // Forced 3-step onboarding right after email/password signup — collects the
 // account's first/last name, DOB, and gender before the user can reach the app.
 export default function OnboardingPage() {
@@ -27,12 +34,15 @@ export default function OnboardingPage() {
         navigate("/login", { replace: true });
         return;
       }
-      // Idempotency: already completed onboarding — skip ahead
+      // Prefill anything already on the account (name is auto-assigned, DOB and
+      // gender are optional and may be blank). Onboarding is never forced now —
+      // this page is a place to complete a profile, with a Skip option.
       const meta = data.session.user.user_metadata || {};
-      if (meta.first_name && meta.date_of_birth && meta.gender) {
-        navigate("/map", { replace: true });
-        return;
-      }
+      if (meta.first_name) setFirstName(meta.first_name);
+      if (meta.last_name) setLastName(meta.last_name);
+      if (meta.gender) setGender(meta.gender);
+      const parsed = parseDobIso(meta.date_of_birth);
+      if (parsed) setDob(parsed);
       setChecking(false);
     });
   }, [navigate]);
@@ -74,9 +84,8 @@ export default function OnboardingPage() {
     setStep(2);
   }
 
+  // Gender is optional — save whatever's been filled in.
   async function finish() {
-    if (!gender) { setErrorMsg("Please select a gender."); return; }
-
     setSaving(true);
     setErrorMsg("");
     const dobIso = `${dob.year}-${String(dob.month).padStart(2, "0")}-${String(dob.day).padStart(2, "0")}`;
@@ -85,11 +94,16 @@ export default function OnboardingPage() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         date_of_birth: dobIso,
-        gender,
+        gender: gender || null,
       },
     });
     setSaving(false);
     if (error) { setErrorMsg(error.message); return; }
+    navigate("/map", { replace: true });
+  }
+
+  // Onboarding is optional — leave without saving anything.
+  function skip() {
     navigate("/map", { replace: true });
   }
 
@@ -255,6 +269,17 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
+
+        {/* Onboarding is optional — you can always complete it later in Profile. */}
+        <button
+          onClick={skip}
+          style={{
+            display: "block", margin: "18px auto 0", background: "none", border: "none",
+            color: C.muted, fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY, textDecoration: "underline",
+          }}
+        >
+          Skip for now — you can add these later in your profile
+        </button>
       </div>
     </div>
   );

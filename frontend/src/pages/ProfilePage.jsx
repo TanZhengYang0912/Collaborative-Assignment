@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { deleteAccount } from "../api";
+import { deleteAccount, uploadAvatar } from "../api";
 import { C as THEME, FONT_BODY } from "../lib/theme";
 import DobScrollPicker from "../components/DobScrollPicker";
 
@@ -117,19 +117,11 @@ export default function ProfilePage() {
     setUploadingAvatar(true);
     setErrorMsg("");
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${session.user.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadError) throw uploadError;
-
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: pub.publicUrl },
-      });
-      if (updateError) throw updateError;
-
+      // Routed through the backend (three-tier) — the server validates and
+      // writes to Storage; the browser never touches the data tier directly.
+      await uploadAvatar(session.access_token, file);
+      // Refresh the session so the new avatar_url in user_metadata shows up.
+      await supabase.auth.refreshSession();
       const { data } = await supabase.auth.getSession();
       setSession(data.session);
     } catch (err) {

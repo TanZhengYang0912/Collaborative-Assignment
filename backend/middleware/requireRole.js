@@ -1,8 +1,8 @@
 import { supabase } from "../supabase.js";
 
-// ponytail: TEMPORARY — auth fully disabled for local testing. Flip back to
-// false to restore real token/role verification below.
-const AUTH_DISABLED = true;
+// Local-testing escape hatch: set DISABLE_AUTH=true in backend/.env to skip
+// token/role verification. Unset (the default) = real authorization enforced.
+const AUTH_DISABLED = process.env.DISABLE_AUTH === "true";
 
 // Verifies the caller's Supabase access token and checks their app_metadata.role
 // against an allow-list. Attaches the resolved user to req.callerUser on success.

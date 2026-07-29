@@ -6,6 +6,8 @@ import {
   createAdminVendor, deleteAdminVendor, getAdminVendors,
   updateAdminVendor, uploadVendorImage,
 } from "../../api/admin";
+import Toast from "../../components/engagement/Toast";
+import { useToast } from "../../lib/useToast";
 
 const MAPS_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 
@@ -600,6 +602,7 @@ export default function AdminVendorManagementPage() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [toast, notify] = useToast();
 
   // Real-time search — debounce like VendorsPage.jsx, no Enter/submit needed.
   useEffect(() => {
@@ -694,8 +697,10 @@ export default function AdminVendorManagementPage() {
       const updated = refreshed.items.find((i) => i.id === selectedVendor.id);
       if (updated) { setSelectedVendor(updated); setForm(makeForm(updated)); }
       setEditing(false);
+      notify("Vendor updated successfully.");
     } catch (err) {
       setError(err.message);
+      notify(err.message, true);
     } finally {
       setSaving(false);
     }
@@ -708,8 +713,10 @@ export default function AdminVendorManagementPage() {
       setConfirmDeleteId(null);
       const refreshed = await getAdminVendors({ page: data.pagination.page, pageSize, status, category, sort, q: query });
       setData(refreshed);
+      notify("Vendor deleted.");
     } catch (err) {
       setError(err.message);
+      notify(err.message, true);
     } finally {
       setDeleting(false);
     }
@@ -725,8 +732,10 @@ export default function AdminVendorManagementPage() {
     try {
       await updateAdminVendor(id, { status: newStatus });
       await refreshList();
+      notify(`Vendor ${newStatus === "active" ? "approved" : newStatus}.`);
     } catch (err) {
       setError(err.message);
+      notify(err.message, true);
     }
   };
 
@@ -752,8 +761,10 @@ export default function AdminVendorManagementPage() {
       await Promise.all(ids.map((id) => updateAdminVendor(id, { status: newStatus })));
       setSelectedIds(new Set());
       await refreshList();
+      notify(`${ids.length} vendor${ids.length === 1 ? "" : "s"} updated.`);
     } catch (err) {
       setError(err.message);
+      notify(err.message, true);
     } finally {
       setBulkBusy(false);
     }
@@ -769,8 +780,10 @@ export default function AdminVendorManagementPage() {
       setSelectedIds(new Set());
       setConfirmBulkDelete(false);
       await refreshList();
+      notify(`${ids.length} vendor${ids.length === 1 ? "" : "s"} deleted.`);
     } catch (err) {
       setError(err.message);
+      notify(err.message, true);
     } finally {
       setBulkBusy(false);
     }
@@ -1039,7 +1052,7 @@ export default function AdminVendorManagementPage() {
       {showAddModal && (
         <AddVendorModal
           onClose={() => setShowAddModal(false)}
-          onCreated={() => loadVendors({ page: 1 })}
+          onCreated={() => { loadVendors({ page: 1 }); notify("Vendor created successfully."); }}
         />
       )}
 
@@ -1062,6 +1075,8 @@ export default function AdminVendorManagementPage() {
           onCancel={() => setConfirmBulkDelete(false)}
         />
       )}
+
+      <Toast toast={toast} />
     </section>
   );
 

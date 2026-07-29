@@ -21,6 +21,7 @@ const C = {
 // real session automatically — we just wait for that before showing the form.
 export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
+  const [linkInvalid, setLinkInvalid] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,13 +31,16 @@ export default function ResetPasswordPage() {
   const fromProfile = new URLSearchParams(window.location.search).get("redirect") === "profile";
 
   useEffect(() => {
+    let settled = false;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true);
+      if (data.session) { settled = true; setReady(true); }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) setReady(true);
+      if (event === "PASSWORD_RECOVERY" || session) { settled = true; setReady(true); }
     });
-    return () => listener.subscription.unsubscribe();
+    // If no recovery session materialises, the link was invalid or expired.
+    const timer = setTimeout(() => { if (!settled) setLinkInvalid(true); }, 4000);
+    return () => { clearTimeout(timer); listener.subscription.unsubscribe(); };
   }, []);
 
   async function handleSubmit(e) {
@@ -58,6 +62,25 @@ export default function ResetPasswordPage() {
     if (error) { setErrorMsg(error.message); return; }
     setDone(true);
     if (fromProfile) setTimeout(() => navigate("/profile", { replace: true }), 1500);
+  }
+
+  if (linkInvalid) {
+    return (
+      <div className="auth-page" style={{ minHeight: "100svh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: "Inter, system-ui, sans-serif", padding: "40px 16px" }}>
+        <div style={{ width: "min(100%, 420px)", background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 32, textAlign: "center", boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)" }}>
+          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 22, color: C.text, margin: "0 0 8px" }}>Reset link invalid or expired</h2>
+          <p style={{ fontSize: 13.5, color: C.muted, margin: "0 0 20px" }}>
+            This password reset link is no longer valid. Reset links expire after a while — please request a new one.
+          </p>
+          <button
+            onClick={() => navigate("/login", { replace: true })}
+            style={{ width: "100%", padding: "12px 16px", fontSize: 14, border: "none", borderRadius: 8, background: C.accent, color: "#fff", cursor: "pointer", fontWeight: 600 }}
+          >
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!ready) {

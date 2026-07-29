@@ -1,6 +1,7 @@
 import { Router } from "express";
 import express from "express";
 import { supabase } from "../supabase.js";
+import { requireRole } from "../middleware/requireRole.js";
 import {
   STORAGE_BUCKET,
   VENDOR_STATUSES,
@@ -8,6 +9,9 @@ import {
   storagePathFromUrl,
 } from "../lib/vendorValidation.js";
 const router = Router();
+
+// Reads stay public (they feed the discovery UI); writes require an admin.
+const adminOnly = requireRole("admin");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDORS MODULE — Toh Lian Thing
@@ -101,7 +105,7 @@ router.get("/vendors/:id", async (req, res) => {
   res.json(data);
 });
 
-router.post("/vendors", async (req, res) => {
+router.post("/vendors", adminOnly, async (req, res) => {
   const { errors, clean } = validateVendor(req.body);
   if (Object.keys(errors).length) {
     return res.status(400).json({ error: "validation failed", fields: errors });
@@ -120,7 +124,7 @@ router.post("/vendors", async (req, res) => {
   res.status(201).json(data);
 });
 
-router.put("/vendors/:id", async (req, res) => {
+router.put("/vendors/:id", adminOnly, async (req, res) => {
   const { errors, clean } = validateVendor(req.body);
   if (Object.keys(errors).length) {
     return res.status(400).json({ error: "validation failed", fields: errors });
@@ -140,7 +144,7 @@ router.put("/vendors/:id", async (req, res) => {
   res.json(data);
 });
 
-router.patch("/vendors/:id/status", async (req, res) => {
+router.patch("/vendors/:id/status", adminOnly, async (req, res) => {
   const status = String(req.body?.status || "").toLowerCase();
   if (!VENDOR_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VENDOR_STATUSES.join(", ")}` });
@@ -168,6 +172,7 @@ const ALLOWED_IMAGE_TYPES = {
 
 router.post(
   "/vendors/:id/image",
+  adminOnly,
   express.raw({ type: "image/*", limit: "8mb" }),
   async (req, res) => {
     const ext = ALLOWED_IMAGE_TYPES[req.headers["content-type"]];
@@ -217,7 +222,7 @@ router.post(
   }
 );
 
-router.delete("/vendors/:id", async (req, res) => {
+router.delete("/vendors/:id", adminOnly, async (req, res) => {
   const { data: vendor, error: findErr } = await supabase
     .from("vendors")
     .select("id, storefront_image_url")
