@@ -21,7 +21,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
     if (document.getElementById("user-loc-marker-style")) return;
     const s = document.createElement("style");
     s.id = "user-loc-marker-style";
-    s.textContent = `.user-loc-dot{width:14px;height:14px;border-radius:50%;background:#1d72e8;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(29,114,232,.4);animation:userPulse 2s ease-in-out infinite}.user-loc-dot-num{width:22px;height:22px;border-radius:50%;background:#1d72e8;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(29,114,232,.4);display:flex;align-items:center;justify-content:center;color:#fff;font:700 11px/1 system-ui,sans-serif;animation:userPulse 2s ease-in-out infinite}@keyframes userPulse{0%,100%{box-shadow:0 0 0 3px rgba(29,114,232,.35),0 2px 6px rgba(29,114,232,.3)}50%{box-shadow:0 0 0 11px rgba(29,114,232,0),0 2px 6px rgba(29,114,232,.3)}}`;
+    s.textContent = `.user-loc-dot{width:14px;height:14px;border-radius:50%;background:#1d72e8;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(29,114,232,.4);animation:userPulse 2s ease-in-out infinite}@keyframes userPulse{0%,100%{box-shadow:0 0 0 3px rgba(29,114,232,.35),0 2px 6px rgba(29,114,232,.3)}50%{box-shadow:0 0 0 11px rgba(29,114,232,0),0 2px 6px rgba(29,114,232,.3)}}`;
     document.head.appendChild(s);
   }, []);
 
@@ -171,10 +171,15 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             </InfoWindow>
           ))}
 
+      {/* While it's a trip stop, "Your location" is drawn as the same numbered
+          pin as every other stop — a differently-shaped marker in the middle of
+          a numbered route reads as a different kind of thing. It falls back to
+          the pulsing dot only once removed from the trip, where it means
+          "you are here" rather than "stop N". */}
       {userPos && (
         <AdvancedMarker position={userPos} title="You are here">
           {userStopNumber
-            ? <div className="user-loc-dot-num">{userStopNumber}</div>
+            ? <Pin background={C.terracotta} glyphColor="#fff" borderColor="#fff" glyph={String(userStopNumber)} />
             : <div className="user-loc-dot" />}
         </AdvancedMarker>
       )}

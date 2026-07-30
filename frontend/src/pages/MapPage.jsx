@@ -62,7 +62,7 @@ export default function MapPage() {
   const [openId, setOpenId] = useState(null); // vendor id whose InfoWindow is open
   const [userPos, setUserPos] = useState(null);
   const [locateTarget, setLocateTarget] = useState(null);
-  const [radiusKm, setRadiusKm] = useState(5); // drives both the "Nearby to add" list and map pin visibility
+  const [radiusKm, setRadiusKm] = useState(2); // drives both the "Nearby to add" list and map pin visibility
   // Defaults on so arriving from the Dashboard's Map tab isn't an empty map.
   const [showAllVendors, setShowAllVendors] = useState(true);
   const [tripCollapsed, setTripCollapsed] = useState(false);
@@ -344,11 +344,11 @@ export default function MapPage() {
   trip.forEach((s, i) => { if (!s.isMe) vendorStopOrder.set(s.id, i + 1); });
 
   // One anchor drives the radius circle, the nearby list and the visible pins,
-  // so the three can't disagree about what "nearby" means. Prefers the user's
-  // own position (human ruling) — the map camera centres there on entry, so
-  // anchoring anywhere else can render a viewport with no pins in it.
-  const lastStop = trip[trip.length - 1];
-  const anchor = userPos || (lastStop?.lat != null && lastStop?.lng != null ? lastStop : null);
+  // so the three can't disagree about what "nearby" means. It is always "Your
+  // location" and nothing else: the map camera centres there on entry, so
+  // anchoring anywhere else renders a viewport with no pins in it. With no
+  // location set there is no anchor, and the panel says so.
+  const anchor = userPos || null;
 
   const visibleVendors = selectVisibleVendors({
     vendors,

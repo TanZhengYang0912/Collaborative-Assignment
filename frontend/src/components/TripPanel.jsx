@@ -30,9 +30,9 @@ const panel = {
 };
 
 // Multi-stop trip planner. Every entry (including "Your location") is a normal
-// draggable stop — nothing is locked as start or end. "Nearby to add" surfaces
-// vendors near the anchor (the user's own position when known, else the last
-// stop) that aren't in the trip yet, one tap to add.
+// draggable stop — nothing is locked as start or end. "Nearby to add" always
+// surfaces vendors near "Your location" (never the last stop) that aren't in
+// the trip yet, one tap to add.
 export default function TripPanel({
   trip, summary, loading,
   onReorder, onClear, onRemove, onEditStop,
@@ -272,7 +272,7 @@ export default function TripPanel({
             Nearby to Add
           </span>
           <span style={{ flex: 1 }} />
-          {[2, 5, 10].map((km) => (
+          {[1, 2, 5].map((km) => (
             <button
               key={km}
               onClick={() => onRadiusChange(km)}
