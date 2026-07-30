@@ -50,7 +50,7 @@ function FocusOnUser({ pos }) {
 export default function MapPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setView] = useState(() => searchParams.get("view") === "map" ? "map" : "dashboard");     // "dashboard" | "map"
+  const view = searchParams.get("view") === "map" ? "map" : "dashboard";     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
   const [session, setSession] = useState(null);
   const [bookmarkRows, setBookmarkRows] = useState([]); // {vendor_id, folder_id, folder} from the server
@@ -164,7 +164,7 @@ export default function MapPage() {
     if (!userPos) return;
     const hasMe = trip.some((s) => s.isMe);
     const next = hasMe
-      ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng } : s))
+      ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng, name: userPos.label || "Your location" } : s))
       : [meStop(userPos), ...trip];
     setTrip(next);
     planTrip(next, true);
@@ -284,7 +284,6 @@ export default function MapPage() {
       setLocateTarget(pos);
       setFocusVendor(null);
       setSelected(null);
-      setView("map");
       setSearchParams({ view: "map" });
     };
     if (userPos) { focusOn(userPos); return; }
@@ -295,7 +294,6 @@ export default function MapPage() {
   }
 
   function backToDashboard() {
-    setView("dashboard");
     setSearchParams({}, { replace: true });
   }
 
@@ -366,7 +364,7 @@ export default function MapPage() {
   // the map pins agree at the radius boundary; rounds only for display.
   const nearbyToAdd = anchor
     ? vendors
-        .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
+        .filter((v) => v.latitude != null && v.longitude != null && !trip.some((s) => s.id === v.id))
         .map((v) => ({ ...v, distKm: haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude) }))
         .filter((v) => v.distKm <= radiusKm)
         .sort((a, b) => a.distKm - b.distKm)
@@ -463,7 +461,7 @@ export default function MapPage() {
         </button>
 
         <button
-          onClick={locateMe}
+          onClick={() => locateMe()}
           title="Get current location"
           style={{ position: "absolute", bottom: 20, left: 10, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.18)", fontSize: 18 }}
         >
@@ -473,6 +471,7 @@ export default function MapPage() {
         {!mapFullscreen && (
           <TripPanel
             trip={trip}
+            hasAnchor={anchor != null}
             summary={travelMode ? dirSummary : tripData}
             loading={tripLoading}
             onReorder={reorderTrip}

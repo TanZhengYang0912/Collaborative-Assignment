@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   AdvancedMarker,
   Pin,
@@ -12,11 +12,8 @@ import { C } from "../lib/theme";
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
 // latitude, longitude }.
-export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId: openIdProp, onOpenChange, radiusCenter, radiusKm }) {
+export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId, onOpenChange, radiusCenter, radiusKm }) {
   const map = useMap();
-  const [openIdState, setOpenIdState] = useState(null);
-  const openId = onOpenChange ? openIdProp : openIdState;
-  const setOpenId = onOpenChange || setOpenIdState;
   const clusterer = useRef(null);
   const markers = useRef({});
 
@@ -113,7 +110,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             <AdvancedMarker
               position={pos}
               ref={(marker) => setMarkerRef(marker, v.id, Boolean(stopNum) || isSelected)}
-              onClick={() => { setOpenId(v.id); onSelect(v); }}
+              onClick={() => { onOpenChange(v.id); onSelect(v); }}
               zIndex={isSelected ? 999 : undefined}
             >
               <Pin
@@ -135,7 +132,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             <InfoWindow
               key={v.id}
               position={displayPosition(v)}
-              onCloseClick={() => setOpenId(null)}
+              onCloseClick={() => onOpenChange(null)}
             >
               <div style={{ fontFamily: "system-ui", maxWidth: 220 }}>
                 <strong>{v.name}</strong>

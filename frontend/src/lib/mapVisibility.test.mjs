@@ -48,3 +48,16 @@ test("focusVendor is appended when out of range and never duplicated when in ran
   const notDuplicated = selectVisibleVendors({ ...base, vendors: [NEAR], focusVendor: NEAR });
   assert.deepEqual(ids(notDuplicated), ["a"]);
 });
+
+test("a vendor with only one of latitude/longitude null is excluded", () => {
+  const noLat = { id: "d", latitude: null, longitude: 102.2480 };
+  const noLng = { id: "e", latitude: 2.1953, longitude: null };
+  const out = selectVisibleVendors({ ...base, vendors: [noLat, noLng], radiusKm: 100 });
+  assert.deepEqual(out, []);
+});
+
+test("a focusVendor with a null coordinate is not appended", () => {
+  const badFocus = { id: "f", latitude: null, longitude: 102.2480 };
+  const out = selectVisibleVendors({ ...base, vendors: [NEAR], focusVendor: badFocus });
+  assert.deepEqual(ids(out), ["a"]);
+});

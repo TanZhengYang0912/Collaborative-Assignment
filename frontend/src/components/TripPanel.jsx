@@ -31,7 +31,8 @@ const panel = {
 
 // Multi-stop trip planner. Every entry (including "Your location") is a normal
 // draggable stop — nothing is locked as start or end. "Nearby to add" surfaces
-// vendors close to the last stop that aren't in the trip yet, one tap to add.
+// vendors near the anchor (the user's own position when known, else the last
+// stop) that aren't in the trip yet, one tap to add.
 export default function TripPanel({
   trip, summary, loading,
   onReorder, onClear, onRemove, onEditStop,
@@ -41,6 +42,7 @@ export default function TripPanel({
   transitLegs,
   nearbyToAdd, onAddStop, onAddCustomStop, onSelectNearby,
   radiusKm, onRadiusChange, showAllVendors, onToggleAllVendors,
+  hasAnchor,
   onSuggestBestOrder,
   collapsed, onToggleCollapsed,
 }) {
@@ -326,7 +328,9 @@ export default function TripPanel({
         </div>
       )}
       {onRadiusChange && nearbyToAdd && nearbyToAdd.length === 0 && (
-        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>Nothing within {radiusKm}km — try a bigger radius.</div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>
+          {hasAnchor ? `Nothing within ${radiusKm}km — try a bigger radius.` : "Set your starting point to see nearby vendors."}
+        </div>
       )}
 
       {loading && <div style={{ fontSize: 12, color: C.muted, margin: "10px 0" }}>Calculating route…</div>}

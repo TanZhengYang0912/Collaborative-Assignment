@@ -22,6 +22,6 @@ export function selectVisibleVendors({ vendors, anchor, radiusKm, showAll, stopI
     if (!showAll || !anchor) return false;
     return haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude) <= radiusKm;
   });
-  if (focusVendor && !visible.some((v) => v.id === focusVendor.id)) visible.push(focusVendor);
+  if (focusVendor && focusVendor.latitude != null && focusVendor.longitude != null && !visible.some((v) => v.id === focusVendor.id)) visible.push(focusVendor);
   return visible;
 }
