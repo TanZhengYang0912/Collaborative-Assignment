@@ -183,16 +183,14 @@ export default function TripPanel({
                   }}
                 >
                   <GripVertical size={14} color={C.muted} style={{ flexShrink: 0 }} />
-                  {s.isMe ? (
-                    <span style={{ width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#2a9d8f" }} />
-                    </span>
-                  ) : (
-                    <span style={{
-                      width: 18, height: 18, borderRadius: "50%", background: C.navy, color: "#fff",
-                      fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    }}>{i + 1}</span>
-                  )}
+                  {/* Every row is numbered, including the origin — the row is
+                      draggable, so an unnumbered dot in the middle of the list
+                      would read as nonsense. */}
+                  <span style={{
+                    width: 18, height: 18, borderRadius: "50%",
+                    background: s.isMe ? C.success : C.navy, color: "#fff",
+                    fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>{i + 1}</span>
                   {s.vendor && (
                     <img
                       src={placeholderImage(s.vendor)} alt=""
