@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigation, MapPin, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink } from "lucide-react";
+import { Navigation, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink, ChevronDown } from "lucide-react";
 import LocationInput from "./LocationInput";
 import TransitDetails from "./TransitDetails";
 import RouteOptions from "./RouteOptions";
@@ -16,7 +16,7 @@ const NAV_MODES = [
 
 const panel = {
   position: "absolute",
-  top: 108,
+  top: 132,
   right: 16,
   width: 300,
   maxHeight: "78vh",
@@ -34,17 +34,19 @@ const panel = {
 // vendors close to the last stop that aren't in the trip yet, one tap to add.
 export default function TripPanel({
   trip, summary, loading,
-  onReorder, onClear, onRemove,
+  onReorder, onClear, onRemove, onEditStop,
   travelMode, onTravelMode,
   onManualLocation,
   routeOptions, routeIndex, onSelectRoute,
   transitLegs,
-  nearbyToAdd, onAddStop, onAddCustomStop,
+  nearbyToAdd, onAddStop, onAddCustomStop, onSelectNearby,
+  radiusKm, onRadiusChange,
   onSuggestBestOrder,
+  collapsed, onToggleCollapsed,
 }) {
   const [dragIdx, setDragIdx] = useState(null);
   const [showNav, setShowNav] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(false);
+  const [editingId, setEditingId] = useState(null); // id of the stop whose address is being re-typed
   const [addingPlace, setAddingPlace] = useState(false);
 
   function handleDrop(i) {
@@ -56,8 +58,25 @@ export default function TripPanel({
     onReorder(next);
   }
 
-  const meStop = trip.find((s) => s.isMe);
   const vendorStops = trip.filter((s) => !s.isMe);
+
+  if (collapsed) {
+    return (
+      <button
+        onClick={onToggleCollapsed}
+        style={{
+          position: "absolute", top: 132, right: 16, zIndex: 10,
+          display: "flex", alignItems: "center", gap: 6,
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+          padding: "10px 14px", cursor: "pointer", boxShadow: "0 4px 20px rgba(27,42,74,0.18)",
+          fontFamily: FONT_BODY, fontSize: 13, fontWeight: 600, color: C.navy,
+        }}
+      >
+        <Navigation size={15} color={C.gold} />
+        {trip.length > 0 ? `${trip.length} ${trip.length === 1 ? "stop" : "stops"}` : "Your Trip"}
+      </button>
+    );
+  }
   const activeMode = NAV_MODES.find((m) => m.mode === travelMode);
   const gmaps = buildGoogleMapsUrl(trip, travelMode);
 
@@ -71,95 +90,115 @@ export default function TripPanel({
         }}>
           <Navigation size={16} color={C.gold} /> Your Trip
         </div>
-        {trip.length > 0 && (
-          <span style={{
-            background: C.navy, color: "#fff", fontSize: 11.5,
-            padding: "3px 9px", borderRadius: 20,
-          }}>
-            {trip.length} {trip.length === 1 ? "stop" : "stops"}
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {trip.length > 0 && (
+            <span style={{
+              background: C.navy, color: "#fff", fontSize: 11.5,
+              padding: "3px 9px", borderRadius: 20,
+            }}>
+              {trip.length} {trip.length === 1 ? "stop" : "stops"}
+            </span>
+          )}
+          {onToggleCollapsed && (
+            <button
+              onClick={onToggleCollapsed}
+              aria-label="Collapse trip panel"
+              style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}
+            >
+              <ChevronDown size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {trip.length > 0 && (
         <div style={{ fontSize: 11, color: C.muted, margin: "4px 0 10px" }}>
-          Drag stops to reorder · Click to preview
+          Drag stops to reorder
         </div>
       )}
 
-      {/* "Your location" pill */}
-      <div
-        onClick={() => setEditingLocation((v) => !v)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "9px 10px",
-          background: "#EAF6EE", border: "1px solid #CDE9D6", borderRadius: 10,
-          cursor: "pointer", marginBottom: editingLocation ? 6 : 12,
-        }}
-      >
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#2a9d8f", flexShrink: 0 }} />
-        <span style={{ flex: 1, fontSize: 13.5, color: C.text, fontWeight: 500 }}>
-          {meStop ? "Your location" : "Set your location"}
-        </span>
-        <Pencil size={13} color={C.muted} />
-      </div>
-      {editingLocation && onManualLocation && (
-        <div style={{ marginBottom: 10 }}>
-          <LocationInput onSelect={(pos) => { onManualLocation(pos); setEditingLocation(false); }} />
-        </div>
-      )}
-
-      {/* Stop list */}
-      {vendorStops.length === 0 ? (
+      {/* Stop list — "Your location" is a normal draggable row too. Location and
+          custom (typed) stops are editable via the pencil icon; vendor stops
+          aren't (drag + remove only). */}
+      {trip.length === 0 ? (
         <div style={{ fontSize: 13, color: C.muted, padding: "8px 0" }}>
           Tap a pin on the map or <strong>+ Add to Trip</strong> on a vendor card to build your route.
         </div>
       ) : (
         <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {trip.map((s, i) => {
-            if (s.isMe) return null;
+            const editable = s.isMe || s.source === "custom";
             return (
-              <li
-                key={s.id}
-                draggable
-                onDragStart={() => setDragIdx(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => handleDrop(i)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 6px", marginBottom: 6,
-                  background: dragIdx === i ? C.cream : "transparent",
-                  border: `1px solid ${C.border}`, borderRadius: 10,
-                  cursor: "grab",
-                }}
-              >
-                <GripVertical size={14} color={C.muted} style={{ flexShrink: 0 }} />
-                <span style={{
-                  width: 18, height: 18, borderRadius: "50%", background: C.navy, color: "#fff",
-                  fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>{i + 1}</span>
-                {s.vendor && (
-                  <img
-                    src={placeholderImage(s.vendor)} alt=""
-                    style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-                  />
-                )}
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: C.text, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {s.name}
-                  </div>
-                  {s.vendor && (
-                    <div style={{ fontSize: 11, color: C.muted }}>
-                      {[distanceLabel(s.vendor), priceLabel(s.vendor)].filter(Boolean).join(" · ")}
-                    </div>
-                  )}
-                </span>
-                <button
-                  onClick={() => onRemove(s.id)}
-                  aria-label="Remove stop"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, flexShrink: 0, display: "flex" }}
+              <li key={s.id}>
+                <div
+                  draggable
+                  onDragStart={() => setDragIdx(i)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => handleDrop(i)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 6px", marginBottom: editingId === s.id ? 4 : 6,
+                    background: dragIdx === i ? C.cream : s.isMe ? "#EAF6EE" : "transparent",
+                    border: `1px solid ${s.isMe ? "#CDE9D6" : C.border}`, borderRadius: 10,
+                    cursor: "grab",
+                  }}
                 >
-                  <X size={15} />
-                </button>
+                  <GripVertical size={14} color={C.muted} style={{ flexShrink: 0 }} />
+                  {s.isMe ? (
+                    <span style={{ width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#2a9d8f" }} />
+                    </span>
+                  ) : (
+                    <span style={{
+                      width: 18, height: 18, borderRadius: "50%", background: C.navy, color: "#fff",
+                      fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>{i + 1}</span>
+                  )}
+                  {s.vendor && (
+                    <img
+                      src={placeholderImage(s.vendor)} alt=""
+                      style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                    />
+                  )}
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: C.text, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {s.name}
+                    </div>
+                    {s.vendor && (
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        {[distanceLabel(s.vendor), priceLabel(s.vendor)].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </span>
+                  {editable && (
+                    <button
+                      onClick={() => setEditingId((id) => (id === s.id ? null : s.id))}
+                      aria-label="Edit stop location"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, flexShrink: 0, display: "flex" }}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onRemove(s.id)}
+                    aria-label="Remove stop"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, flexShrink: 0, display: "flex" }}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                {editingId === s.id && (
+                  <div style={{ marginBottom: 8 }}>
+                    <LocationInput
+                      placeholder={s.isMe ? "Search your address…" : "Search a place…"}
+                      onSelect={(place) => {
+                        if (s.isMe) onManualLocation(place);
+                        else onEditStop(s.id, place);
+                        setEditingId(null);
+                      }}
+                    />
+                  </div>
+                )}
               </li>
             );
           })}
@@ -187,19 +226,35 @@ export default function TripPanel({
         )
       )}
 
-      {/* Nearby to add */}
-      {nearbyToAdd && nearbyToAdd.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, color: C.gold,
-            margin: "0 0 6px 2px", textTransform: "uppercase",
-          }}>
+      {/* Nearby to add — tap a row to preview it on the map, tap + to add it. */}
+      {onRadiusChange && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, color: C.gold, textTransform: "uppercase" }}>
             Nearby to Add
-          </div>
+          </span>
+          <span style={{ flex: 1 }} />
+          {[2, 5, 10].map((km) => (
+            <button
+              key={km}
+              onClick={() => onRadiusChange(km)}
+              style={{
+                fontSize: 11, padding: "2px 8px", borderRadius: 20, cursor: "pointer",
+                background: radiusKm === km ? C.navy : "transparent",
+                color: radiusKm === km ? "#fff" : C.muted,
+                border: `1px solid ${radiusKm === km ? C.navy : C.border}`,
+              }}
+            >
+              {km}km
+            </button>
+          ))}
+        </div>
+      )}
+      {nearbyToAdd && nearbyToAdd.length > 0 && (
+        <div style={{ marginTop: 6 }}>
           {nearbyToAdd.map((v) => (
             <div
               key={v.id}
-              onClick={() => onAddStop(v)}
+              onClick={() => onSelectNearby?.(v)}
               style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer", borderRadius: 8 }}
             >
               <img src={placeholderImage(v)} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
@@ -207,9 +262,19 @@ export default function TripPanel({
                 <div style={{ fontSize: 12.5, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.name}</div>
                 <div style={{ fontSize: 11, color: C.muted }}>{[distanceLabel(v), priceLabel(v)].filter(Boolean).join(" · ")}</div>
               </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onAddStop(v); }}
+                aria-label={`Add ${v.name} to trip`}
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, flexShrink: 0, display: "flex" }}
+              >
+                <Plus size={16} />
+              </button>
             </div>
           ))}
         </div>
+      )}
+      {onRadiusChange && nearbyToAdd && nearbyToAdd.length === 0 && (
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>Nothing within {radiusKm}km — try a bigger radius.</div>
       )}
 
       {loading && <div style={{ fontSize: 12, color: C.muted, margin: "10px 0" }}>Calculating route…</div>}

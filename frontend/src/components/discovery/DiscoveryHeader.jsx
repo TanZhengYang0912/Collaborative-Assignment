@@ -10,6 +10,7 @@ export default function DiscoveryHeader({
   session, userEmail, initials, firstName, avatarUrl, onLogin, onOpenProfile, onSignUp,
   onOpenSaved, onOpenReviews, onOpenDiscover, activeSection = "discover",
   savedCount = 0,
+  mapActive = false,
 }) {
   return (
     <header className="discovery-header" style={{ fontFamily: FONT_BODY }}>
@@ -55,10 +56,21 @@ export default function DiscoveryHeader({
       <div className="discovery-header-spacer" />
 
       <div className="discovery-view-toggle" aria-label="View mode">
-        <span className="discovery-view-toggle-active"><LayoutGrid size={14} /> List</span>
-        <button type="button" className="discovery-view-toggle-button" onClick={onOpenMap}>
-          <MapIcon size={14} /> Map
-        </button>
+        {mapActive ? (
+          <>
+            <button type="button" className="discovery-view-toggle-button" onClick={onOpenDiscover}>
+              <LayoutGrid size={14} /> List
+            </button>
+            <span className="discovery-view-toggle-active"><MapIcon size={14} /> Map</span>
+          </>
+        ) : (
+          <>
+            <span className="discovery-view-toggle-active"><LayoutGrid size={14} /> List</span>
+            <button type="button" className="discovery-view-toggle-button" onClick={onOpenMap}>
+              <MapIcon size={14} /> Map
+            </button>
+          </>
+        )}
       </div>
 
       {session ? (

@@ -12,9 +12,11 @@ import { C } from "../lib/theme";
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
 // latitude, longitude }.
-export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId }) {
+export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId: openIdProp, onOpenChange }) {
   const map = useMap();
-  const [openId, setOpenId] = useState(null);
+  const [openIdState, setOpenIdState] = useState(null);
+  const openId = onOpenChange ? openIdProp : openIdState;
+  const setOpenId = onOpenChange || setOpenIdState;
   const clusterer = useRef(null);
   const markers = useRef({});
 
