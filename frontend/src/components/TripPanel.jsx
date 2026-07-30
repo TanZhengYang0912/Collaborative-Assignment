@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigation, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink, ChevronDown } from "lucide-react";
+import { Navigation, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink, ChevronDown, MapPin, LocateFixed } from "lucide-react";
 import LocationInput from "./LocationInput";
 import TransitDetails from "./TransitDetails";
 import RouteOptions from "./RouteOptions";
@@ -36,7 +36,7 @@ export default function TripPanel({
   trip, summary, loading,
   onReorder, onClear, onRemove, onEditStop,
   travelMode, onTravelMode,
-  onManualLocation,
+  onManualLocation, onLocateMe,
   routeOptions, routeIndex, onSelectRoute,
   transitLegs,
   nearbyToAdd, onAddStop, onAddCustomStop, onSelectNearby,
@@ -120,6 +120,45 @@ export default function TripPanel({
       {/* Stop list — "Your location" is a normal draggable row too. Location and
           custom (typed) stops are editable via the pencil icon; vendor stops
           aren't (drag + remove only). */}
+      {/* No origin yet. Without this row a user who denies geolocation has no
+          path to a starting point at all — the map's GPS button is the only
+          other entry point. */}
+      {!trip.some((s) => s.isMe) && (
+        <>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", marginBottom: 8,
+            border: `1px dashed ${C.border}`, borderRadius: 10, background: C.cream,
+          }}>
+            <MapPin size={14} color={C.muted} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>Set your starting point</div>
+              <div style={{ fontSize: 11, color: C.muted }}>Type a place or use GPS</div>
+            </span>
+            <button
+              onClick={() => setEditingId((id) => (id === "__me__" ? null : "__me__"))}
+              aria-label="Type a starting address"
+              style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, flexShrink: 0, display: "flex" }}
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              onClick={() => { setEditingId(null); onLocateMe?.(); }}
+              aria-label="Use my current location"
+              style={{ background: "none", border: "none", cursor: "pointer", color: C.success, flexShrink: 0, display: "flex" }}
+            >
+              <LocateFixed size={14} />
+            </button>
+          </div>
+          {editingId === "__me__" && (
+            <div style={{ marginBottom: 8 }}>
+              <LocationInput
+                placeholder="Search your address…"
+                onSelect={(place) => { onManualLocation(place); setEditingId(null); }}
+              />
+            </div>
+          )}
+        </>
+      )}
       {trip.length === 0 ? (
         <div style={{ fontSize: 13, color: C.muted, padding: "8px 0" }}>
           Tap a pin on the map or <strong>+ Add to Trip</strong> on a vendor card to build your route.

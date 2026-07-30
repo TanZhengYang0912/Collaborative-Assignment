@@ -151,7 +151,9 @@ export default function MapPage() {
 
   // Each stop is a normal draggable entry — the user's location too.
   const vendorStop = (v) => ({ id: v.id, name: v.name, lat: v.latitude, lng: v.longitude, isMe: false, vendor: v });
-  const meStop = (pos) => ({ id: "__me__", name: "Your location", lat: pos.lat, lng: pos.lng, isMe: true });
+  // `pos.label` is present when the origin came from Places Autocomplete, absent
+  // for GPS — so a typed origin reads as its address instead of a generic string.
+  const meStop = (pos) => ({ id: "__me__", name: pos.label || "Your location", lat: pos.lat, lng: pos.lng, isMe: true });
 
   async function planTrip(list, optimize) {
     if (list.length < 2) { setTripData(null); return; }
@@ -170,7 +172,7 @@ export default function MapPage() {
   }
 
   useEffect(() => {
-    if (!userPos || trip.length === 0) return;
+    if (!userPos) return;
     const hasMe = trip.some((s) => s.isMe);
     const next = hasMe
       ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng } : s))
@@ -490,6 +492,7 @@ export default function MapPage() {
             travelMode={travelMode}
             onTravelMode={setTravelMode}
             onManualLocation={setManualLocation}
+            onLocateMe={() => locateMe()}
             routeOptions={routeOptions}
             routeIndex={routeIndex}
             onSelectRoute={setRouteIndex}
