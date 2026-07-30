@@ -402,6 +402,8 @@ export default function MapPage() {
             selectedId={selected?.id}
             openId={openId}
             onOpenChange={setOpenId}
+            radiusCenter={anchor}
+            radiusKm={radiusKm}
           />
           {travelMode === "TRANSIT" && <TransitLayer />}
           {travelMode

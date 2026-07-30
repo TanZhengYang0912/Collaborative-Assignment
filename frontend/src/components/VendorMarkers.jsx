@@ -12,7 +12,7 @@ import { C } from "../lib/theme";
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
 // latitude, longitude }.
-export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId: openIdProp, onOpenChange }) {
+export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId: openIdProp, onOpenChange, radiusCenter, radiusKm }) {
   const map = useMap();
   const [openIdState, setOpenIdState] = useState(null);
   const openId = onOpenChange ? openIdProp : openIdState;
@@ -74,6 +74,21 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
 
   return (
     <>
+      {/* The radius the "Nearby to add" list and the vendor pins are filtered by.
+          clickable={false} is load-bearing — at 10 km this covers the whole
+          viewport and would otherwise swallow every pin click. */}
+      {radiusCenter && radiusKm && (
+        <Circle
+          center={radiusCenter}
+          radius={radiusKm * 1000}
+          clickable={false}
+          strokeColor={C.navy}
+          strokeOpacity={0.5}
+          strokeWeight={1.5}
+          fillColor={C.navy}
+          fillOpacity={0.06}
+        />
+      )}
       {vendors.map((v) => {
         const stopNum = tripOrder?.get(v.id);
         // AI-extracted vendors that only had a city/state (no street address) get
