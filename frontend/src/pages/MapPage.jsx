@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { APIProvider, Map as GMap, useMap } from "@vis.gl/react-google-maps";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { getRestaurants, getTrip } from "../api";
 import { supabase } from "../supabaseClient";
 import { getBookmarks, getFolders, addBookmark, removeBookmark, createFolder } from "../api/engagement";
@@ -11,25 +12,18 @@ import TripPolyline from "../components/TripPolyline";
 import DirectionsRenderer from "../components/DirectionsRenderer";
 import TransitLayer from "../components/TransitLayer";
 import Dashboard from "../components/Dashboard";
+import DiscoveryHeader from "../components/discovery/DiscoveryHeader";
 import FolderPickerModal from "../components/engagement/FolderPickerModal";
 import Toast from "../components/engagement/Toast";
 import { useToast, sleep } from "../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { loadTrip, saveTrip } from "../lib/tripStorage";
 import { C } from "../lib/theme";
+import { selectVisibleVendors, haversineKm } from "../lib/mapVisibility";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
 const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 const MAP_ID = import.meta.env.VITE_MAP_ID || "DEMO_MAP_ID";
-
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function FocusOnVendor({ vendor }) {
   const map = useMap();
@@ -55,8 +49,8 @@ function FocusOnUser({ pos }) {
 
 export default function MapPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [view, setView] = useState(() => searchParams.get("view") === "map" ? "map" : "dashboard");     // "dashboard" | "map"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("view") === "map" ? "map" : "dashboard";     // "dashboard" | "map"
   const [vendors, setVendors] = useState([]);
   const [session, setSession] = useState(null);
   const [bookmarkRows, setBookmarkRows] = useState([]); // {vendor_id, folder_id, folder} from the server
@@ -65,13 +59,14 @@ export default function MapPage() {
   const bookmarks = new Set(bookmarkRows.map((r) => r.vendor_id));
   const [focusVendor, setFocusVendor] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [openId, setOpenId] = useState(null); // vendor id whose InfoWindow is open
   const [userPos, setUserPos] = useState(null);
   const [locateTarget, setLocateTarget] = useState(null);
-  // "single" — entered map by picking one vendor from Dashboard, only show that
-  // pin (plus anything already on the trip). "nearby" — entered via the Map tab,
-  // show the 10 closest vendors to the user's current position.
-  const [mapMode, setMapMode] = useState("single");
-  const [nearbyVendors, setNearbyVendors] = useState([]);
+  const [radiusKm, setRadiusKm] = useState(2); // drives both the "Nearby to add" list and map pin visibility
+  // Defaults on so arriving from the Dashboard's Map tab isn't an empty map.
+  const [showAllVendors, setShowAllVendors] = useState(true);
+  const [tripCollapsed, setTripCollapsed] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   // Trip planning is unauthenticated, browser-local state — restored from
   // localStorage on mount (see lib/tripStorage.js) so a reload doesn't lose it.
@@ -145,7 +140,9 @@ export default function MapPage() {
 
   // Each stop is a normal draggable entry — the user's location too.
   const vendorStop = (v) => ({ id: v.id, name: v.name, lat: v.latitude, lng: v.longitude, isMe: false, vendor: v });
-  const meStop = (pos) => ({ id: "__me__", name: "Your location", lat: pos.lat, lng: pos.lng, isMe: true });
+  // `pos.label` is present when the origin came from Places Autocomplete, absent
+  // for GPS — so a typed origin reads as its address instead of a generic string.
+  const meStop = (pos) => ({ id: "__me__", name: pos.label || "Your location", lat: pos.lat, lng: pos.lng, isMe: true });
 
   async function planTrip(list, optimize) {
     if (list.length < 2) { setTripData(null); return; }
@@ -164,10 +161,10 @@ export default function MapPage() {
   }
 
   useEffect(() => {
-    if (!userPos || trip.length === 0) return;
+    if (!userPos) return;
     const hasMe = trip.some((s) => s.isMe);
     const next = hasMe
-      ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng } : s))
+      ? trip.map((s) => (s.isMe ? { ...s, lat: userPos.lat, lng: userPos.lng, name: userPos.label || "Your location" } : s))
       : [meStop(userPos), ...trip];
     setTrip(next);
     planTrip(next, true);
@@ -191,6 +188,20 @@ export default function MapPage() {
   }
   function reorderTrip(newList) { setTrip(newList); planTrip(newList, false); }
   function removeStop(id) { const list = trip.filter((s) => s.id !== id); setTrip(list); planTrip(list, false); }
+  // Re-typing the address of a custom stop already on the trip (vendor stops
+  // aren't editable — they're removed and re-added if wrong; "Your location"
+  // uses setManualLocation instead, since that also updates userPos/GPS state).
+  function editStop(id, place) {
+    const list = trip.map((s) => (s.id === id ? { ...s, name: place.label, lat: place.lat, lng: place.lng } : s));
+    setTrip(list);
+    planTrip(list, false);
+  }
+
+  function selectNearby(vendor) {
+    setFocusVendor(vendor);
+    setSelected(vendor);
+    setOpenId(vendor.id);
+  }
 
   // Keeps "Your location" and the chosen transport mode — only the vendor
   // stops (the actual destinations) are cleared, so the user can immediately
@@ -225,7 +236,7 @@ export default function MapPage() {
         .catch((e) => notify(e.message, true));
       return;
     }
-    const vendor = vendors.find((v) => v.id === id) || nearbyVendors.find((v) => v.id === id);
+    const vendor = vendors.find((v) => v.id === id);
     setPendingSaveVendor(vendor || { id });
   }
 
@@ -265,23 +276,15 @@ export default function MapPage() {
     );
   }
 
-  // Entry point for the Dashboard's "Map" tab — jumps straight into the map,
-  // centred on the user, showing just the 10 nearest vendors instead of every
-  // pin at once.
+  // Entry point for the Dashboard's "Map" tab — jump to the map centred on the
+  // user. Which pins render is the radius toggle's job, not this function's.
   function openMapNearby() {
     const focusOn = (pos) => {
       setUserPos(pos);
       setLocateTarget(pos);
-      setMapMode("nearby");
       setFocusVendor(null);
       setSelected(null);
-      setView("map");
-      const nearest = vendors
-        .filter((v) => v.latitude != null && v.longitude != null)
-        .map((v) => ({ ...v, _distFromMe: haversineKm(pos.lat, pos.lng, v.latitude, v.longitude) }))
-        .sort((a, b) => a._distFromMe - b._distFromMe)
-        .slice(0, 10);
-      setNearbyVendors(nearest);
+      setSearchParams({ view: "map" });
     };
     if (userPos) { focusOn(userPos); return; }
     navigator.geolocation.getCurrentPosition(
@@ -289,6 +292,18 @@ export default function MapPage() {
       () => { focusOn(MELAKA_CENTER); notify("Couldn't get your location — showing vendors near Melaka centre.", true); }
     );
   }
+
+  function backToDashboard() {
+    setSearchParams({}, { replace: true });
+  }
+
+  const profileMeta = session?.user?.user_metadata || {};
+  const userEmail = session?.user?.email || "";
+  const avatarUrl = profileMeta.avatar_url || "";
+  const firstName = profileMeta.first_name || "";
+  const initials = firstName
+    ? (profileMeta.first_name?.[0] || "") + (profileMeta.last_name?.[0] || "")
+    : (userEmail ? userEmail.slice(0, 2).toUpperCase() : "?");
 
   if (!API_KEY) {
     return (
@@ -328,24 +343,34 @@ export default function MapPage() {
   const vendorStopOrder = new Map();
   trip.forEach((s, i) => { if (!s.isMe) vendorStopOrder.set(s.id, i + 1); });
 
-  // Only render every pin when the user is actively browsing "all" — otherwise
-  // stick to what they came here to see (one vendor, or their nearest 10),
-  // plus anything they've already added as a trip stop.
-  const visibleVendors = mapMode === "nearby"
-    ? nearbyVendors
-    : vendors.filter((v) => v.id === focusVendor?.id || vendorStopOrder.has(v.id));
+  // One anchor drives the radius circle, the nearby list and the visible pins,
+  // so the three can't disagree about what "nearby" means. It is always "Your
+  // location" and nothing else: the map camera centres there on entry, so
+  // anchoring anywhere else renders a viewport with no pins in it. With no
+  // location set there is no anchor, and the panel says so.
+  const anchor = userPos || null;
 
-  // "Nearby to add" in the trip panel — vendors not already in the trip,
-  // closest to the last stop (or the user, if there's no trip yet).
-  const nearbyToAdd = (() => {
-    const anchor = trip[trip.length - 1] || (userPos ? { lat: userPos.lat, lng: userPos.lng } : null);
-    if (!anchor) return [];
-    return vendors
-      .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
-      .map((v) => ({ ...v, distKm: parseFloat(haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude).toFixed(2)) }))
-      .sort((a, b) => a.distKm - b.distKm)
-      .slice(0, 4);
-  })();
+  const visibleVendors = selectVisibleVendors({
+    vendors,
+    anchor,
+    radiusKm,
+    showAll: showAllVendors,
+    stopIds: new Set(vendorStopOrder.keys()),
+    focusVendor,
+  });
+
+  // "Nearby to add" — vendors not already in the trip, within the chosen radius
+  // of the anchor, closest first. Filters on the raw distance so the list and
+  // the map pins agree at the radius boundary; rounds only for display.
+  const nearbyToAdd = anchor
+    ? vendors
+        .filter((v) => v.latitude != null && v.longitude != null && !trip.some((s) => s.id === v.id))
+        .map((v) => ({ ...v, distKm: haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude) }))
+        .filter((v) => v.distKm <= radiusKm)
+        .sort((a, b) => a.distKm - b.distKm)
+        .slice(0, 8)
+        .map((v) => ({ ...v, distKm: parseFloat(v.distKm.toFixed(2)) }))
+    : [];
 
   return (
     <APIProvider apiKey={API_KEY} libraries={["geometry", "marker", "places"]}>
@@ -373,6 +398,10 @@ export default function MapPage() {
             tripOrder={vendorStopOrder}
             userStopNumber={meIndex >= 0 ? meIndex + 1 : null}
             selectedId={selected?.id}
+            openId={openId}
+            onOpenChange={setOpenId}
+            radiusCenter={anchor}
+            radiusKm={radiusKm}
           />
           {travelMode === "TRANSIT" && <TransitLayer />}
           {travelMode
@@ -390,11 +419,28 @@ export default function MapPage() {
           }
         </GMap>
 
+        {!mapFullscreen && (
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}>
+            <DiscoveryHeader
+              session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl}
+              savedCount={bookmarks.size}
+              onLogin={() => navigate("/login")} onOpenProfile={() => navigate("/profile")}
+              onSignUp={() => navigate("/login")}
+              activeSection="discover"
+              mapActive
+              onOpenDiscover={backToDashboard}
+              onOpenSaved={() => navigate("/engagement")}
+              onOpenReviews={() => navigate("/engagement?tab=reviews")}
+            />
+          </div>
+        )}
+
         <button
-          onClick={() => setView("dashboard")}
-          style={{ position: "absolute", top: 60, right: 16, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontFamily: "system-ui", fontSize: 14, color: C.navy, boxShadow: "0 2px 8px rgba(27,42,74,0.12)" }}
+          onClick={() => setMapFullscreen((v) => !v)}
+          title={mapFullscreen ? "Exit fullscreen" : "Fullscreen map"}
+          style={{ position: "absolute", top: mapFullscreen ? 16 : 84, right: 16, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.12)" }}
         >
-          ← Back to vendors
+          {mapFullscreen ? <Minimize2 size={16} color={C.navy} /> : <Maximize2 size={16} color={C.navy} />}
         </button>
 
         <button
@@ -415,32 +461,44 @@ export default function MapPage() {
         </button>
 
         <button
-          onClick={locateMe}
+          onClick={() => locateMe()}
           title="Get current location"
           style={{ position: "absolute", bottom: 20, left: 10, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.18)", fontSize: 18 }}
         >
           📍
         </button>
 
-        <TripPanel
-          trip={trip}
-          summary={travelMode ? dirSummary : tripData}
-          loading={tripLoading}
-          onReorder={reorderTrip}
-          onClear={clearTrip}
-          onRemove={removeStop}
-          travelMode={travelMode}
-          onTravelMode={setTravelMode}
-          onManualLocation={setManualLocation}
-          routeOptions={routeOptions}
-          routeIndex={routeIndex}
-          onSelectRoute={setRouteIndex}
-          transitLegs={transitLegs}
-          nearbyToAdd={nearbyToAdd}
-          onAddStop={addStop}
-          onAddCustomStop={addCustomStop}
-          onSuggestBestOrder={() => planTrip(trip, true)}
-        />
+        {!mapFullscreen && (
+          <TripPanel
+            trip={trip}
+            hasAnchor={anchor != null}
+            summary={travelMode ? dirSummary : tripData}
+            loading={tripLoading}
+            onReorder={reorderTrip}
+            onClear={clearTrip}
+            onRemove={removeStop}
+            onEditStop={editStop}
+            travelMode={travelMode}
+            onTravelMode={setTravelMode}
+            onManualLocation={setManualLocation}
+            onLocateMe={() => locateMe()}
+            routeOptions={routeOptions}
+            routeIndex={routeIndex}
+            onSelectRoute={setRouteIndex}
+            transitLegs={transitLegs}
+            nearbyToAdd={nearbyToAdd}
+            onAddStop={addStop}
+            onAddCustomStop={addCustomStop}
+            onSelectNearby={selectNearby}
+            radiusKm={radiusKm}
+            onRadiusChange={setRadiusKm}
+            showAllVendors={showAllVendors}
+            onToggleAllVendors={() => setShowAllVendors((v) => !v)}
+            collapsed={tripCollapsed}
+            onToggleCollapsed={() => setTripCollapsed((v) => !v)}
+            onSuggestBestOrder={() => planTrip(trip, true)}
+          />
+        )}
 
         {pendingSaveVendor && (
           <FolderPickerModal

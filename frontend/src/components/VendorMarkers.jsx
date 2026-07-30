@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   AdvancedMarker,
   Pin,
@@ -12,16 +12,15 @@ import { C } from "../lib/theme";
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
 // latitude, longitude }.
-export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId }) {
+export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, tripOrder, userStopNumber, selectedId, openId, onOpenChange, radiusCenter, radiusKm }) {
   const map = useMap();
-  const [openId, setOpenId] = useState(null);
   const clusterer = useRef(null);
   const markers = useRef({});
 
   useEffect(() => {
-    if (document.getElementById("user-loc-pulse-style")) return;
+    if (document.getElementById("user-loc-marker-style")) return;
     const s = document.createElement("style");
-    s.id = "user-loc-pulse-style";
+    s.id = "user-loc-marker-style";
     s.textContent = `.user-loc-dot{width:14px;height:14px;border-radius:50%;background:#1d72e8;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(29,114,232,.4);animation:userPulse 2s ease-in-out infinite}@keyframes userPulse{0%,100%{box-shadow:0 0 0 3px rgba(29,114,232,.35),0 2px 6px rgba(29,114,232,.3)}50%{box-shadow:0 0 0 11px rgba(29,114,232,0),0 2px 6px rgba(29,114,232,.3)}}`;
     document.head.appendChild(s);
   }, []);
@@ -72,6 +71,21 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
 
   return (
     <>
+      {/* The radius the "Nearby to add" list and the vendor pins are filtered by.
+          clickable={false} is load-bearing — at 10 km this covers the whole
+          viewport and would otherwise swallow every pin click. */}
+      {radiusCenter && radiusKm && (
+        <Circle
+          center={radiusCenter}
+          radius={radiusKm * 1000}
+          clickable={false}
+          strokeColor={C.navy}
+          strokeOpacity={0.5}
+          strokeWeight={1.5}
+          fillColor={C.navy}
+          fillOpacity={0.06}
+        />
+      )}
       {vendors.map((v) => {
         const stopNum = tripOrder?.get(v.id);
         // AI-extracted vendors that only had a city/state (no street address) get
@@ -96,7 +110,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             <AdvancedMarker
               position={pos}
               ref={(marker) => setMarkerRef(marker, v.id, Boolean(stopNum) || isSelected)}
-              onClick={() => { setOpenId(v.id); onSelect(v); }}
+              onClick={() => { onOpenChange(v.id); onSelect(v); }}
               zIndex={isSelected ? 999 : undefined}
             >
               <Pin
@@ -118,7 +132,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             <InfoWindow
               key={v.id}
               position={displayPosition(v)}
-              onCloseClick={() => setOpenId(null)}
+              onCloseClick={() => onOpenChange(null)}
             >
               <div style={{ fontFamily: "system-ui", maxWidth: 220 }}>
                 <strong>{v.name}</strong>
@@ -157,9 +171,16 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
             </InfoWindow>
           ))}
 
+      {/* While it's a trip stop, "Your location" is drawn as the same numbered
+          pin as every other stop — a differently-shaped marker in the middle of
+          a numbered route reads as a different kind of thing. It falls back to
+          the pulsing dot only once removed from the trip, where it means
+          "you are here" rather than "stop N". */}
       {userPos && (
         <AdvancedMarker position={userPos} title="You are here">
-          <div className="user-loc-dot" />
+          {userStopNumber
+            ? <Pin background={C.terracotta} glyphColor="#fff" borderColor="#fff" glyph={String(userStopNumber)} />
+            : <div className="user-loc-dot" />}
         </AdvancedMarker>
       )}
     </>
