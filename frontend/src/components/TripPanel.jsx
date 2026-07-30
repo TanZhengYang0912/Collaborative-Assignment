@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigation, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink, ChevronDown, MapPin, LocateFixed } from "lucide-react";
+import { Navigation, GripVertical, X, Pencil, Sparkles, Route, Clock, Plus, ExternalLink, ChevronDown, MapPin, LocateFixed, Eye, EyeOff } from "lucide-react";
 import LocationInput from "./LocationInput";
 import TransitDetails from "./TransitDetails";
 import RouteOptions from "./RouteOptions";
@@ -40,7 +40,7 @@ export default function TripPanel({
   routeOptions, routeIndex, onSelectRoute,
   transitLegs,
   nearbyToAdd, onAddStop, onAddCustomStop, onSelectNearby,
-  radiusKm, onRadiusChange,
+  radiusKm, onRadiusChange, showAllVendors, onToggleAllVendors,
   onSuggestBestOrder,
   collapsed, onToggleCollapsed,
 }) {
@@ -285,6 +285,21 @@ export default function TripPanel({
             </button>
           ))}
         </div>
+      )}
+      {onToggleAllVendors && (
+        <button
+          onClick={onToggleAllVendors}
+          aria-pressed={showAllVendors}
+          style={{
+            display: "flex", alignItems: "center", gap: 5, marginTop: 6,
+            background: "none", border: "none", cursor: "pointer",
+            color: showAllVendors ? C.navy : C.muted,
+            fontSize: 11.5, fontFamily: FONT_BODY, padding: 0,
+          }}
+        >
+          {showAllVendors ? <Eye size={13} /> : <EyeOff size={13} />}
+          {showAllVendors ? "Showing vendors on map" : "Vendors hidden on map"}
+        </button>
       )}
       {nearbyToAdd && nearbyToAdd.length > 0 && (
         <div style={{ marginTop: 6 }}>

@@ -19,19 +19,11 @@ import { useToast, sleep } from "../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { loadTrip, saveTrip } from "../lib/tripStorage";
 import { C } from "../lib/theme";
+import { selectVisibleVendors, haversineKm } from "../lib/mapVisibility";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
 const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 const MAP_ID = import.meta.env.VITE_MAP_ID || "DEMO_MAP_ID";
-
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function FocusOnVendor({ vendor }) {
   const map = useMap();
@@ -71,13 +63,10 @@ export default function MapPage() {
   const [userPos, setUserPos] = useState(null);
   const [locateTarget, setLocateTarget] = useState(null);
   const [radiusKm, setRadiusKm] = useState(5); // "Nearby to add" filter, in TripPanel
+  // Defaults on so arriving from the Dashboard's Map tab isn't an empty map.
+  const [showAllVendors, setShowAllVendors] = useState(true);
   const [tripCollapsed, setTripCollapsed] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
-  // "single" — entered map by picking one vendor from Dashboard, only show that
-  // pin (plus anything already on the trip). "nearby" — entered via the Map tab,
-  // show the 10 closest vendors to the user's current position.
-  const [mapMode, setMapMode] = useState("single");
-  const [nearbyVendors, setNearbyVendors] = useState([]);
 
   // Trip planning is unauthenticated, browser-local state — restored from
   // localStorage on mount (see lib/tripStorage.js) so a reload doesn't lose it.
@@ -247,7 +236,7 @@ export default function MapPage() {
         .catch((e) => notify(e.message, true));
       return;
     }
-    const vendor = vendors.find((v) => v.id === id) || nearbyVendors.find((v) => v.id === id);
+    const vendor = vendors.find((v) => v.id === id);
     setPendingSaveVendor(vendor || { id });
   }
 
@@ -287,24 +276,16 @@ export default function MapPage() {
     );
   }
 
-  // Entry point for the Dashboard's "Map" tab — jumps straight into the map,
-  // centred on the user, showing just the 10 nearest vendors instead of every
-  // pin at once.
+  // Entry point for the Dashboard's "Map" tab — jump to the map centred on the
+  // user. Which pins render is the radius toggle's job, not this function's.
   function openMapNearby() {
     const focusOn = (pos) => {
       setUserPos(pos);
       setLocateTarget(pos);
-      setMapMode("nearby");
       setFocusVendor(null);
       setSelected(null);
       setView("map");
       setSearchParams({ view: "map" });
-      const nearest = vendors
-        .filter((v) => v.latitude != null && v.longitude != null)
-        .map((v) => ({ ...v, _distFromMe: haversineKm(pos.lat, pos.lng, v.latitude, v.longitude) }))
-        .sort((a, b) => a._distFromMe - b._distFromMe)
-        .slice(0, 10);
-      setNearbyVendors(nearest);
     };
     if (userPos) { focusOn(userPos); return; }
     navigator.geolocation.getCurrentPosition(
@@ -364,27 +345,29 @@ export default function MapPage() {
   const vendorStopOrder = new Map();
   trip.forEach((s, i) => { if (!s.isMe) vendorStopOrder.set(s.id, i + 1); });
 
-  // Only render every pin when the user is actively browsing "all" — otherwise
-  // stick to what they came here to see (one vendor, or their nearest 10),
-  // plus anything they've already added as a trip stop or picked from "Nearby
-  // to add" (which may fall outside the nearest-10 set).
-  const baseVisible = mapMode === "nearby" ? nearbyVendors : vendors.filter((v) => vendorStopOrder.has(v.id));
-  const visibleVendors = focusVendor && !baseVisible.some((v) => v.id === focusVendor.id)
-    ? [...baseVisible, focusVendor]
-    : baseVisible;
+  // One anchor drives the radius circle, the nearby list and the visible pins,
+  // so the three can't disagree about what "nearby" means.
+  const anchor = trip[trip.length - 1] || userPos || null;
 
-  // "Nearby to add" in the trip panel — vendors not already in the trip,
-  // within the chosen radius of the last stop (or the user, if no trip yet).
-  const nearbyToAdd = (() => {
-    const anchor = trip[trip.length - 1] || (userPos ? { lat: userPos.lat, lng: userPos.lng } : null);
-    if (!anchor) return [];
-    return vendors
-      .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
-      .map((v) => ({ ...v, distKm: parseFloat(haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude).toFixed(2)) }))
-      .filter((v) => v.distKm <= radiusKm)
-      .sort((a, b) => a.distKm - b.distKm)
-      .slice(0, 8);
-  })();
+  const visibleVendors = selectVisibleVendors({
+    vendors,
+    anchor,
+    radiusKm,
+    showAll: showAllVendors,
+    stopIds: new Set(vendorStopOrder.keys()),
+    focusVendor,
+  });
+
+  // "Nearby to add" — vendors not already in the trip, within the chosen radius
+  // of the anchor, closest first.
+  const nearbyToAdd = anchor
+    ? vendors
+        .filter((v) => v.latitude != null && !trip.some((s) => s.id === v.id))
+        .map((v) => ({ ...v, distKm: parseFloat(haversineKm(anchor.lat, anchor.lng, v.latitude, v.longitude).toFixed(2)) }))
+        .filter((v) => v.distKm <= radiusKm)
+        .sort((a, b) => a.distKm - b.distKm)
+        .slice(0, 8)
+    : [];
 
   return (
     <APIProvider apiKey={API_KEY} libraries={["geometry", "marker", "places"]}>
@@ -503,6 +486,8 @@ export default function MapPage() {
             onSelectNearby={selectNearby}
             radiusKm={radiusKm}
             onRadiusChange={setRadiusKm}
+            showAllVendors={showAllVendors}
+            onToggleAllVendors={() => setShowAllVendors((v) => !v)}
             collapsed={tripCollapsed}
             onToggleCollapsed={() => setTripCollapsed((v) => !v)}
             onSuggestBestOrder={() => planTrip(trip, true)}
