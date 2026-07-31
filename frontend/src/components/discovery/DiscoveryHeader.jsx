@@ -5,11 +5,11 @@ import TrueBitesLogo from "../TrueBitesLogo";
 // Shared customer header for discovery and map surfaces. Search lives in the
 // discovery hero so the top bar stays quiet and consistent across screens.
 // Below md the primary nav drops to its own scrollable row beneath the brand.
-const NAV_LINK = "relative inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition-colors motion-reduce:transition-none";
+const NAV_LINK = "relative inline-flex min-h-11 min-w-11 justify-center items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition-colors motion-reduce:transition-none";
 const NAV_IDLE = `${NAV_LINK} text-muted hover:bg-forest/6 hover:text-forest`;
 const NAV_ACTIVE = `${NAV_LINK} bg-forest/8 text-forest`;
 
-const TOGGLE = "inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-[13px] font-semibold";
+const TOGGLE = "inline-flex min-h-11 min-w-11 justify-center items-center gap-1.5 rounded-md px-3 text-[13px] font-semibold";
 const TOGGLE_ACTIVE = `${TOGGLE} bg-white text-forest shadow-sm`;
 const TOGGLE_IDLE = `${TOGGLE} text-muted`;
 
@@ -23,7 +23,7 @@ export default function DiscoveryHeader({
   mapActive = false,
 }) {
   return (
-    <header className="sticky top-0 z-30 flex min-h-[72px] flex-wrap items-center gap-2 border-b border-sand bg-chalk/95 px-4 py-2 font-body backdrop-blur md:flex-nowrap md:gap-6 md:px-10">
+    <header className="sticky top-0 z-30 flex min-h-[72px] flex-wrap items-center gap-2 border-b border-sand bg-chalk/95 px-4 py-2 font-body backdrop-blur lg:flex-nowrap lg:gap-6 md:px-10">
       <Link
         to="/"
         aria-label="Back to TrueBites home"
@@ -34,7 +34,7 @@ export default function DiscoveryHeader({
       </Link>
 
       <nav
-        className="order-3 flex w-full items-center gap-1 overflow-x-auto md:order-none md:w-auto md:overflow-visible"
+        className="order-3 flex w-full min-w-0 items-center gap-1 overflow-x-auto lg:order-none lg:w-auto lg:overflow-visible"
         aria-label="Primary navigation"
       >
         <button

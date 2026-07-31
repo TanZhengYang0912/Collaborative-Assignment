@@ -300,7 +300,7 @@ const PILL = "flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap roun
 function FolderPill({ label, count, active, onClick, onDelete }) {
   return (
     <div className={active ? `${PILL} border-forest bg-forest text-white` : `${PILL} border-sand bg-white text-forest`}>
-      <button type="button" onClick={onClick} className={active ? "font-semibold" : undefined}>
+      <button type="button" onClick={onClick} className={active ? "flex min-h-11 min-w-11 items-center justify-center font-semibold" : "flex min-h-11 min-w-11 items-center justify-center"}>
         {label} <span className="text-[11px] opacity-75">{count}</span>
       </button>
       {onDelete && (
@@ -308,7 +308,7 @@ function FolderPill({ label, count, active, onClick, onDelete }) {
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           aria-label={`Delete folder ${label}`}
-          className="opacity-60 hover:opacity-100"
+          className="grid min-h-11 min-w-11 place-items-center opacity-60 hover:opacity-100"
         >
           <Trash2 size={12} />
         </button>

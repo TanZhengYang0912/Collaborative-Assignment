@@ -244,8 +244,8 @@ export default function TripPanel({
               key={km}
               onClick={() => onRadiusChange(km)}
               className={radiusKm === km
-                ? "min-h-11 rounded-full border border-forest bg-forest px-2 text-[11px] text-white"
-                : "min-h-11 rounded-full border border-sand px-2 text-[11px] text-muted"}
+                ? "min-h-11 min-w-11 rounded-full border border-forest bg-forest px-2 text-[11px] text-white"
+                : "min-h-11 min-w-11 rounded-full border border-sand px-2 text-[11px] text-muted"}
             >
               {km}km
             </button>
