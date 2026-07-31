@@ -1,12 +1,31 @@
-import { FONT_DISPLAY, FONT_BODY, C } from "../lib/theme";
+// Wordmark used by the landing nav, footer and auth cards. Sizes and tones are
+// complete literal class strings so Tailwind's scanner can see every variant.
+const SIZE = {
+  auth:   { root: "gap-4",   mark: "size-[58px] text-[25px]", title: "text-[25px] tracking-[0.09em]", sub: "text-[11px]" },
+  header: { root: "gap-2.5", mark: "size-[38px] text-[16px]", title: "text-[17px] tracking-[0.08em]", sub: "text-[9px]" },
+  footer: { root: "gap-3",   mark: "size-12 text-[21px]",     title: "text-[21px] tracking-[0.09em]", sub: "text-[10px]" },
+};
+
+const TONE = {
+  default: { mark: "border-forest text-forest", title: "text-forest" },
+  light:   { mark: "border-white/80 text-white", title: "text-white" },
+};
 
 export default function TrueBitesLogo({ size = "auth", tone = "default" }) {
+  const s = SIZE[size] ?? SIZE.auth;
+  // The footer lockup is always on a dark band, whatever tone the caller passes.
+  const t = size === "footer" ? TONE.light : (TONE[tone] ?? TONE.default);
+
   return (
-    <span className={`truebites-logo-markup is-${size} is-${tone}`}>
-      <span className="truebites-logo-mark" style={{ fontFamily: FONT_DISPLAY, color: C.navy }}>TB</span>
-      <span className="truebites-logo-copy">
-        <span className="truebites-logo-title" style={{ fontFamily: FONT_DISPLAY }}>TRUEBITES</span>
-        <span className="truebites-logo-sub" style={{ fontFamily: FONT_BODY, color: C.gold }}>MELAKA · MALAYSIA</span>
+    <span className={`inline-flex items-center ${s.root}`}>
+      <span className={`inline-grid shrink-0 place-items-center rounded-full border-2 font-display font-bold leading-none tracking-[-0.04em] ${s.mark} ${t.mark}`}>
+        TB
+      </span>
+      <span className="grid gap-[3px] text-left leading-none">
+        <span className={`font-display font-bold ${s.title} ${t.title}`}>TRUEBITES</span>
+        <span className={`font-body font-bold uppercase tracking-[0.18em] text-terracotta ${s.sub}`}>
+          MELAKA · MALAYSIA
+        </span>
       </span>
     </span>
   );

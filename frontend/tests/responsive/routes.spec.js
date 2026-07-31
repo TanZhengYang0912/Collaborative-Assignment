@@ -77,6 +77,17 @@ for (const [routeName, route] of routes) {
       // Playfair and Inter load over the network; screenshotting before they
       // settle captures fallback metrics and shifts every text box.
       await page.evaluate(() => document.fonts.ready);
+      // Landing photography comes from Wikimedia Commons at 1600px wide. Without
+      // waiting for decode, image-heavy routes screenshot half-empty and the
+      // before/after comparison turns into noise.
+      await page.evaluate(() => Promise.all(
+        Array.from(document.images)
+          .filter((img) => !img.complete)
+          .map((img) => new Promise((resolve) => {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          }))
+      ));
       await page.waitForTimeout(routeName === "map" ? 2500 : 800);
 
       await page.screenshot({

@@ -1,60 +1,37 @@
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import { QUOTE_IMAGE } from "../../lib/landingImages";
 
 // Full-bleed shophouse photo backdrop with "PERANAKAN HERITAGE" eyebrow
-// and a big italic serif pull-quote.
+// and a big italic serif pull-quote. Sized in svh so the section keeps its
+// proportions when mobile browser chrome shows and hides.
 export default function QuoteSection() {
   return (
-    <section style={{ position: "relative", height: "70vh", overflow: "hidden" }}>
+    <section className="relative min-h-[60svh] overflow-hidden md:min-h-[70svh]">
       {/* Background image */}
       <img
         src={QUOTE_IMAGE.url}
         alt={QUOTE_IMAGE.alt}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        className="absolute inset-0 block size-full object-cover"
       />
 
       {/* Dark overlay */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "linear-gradient(135deg, rgba(27,42,74,0.82) 0%, rgba(27,42,74,0.45) 100%)",
-      }} />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(64,84,74,0.82)_0%,rgba(64,84,74,0.45)_100%)]" />
 
       {/* Content */}
-      <div style={{
-        position: "absolute", inset: 0,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: "0 48px", textAlign: "center",
-      }}>
+      <div className="relative flex min-h-[60svh] flex-col items-center justify-center px-5 py-16 text-center md:min-h-[70svh] md:px-12">
         {/* Eyebrow */}
-        <div style={{
-          fontFamily: FONT_BODY, fontWeight: 600, fontSize: 11,
-          color: C.gold, letterSpacing: 3.5, textTransform: "uppercase",
-          marginBottom: 28,
-          display: "flex", alignItems: "center", gap: 14,
-        }}>
-          <span style={{ display: "block", width: 32, height: 1.5, background: C.gold }} />
+        <div className="mb-7 flex items-center gap-3.5 font-body text-[11px] font-semibold uppercase tracking-[3.5px] text-terracotta">
+          <span className="block h-px w-6 bg-terracotta md:w-8" />
           Peranakan Heritage
-          <span style={{ display: "block", width: 32, height: 1.5, background: C.gold }} />
+          <span className="block h-px w-6 bg-terracotta md:w-8" />
         </div>
 
         {/* Pull-quote */}
-        <blockquote style={{
-          fontFamily: FONT_DISPLAY, fontStyle: "italic",
-          fontSize: "clamp(24px, 4vw, 52px)",
-          fontWeight: 600, color: "#fff",
-          margin: 0, maxWidth: 860, lineHeight: 1.3,
-          textShadow: "0 2px 20px rgba(0,0,0,0.3)",
-        }}>
+        <blockquote className="m-0 max-w-[860px] font-display text-[clamp(24px,4vw,52px)] font-semibold italic leading-[1.3] text-white [text-shadow:0_2px_20px_rgba(0,0,0,0.3)]">
           "Nowhere else in the world will you taste this."
         </blockquote>
 
         {/* Attribution */}
-        <div style={{
-          marginTop: 24,
-          fontFamily: FONT_BODY, fontSize: 13, color: "rgba(255,255,255,0.6)",
-          letterSpacing: 0.5,
-        }}>
+        <div className="mt-6 font-body text-[13px] tracking-[0.5px] text-white/60">
           — The spirit of Melaka's table
         </div>
       </div>
