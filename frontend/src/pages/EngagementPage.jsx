@@ -6,7 +6,6 @@ import {
   getBookmarks, getFolders, addBookmark, removeBookmark, moveBookmark, createFolder, deleteFolder,
   getMyReviews,
 } from "../api/engagement";
-import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import Toast from "../components/engagement/Toast";
 import DiscoveryHeader from "../components/discovery/DiscoveryHeader";
 import { useToast, sleep } from "../lib/useToast";
@@ -14,6 +13,9 @@ import VendorCard from "../components/discovery/VendorCard";
 import VendorDetailModal from "../components/discovery/VendorDetailModal";
 import FolderPickerModal from "../components/engagement/FolderPickerModal";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
+
+const TERRACOTTA = "#A35D47";
+const MUTED = "#69717A";
 
 export default function EngagementPage() {
   const navigate = useNavigate();
@@ -56,13 +58,13 @@ export default function EngagementPage() {
 
   if (!session && !ENGAGEMENT_TEST_MODE) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream, fontFamily: FONT_BODY }}>
-        <div style={{ textAlign: "center", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "40px 32px" }}>
-          <Heart size={28} color={C.gold} style={{ marginBottom: 10 }} />
-          <h2 style={{ fontFamily: FONT_DISPLAY, color: C.navy, margin: "0 0 8px" }}>Sign in to see your bookmarks &amp; reviews</h2>
+      <div className="flex min-h-dvh items-center justify-center bg-chalk px-4 font-body">
+        <div className="w-full max-w-[420px] rounded-2xl border border-sand bg-white px-6 py-10 text-center">
+          <Heart size={28} color={TERRACOTTA} className="mx-auto mb-2.5" />
+          <h2 className="mb-2 mt-0 font-display text-xl text-forest">Sign in to see your bookmarks &amp; reviews</h2>
           <button
             onClick={() => navigate("/login")}
-            style={{ marginTop: 8, padding: "10px 22px", borderRadius: 10, border: "none", background: C.navy, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            className="mt-2 min-h-11 w-full rounded-[10px] bg-forest px-5 text-sm font-semibold text-white"
           >
             Sign In
           </button>
@@ -150,7 +152,7 @@ export default function EngagementPage() {
   }
 
   return (
-    <div className="engagement-page" style={{ minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY }}>
+    <div className="min-h-dvh bg-chalk font-body text-ink">
       <DiscoveryHeader
         onOpenMap={() => navigate("/map?view=map")}
         session={session}
@@ -168,16 +170,20 @@ export default function EngagementPage() {
         onOpenProfile={() => navigate("/profile")}
       />
 
-      <main className="engagement-main" style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
-        <div className="engagement-heading">
-          <p className="discovery-kicker">Your TrueBites collection</p>
-          <h1 style={{ fontFamily: FONT_DISPLAY }}>{tab === "reviews" ? "My reviews" : "Saved places"}</h1>
-          <p>{tab === "reviews" ? "Keep track of the places and flavours you have shared." : "Keep the Melaka places you want to return to."}</p>
+      <main className="mx-auto w-full max-w-[1200px] px-4 py-8 md:px-6">
+        <div className="mb-6">
+          <p className="mb-3 mt-0 text-[11px] font-bold uppercase tracking-[0.14em] text-terracotta">Your TrueBites collection</p>
+          <h1 className="m-0 font-display text-[clamp(28px,5vw,44px)] font-medium leading-tight tracking-[-0.03em] text-ink">
+            {tab === "reviews" ? "My reviews" : "Saved places"}
+          </h1>
+          <p className="mb-0 mt-2 text-sm text-muted">
+            {tab === "reviews" ? "Keep track of the places and flavours you have shared." : "Keep the Melaka places you want to return to."}
+          </p>
         </div>
         {tab === "bookmarks" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="flex flex-col gap-5">
             {/* Folder tabs — horizontal row, Instagram-style */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+            <div className="flex snap-x items-center gap-2 overflow-x-auto pb-2">
               <FolderPill label="All" count={bookmarks.length} active={activeFolder === "all"} onClick={() => setActiveFolder("all")} />
               {folders.map((f) => (
                 <FolderPill
@@ -190,26 +196,26 @@ export default function EngagementPage() {
               ))}
 
               {creatingFolder ? (
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div className="flex min-w-[260px] shrink-0 gap-1.5">
                   <input
                     autoFocus
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
                     placeholder="Folder name"
-                    style={{ width: 140, padding: "7px 9px", borderRadius: 20, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: FONT_BODY }}
+                    className="min-h-11 min-w-0 flex-1 rounded-full border border-sand px-3 text-[12.5px] outline-none focus:border-forest"
                   />
-                  <button onClick={handleCreateFolder} style={{ padding: "0 12px", borderRadius: 20, border: "none", background: C.navy, color: "#fff", cursor: "pointer", fontSize: 12.5, fontFamily: FONT_BODY }}>Create</button>
+                  <button
+                    onClick={handleCreateFolder}
+                    className="min-h-11 shrink-0 rounded-full bg-forest px-4 text-[12.5px] text-white"
+                  >
+                    Create
+                  </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setCreatingFolder(true)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
-                    padding: "7px 12px", borderRadius: 20, border: `1px dashed ${C.border}`,
-                    background: "transparent", color: C.muted, cursor: "pointer",
-                    fontSize: 12.5, fontFamily: FONT_BODY,
-                  }}
+                  className="flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-dashed border-sand px-3 text-[12.5px] text-muted"
                 >
                   <Plus size={13} /> New folder
                 </button>
@@ -220,9 +226,9 @@ export default function EngagementPage() {
               {visibleBookmarks.length === 0 ? (
                 <Empty icon="🔖" text="No bookmarks in this folder yet." />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {visibleBookmarks.filter((b) => b.vendor).map((b) => (
-                    <div key={b.vendor_id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div key={b.vendor_id} className="flex flex-col gap-2">
                       <VendorCard
                         vendor={b.vendor}
                         inTrip={false}
@@ -245,7 +251,7 @@ export default function EngagementPage() {
             {reviews.filter((r) => r.vendor).length === 0 ? (
               <Empty icon="⭐" text="No reviews yet. Be the first to review!" />
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {reviews.filter((r) => r.vendor).map((r) => (
                   <VendorCard
                     key={r.id}
@@ -289,27 +295,23 @@ export default function EngagementPage() {
   );
 }
 
+const PILL = "flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px]";
+
 function FolderPill({ label, count, active, onClick, onDelete }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", gap: 6, flexShrink: 0, whiteSpace: "nowrap",
-        padding: "7px 12px", borderRadius: 20, cursor: "pointer",
-        background: active ? C.navy : "#fff",
-        border: `1px solid ${active ? C.navy : C.border}`,
-        fontSize: 13, color: active ? "#fff" : C.navy, fontWeight: active ? 600 : 400,
-        fontFamily: FONT_BODY,
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ fontSize: 11, opacity: 0.75 }}>{count}</span>
+    <div className={active ? `${PILL} border-forest bg-forest text-white` : `${PILL} border-sand bg-white text-forest`}>
+      <button type="button" onClick={onClick} className={active ? "font-semibold" : undefined}>
+        {label} <span className="text-[11px] opacity-75">{count}</span>
+      </button>
       {onDelete && (
-        <Trash2
-          size={12}
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          style={{ opacity: 0.6 }}
-        />
+          aria-label={`Delete folder ${label}`}
+          className="opacity-60 hover:opacity-100"
+        >
+          <Trash2 size={12} />
+        </button>
       )}
     </div>
   );
@@ -318,12 +320,12 @@ function FolderPill({ label, count, active, onClick, onDelete }) {
 function FolderMoveSelect({ row, folders, onMove }) {
   if (folders.length === 0) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 2px" }}>
-      <FolderInput size={13} color={C.muted} />
+    <div className="flex items-center gap-1 px-0.5">
+      <FolderInput size={13} color={MUTED} />
       <select
         value={row.folder_id || ""}
         onChange={(e) => onMove(e.target.value || null)}
-        style={{ flex: 1, minWidth: 0, fontSize: 11.5, padding: "4px 6px", borderRadius: 6, border: `1px solid ${C.border}`, fontFamily: FONT_BODY }}
+        className="min-h-11 min-w-0 flex-1 rounded-md border border-sand px-1.5 text-[11.5px] outline-none focus:border-forest"
       >
         {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
       </select>
@@ -333,9 +335,9 @@ function FolderMoveSelect({ row, folders, onMove }) {
 
 function Empty({ icon, text }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "48px 24px", textAlign: "center", color: C.muted }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 14 }}>{text}</div>
+    <div className="rounded-xl border border-sand bg-white px-5 py-12 text-center text-muted">
+      <div className="mb-2 text-[32px]">{icon}</div>
+      <div className="text-sm">{text}</div>
     </div>
   );
 }
