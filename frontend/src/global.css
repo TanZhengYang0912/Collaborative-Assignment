@@ -48,6 +48,24 @@
 }
 
 @layer base {
+  /* The AI module's JSX still sets a few colours inline (progress fills, status
+     text) using the variable names from the deleted ai-module.css. Aliasing
+     them onto the theme tokens keeps those styles resolving without another
+     palette definition. */
+  :root {
+    --text-primary: var(--color-ink);
+    --text-secondary: var(--color-muted);
+    --text-muted: var(--color-muted);
+    --border: var(--color-sand);
+    --accent-primary: var(--color-forest);
+    --accent-secondary: var(--color-terracotta);
+    --success: var(--color-success);
+    --warning: var(--color-terracotta);
+    --error: var(--color-danger);
+  }
+}
+
+@layer base {
   /* Read from the tokens above. Repeating hex values here would recreate the
      two-sources-of-truth problem this migration exists to remove. */
   html {
