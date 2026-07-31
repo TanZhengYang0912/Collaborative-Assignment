@@ -11,7 +11,6 @@ import {
   Store,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import "../../admin-console.css";
 
 const navItems = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
