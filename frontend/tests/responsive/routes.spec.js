@@ -27,6 +27,52 @@ const viewports = [
   ["1440", { width: 1440, height: 1000 }],
 ];
 
+// Extra acceptance widths from the spec. These are asserted, not screenshotted:
+// 320 is the narrowest supported phone, 844x390 is landscape, and both are the
+// sizes most likely to overflow. Runs only on the assert pass.
+const EXTRA_VIEWPORTS = [
+  ["320", { width: 320, height: 568 }],
+  ["390", { width: 390, height: 844 }],
+  ["1024", { width: 1024, height: 768 }],
+  ["844-landscape", { width: 844, height: 390 }],
+];
+
+// /profile and /onboarding call supabase.auth.getSession() directly, so
+// VITE_DISABLE_AUTH does not reach them — without a stored session they redirect
+// to /login and their screenshots prove nothing about those pages. Seeding a
+// non-expiring fake session in localStorage exercises the real render path.
+const SUPABASE_REF = "fpmopvxfohiosvjkfqtx";
+const SESSION_ROUTES = new Set(["profile", "onboarding"]);
+
+function fakeSession() {
+  const farFuture = 4102444800; // 2100-01-01
+  const claims = { sub: "00000000-0000-0000-0000-000000000001", exp: farFuture, role: "authenticated" };
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const token = `${b64({ alg: "HS256", typ: "JWT" })}.${b64(claims)}.signature-not-verified-client-side`;
+  return {
+    access_token: token,
+    refresh_token: "fake-refresh-token",
+    token_type: "bearer",
+    expires_in: 999999999,
+    expires_at: farFuture,
+    user: {
+      id: claims.sub,
+      aud: "authenticated",
+      role: "authenticated",
+      email: "user@example.com",
+      app_metadata: { provider: "email", providers: ["email"] },
+      identities: [{ provider: "email", id: claims.sub }],
+      user_metadata: {
+        first_name: "Test",
+        last_name: "Reviewer",
+        date_of_birth: "1995-06-15",
+        gender: "Prefer not to say",
+      },
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  };
+}
+
 const output = process.env.RESPONSIVE_OUTPUT || "responsive-output";
 const assertResponsive = process.env.ASSERT_RESPONSIVE === "1";
 const fixtures = "tests/responsive/fixtures";
@@ -72,6 +118,13 @@ for (const [routeName, route] of routes) {
   for (const [viewportName, viewport] of viewports) {
     test(`${routeName} at ${viewportName}px`, async ({ page }) => {
       await stubApi(page);
+      if (SESSION_ROUTES.has(routeName)) {
+        const session = JSON.stringify(fakeSession());
+        await page.addInitScript(
+          ([key, value]) => window.localStorage.setItem(key, value),
+          [`sb-${SUPABASE_REF}-auth-token`, session]
+        );
+      }
       await page.setViewportSize(viewport);
       await page.goto(route, { waitUntil: "domcontentloaded" });
       // Playfair and Inter load over the network; screenshotting before they
@@ -138,5 +191,31 @@ for (const [routeName, route] of routes) {
           }));
       expect.soft(undersized, "touch targets must be at least 44×44px at 375px").toEqual([]);
     });
+  }
+}
+
+if (assertResponsive) {
+  for (const [routeName, route] of routes) {
+    for (const [viewportName, viewport] of EXTRA_VIEWPORTS) {
+      test(`${routeName} has no overflow at ${viewportName}`, async ({ page }) => {
+        await stubApi(page);
+        if (SESSION_ROUTES.has(routeName)) {
+          const session = JSON.stringify(fakeSession());
+          await page.addInitScript(
+            ([key, value]) => window.localStorage.setItem(key, value),
+            [`sb-${SUPABASE_REF}-auth-token`, session]
+          );
+        }
+        await page.setViewportSize(viewport);
+        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForTimeout(routeName === "map" ? 2000 : 600);
+
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+        );
+        expect(overflow, `${routeName} must not overflow at ${viewportName}`).toBeLessThanOrEqual(1);
+      });
+    }
   }
 }
