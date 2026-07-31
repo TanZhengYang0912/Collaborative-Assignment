@@ -5,10 +5,12 @@ import {
   BrainCircuit,
   LayoutDashboard,
   LogOut,
+  Menu,
   MessageSquareWarning,
   Settings,
   SquareArrowOutUpRight,
   Store,
+  X,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
@@ -24,11 +26,16 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [topbarAction, setTopbarAction] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setAdminEmail(data.session?.user?.email || ""));
   }, []);
+
+  // Navigating from the drawer should close it, or the new page opens hidden
+  // behind the overlay on a phone.
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -48,7 +55,22 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      {sidebarOpen && (
+        <button
+          className="admin-drawer-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside className={sidebarOpen ? "admin-sidebar is-open" : "admin-sidebar"}>
+        <button
+          className="admin-drawer-close"
+          aria-label="Close navigation"
+          onClick={() => setSidebarOpen(false)}
+        >
+          <X size={18} />
+        </button>
         <div className="admin-brand">
           <Link to="/admin" className="admin-brand-link">
             <div className="admin-brand-wordmark">TRUEBITES</div>
@@ -89,6 +111,14 @@ export default function AdminLayout() {
 
       <div className="admin-main">
         <header className="admin-topbar">
+          <button
+            className="admin-drawer-toggle"
+            aria-label="Open navigation"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={18} />
+          </button>
           <div>
             <h1>{pageName}</h1>
             <p>{subtitleMap[pageName]}</p>
