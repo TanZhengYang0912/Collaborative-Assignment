@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { MapPin, X } from "lucide-react";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
+
+const FOREST = "#40544A";
 
 // Shown whenever a guest (no session) tries to bookmark, add a stop tied to
 // their account, or open "My reviews" — actions that need an identity to
@@ -12,46 +13,28 @@ export default function GuestPrompt({ open, onClose }) {
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(32,42,53,0.56)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 1100, padding: 20,
-      }}
+      className="fixed inset-0 z-[1100] flex items-end justify-center bg-ink/56 p-0 animate-backdrop-in sm:items-center sm:p-5"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: 360, background: C.card, borderRadius: 8,
-          padding: "28px 24px 24px", textAlign: "center", fontFamily: FONT_BODY,
-          boxShadow: "0 20px 60px rgba(32,42,53,0.18)", position: "relative",
-        }}
+        className="relative w-full rounded-t-2xl bg-white px-6 pb-6 pt-7 text-center shadow-[0_20px_60px_rgba(32,42,53,0.18)] animate-modal-in sm:max-w-[360px] sm:rounded-lg"
       >
         <button
           onClick={onClose}
           aria-label="Close"
-          style={{
-            position: "absolute", top: 12, right: 12, background: "none",
-            border: "none", cursor: "pointer", color: C.muted, padding: 4,
-          }}
+          className="absolute right-2 top-2 grid size-11 place-items-center text-muted"
         >
           <X size={18} />
         </button>
 
-        <MapPin size={28} color={C.navy} strokeWidth={1.5} style={{ marginBottom: 10 }} />
-        <div style={{
-          fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18,
-          color: C.navy, marginBottom: 20, lineHeight: 1.35,
-        }}>
+        <MapPin size={28} color={FOREST} strokeWidth={1.5} className="mx-auto mb-2.5" />
+        <div className="mb-5 font-display text-lg font-bold leading-snug text-forest">
           Sign in for a more personalized experience.
         </div>
 
         <button
           onClick={() => navigate("/login")}
-          style={{
-            width: "100%", padding: "12px 16px", borderRadius: 10,
-            fontSize: 14.5, fontWeight: 600, fontFamily: FONT_BODY,
-            background: C.navy, color: "#fff", border: "none", cursor: "pointer",
-          }}
+          className="min-h-11 w-full rounded-[10px] bg-forest px-4 text-[14.5px] font-semibold text-white"
         >
           Log In
         </button>

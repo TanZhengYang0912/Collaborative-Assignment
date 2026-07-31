@@ -1,10 +1,20 @@
 import { Bookmark, LayoutGrid, Map as MapIcon, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FONT_BODY } from "../../lib/theme";
 import TrueBitesLogo from "../TrueBitesLogo";
 
-// Shared customer header for discovery and map surfaces. Search now lives in
-// the discovery hero so the top bar stays quiet and consistent across screens.
+// Shared customer header for discovery and map surfaces. Search lives in the
+// discovery hero so the top bar stays quiet and consistent across screens.
+// Below md the primary nav drops to its own scrollable row beneath the brand.
+const NAV_LINK = "relative inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition-colors motion-reduce:transition-none";
+const NAV_IDLE = `${NAV_LINK} text-muted hover:bg-forest/6 hover:text-forest`;
+const NAV_ACTIVE = `${NAV_LINK} bg-forest/8 text-forest`;
+
+const TOGGLE = "inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-[13px] font-semibold";
+const TOGGLE_ACTIVE = `${TOGGLE} bg-white text-forest shadow-sm`;
+const TOGGLE_IDLE = `${TOGGLE} text-muted`;
+
+const AVATAR = "grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-forest text-sm font-semibold text-white";
+
 export default function DiscoveryHeader({
   onOpenMap,
   session, userEmail, initials, firstName, avatarUrl, onLogin, onOpenProfile, onSignUp,
@@ -13,21 +23,23 @@ export default function DiscoveryHeader({
   mapActive = false,
 }) {
   return (
-    <header className="discovery-header" style={{ fontFamily: FONT_BODY }}>
+    <header className="sticky top-0 z-30 flex min-h-[72px] flex-wrap items-center gap-2 border-b border-sand bg-chalk/95 px-4 py-2 font-body backdrop-blur md:flex-nowrap md:gap-6 md:px-10">
       <Link
         to="/"
-        className="discovery-wordmark"
         aria-label="Back to TrueBites home"
         title="Back to home"
-        style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, textDecoration: "none" }}
+        className="flex shrink-0 items-center no-underline"
       >
         <TrueBitesLogo size="header" />
       </Link>
 
-      <nav className="discovery-primary-nav" aria-label="Primary navigation">
+      <nav
+        className="order-3 flex w-full items-center gap-1 overflow-x-auto md:order-none md:w-auto md:overflow-visible"
+        aria-label="Primary navigation"
+      >
         <button
           type="button"
-          className={`discovery-primary-nav-link${activeSection === "discover" ? " active" : ""}`}
+          className={activeSection === "discover" ? NAV_ACTIVE : NAV_IDLE}
           onClick={() => onOpenDiscover?.()}
           aria-current={activeSection === "discover" ? "page" : undefined}
         >
@@ -35,17 +47,19 @@ export default function DiscoveryHeader({
         </button>
         <button
           type="button"
-          className={`discovery-primary-nav-link${activeSection === "saved" ? " active" : ""}`}
+          className={activeSection === "saved" ? NAV_ACTIVE : NAV_IDLE}
           onClick={() => onOpenSaved?.()}
           aria-current={activeSection === "saved" ? "page" : undefined}
         >
           <Bookmark size={14} strokeWidth={1.7} />
           <span>Saved</span>
-          {savedCount > 0 && <span className="discovery-nav-count">{savedCount}</span>}
+          {savedCount > 0 && (
+            <span className="rounded-full bg-forest px-1.5 text-[10px] font-bold text-white">{savedCount}</span>
+          )}
         </button>
         <button
           type="button"
-          className={`discovery-primary-nav-link${activeSection === "reviews" ? " active" : ""}`}
+          className={activeSection === "reviews" ? NAV_ACTIVE : NAV_IDLE}
           onClick={() => onOpenReviews?.()}
           aria-current={activeSection === "reviews" ? "page" : undefined}
         >
@@ -53,46 +67,55 @@ export default function DiscoveryHeader({
         </button>
       </nav>
 
-      <div className="discovery-header-spacer" />
+      <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center rounded-lg bg-sand/40 p-0.5" aria-label="View mode">
+          {mapActive ? (
+            <>
+              <button type="button" className={TOGGLE_IDLE} onClick={onOpenDiscover}>
+                <LayoutGrid size={14} /> <span className="hidden sm:inline">List</span>
+              </button>
+              <span className={TOGGLE_ACTIVE}><MapIcon size={14} /> <span className="hidden sm:inline">Map</span></span>
+            </>
+          ) : (
+            <>
+              <span className={TOGGLE_ACTIVE}><LayoutGrid size={14} /> <span className="hidden sm:inline">List</span></span>
+              <button type="button" className={TOGGLE_IDLE} onClick={onOpenMap}>
+                <MapIcon size={14} /> <span className="hidden sm:inline">Map</span>
+              </button>
+            </>
+          )}
+        </div>
 
-      <div className="discovery-view-toggle" aria-label="View mode">
-        {mapActive ? (
-          <>
-            <button type="button" className="discovery-view-toggle-button" onClick={onOpenDiscover}>
-              <LayoutGrid size={14} /> List
-            </button>
-            <span className="discovery-view-toggle-active"><MapIcon size={14} /> Map</span>
-          </>
+        {session ? (
+          <button
+            type="button"
+            className={AVATAR}
+            onClick={onOpenProfile}
+            title={userEmail}
+            aria-label={`Open profile${firstName ? ` for ${firstName}` : ""}`}
+          >
+            {avatarUrl ? <img src={avatarUrl} alt="" className="size-full object-cover" /> : initials}
+          </button>
         ) : (
-          <>
-            <span className="discovery-view-toggle-active"><LayoutGrid size={14} /> List</span>
-            <button type="button" className="discovery-view-toggle-button" onClick={onOpenMap}>
-              <MapIcon size={14} /> Map
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSignUp}
+              className="inline-flex min-h-11 items-center rounded-md border border-forest px-3 text-[13px] font-semibold text-forest"
+            >
+              Sign up
             </button>
-          </>
+            <button
+              type="button"
+              onClick={onLogin}
+              className="grid size-11 shrink-0 place-items-center rounded-full border border-sand text-forest"
+              aria-label="Open sign in"
+            >
+              <UserRound size={16} />
+            </button>
+          </div>
         )}
       </div>
-
-      {session ? (
-        <button
-          type="button"
-          className="discovery-avatar"
-          onClick={onOpenProfile}
-          title={userEmail}
-          aria-label={`Open profile${firstName ? ` for ${firstName}` : ""}`}
-        >
-          {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
-        </button>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" onClick={onSignUp} className="discovery-header-action" style={{ borderColor: "var(--tb-forest)", color: "var(--tb-forest)", fontWeight: 600 }}>
-            Sign up
-          </button>
-          <button type="button" onClick={onLogin} className="discovery-avatar" style={{ background: "transparent", color: "var(--tb-forest)" }} aria-label="Open sign in">
-            <UserRound size={16} />
-          </button>
-        </div>
-      )}
     </header>
   );
 }
