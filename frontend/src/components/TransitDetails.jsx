@@ -1,5 +1,3 @@
-import { C, FONT_BODY } from "../lib/theme";
-
 const VEHICLE_ICON = {
   BUS: "🚌",
   RAIL: "🚆",
@@ -9,51 +7,49 @@ const VEHICLE_ICON = {
   COMMUTER_TRAIN: "🚆",
 };
 
+const MUTED = "#69717A";
+
 // Vertical itinerary ribbon: one node per leg, transit nodes painted in that
 // line's real Google color so KJ Line red / MRT green etc. show through —
 // the one piece of "real world" color let into the app's warm palette.
 export default function TransitDetails({ legs }) {
   if (!legs || legs.length === 0) {
     return (
-      <div style={{ fontSize: 12, color: C.muted, background: C.cream, borderRadius: 8, padding: 10, margin: "8px 0" }}>
+      <div className="my-2 rounded-lg bg-chalk p-2.5 text-xs text-muted">
         No transit routes here — try Car or Walk.
       </div>
     );
   }
 
   return (
-      <div style={{ margin: "8px 0", fontFamily: FONT_BODY }}>
+    <div className="my-2">
       {legs.map((leg, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, position: "relative" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 14 }}>
+        <div key={i} className="relative flex gap-2">
+          <div className="flex w-3.5 flex-col items-center">
+            {/* Node colour is the real Google line colour — runtime data. */}
             <span
-              style={{
-                width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
-                background: leg.kind === "transit" ? leg.lineColor : C.muted,
-                border: "2px solid #fff", boxShadow: "0 0 0 1px " + C.border,
-              }}
+              className="size-2.5 shrink-0 rounded-full border-2 border-white shadow-[0_0_0_1px_#D8D2C8]"
+              style={{ background: leg.kind === "transit" ? leg.lineColor : MUTED }}
             />
-            {i < legs.length - 1 && (
-              <span style={{ flex: 1, width: 2, background: C.border, minHeight: 18 }} />
-            )}
+            {i < legs.length - 1 && <span className="min-h-4.5 w-0.5 flex-1 bg-sand" />}
           </div>
-          <div style={{ paddingBottom: 12, fontSize: 12.5, color: C.text }}>
+          <div className="min-w-0 flex-1 pb-3 text-[12.5px] text-ink">
             {leg.kind === "transit" ? (
               <>
-                <div style={{ fontWeight: 600 }}>
+                <div className="break-words font-semibold">
                   {VEHICLE_ICON[leg.vehicle] || "🚏"} {leg.lineName}
                   {leg.departureTime && leg.arrivalTime && (
-                    <span style={{ fontWeight: 400, color: C.muted, fontVariantNumeric: "tabular-nums" }}>
+                    <span className="font-normal tabular-nums text-muted">
                       {" "}· {leg.departureTime}→{leg.arrivalTime}
                     </span>
                   )}
                 </div>
                 {leg.numStops != null && (
-                  <div style={{ color: C.muted, fontSize: 11.5 }}>{leg.numStops} stops</div>
+                  <div className="text-[11.5px] text-muted">{leg.numStops} stops</div>
                 )}
               </>
             ) : (
-              <div style={{ color: C.muted }}>
+              <div className="break-words text-muted">
                 🚶 {leg.instructions || "Walk"}{leg.duration ? ` · ${leg.duration}` : ""}
               </div>
             )}
