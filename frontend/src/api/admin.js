@@ -6,13 +6,19 @@ async function parseResponse(response) {
   if (response.ok) return response.json();
 
   let message = "Request failed";
+  let payload = null;
   try {
-    const payload = await response.json();
+    payload = await response.json();
     message = payload.details || payload.error || message;
   } catch {
     message = await response.text();
   }
-  throw new Error(message || "Request failed");
+  const error = new Error(message || "Request failed");
+  error.status = response.status;
+  // e.g. { error: "possible_duplicate", duplicates: [...] } from POST /admin/vendors —
+  // callers that need the structured body (not just the message) read error.payload.
+  error.payload = payload;
+  throw error;
 }
 
 // Every admin call attaches the signed-in admin's access token so the
@@ -84,6 +90,11 @@ export async function createAdminVendor(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// Read-only fuzzy scan for the "possible duplicates" review panel.
+export async function getAdminVendorDuplicates() {
+  return requestJson("/api/admin/vendors/duplicates");
 }
 
 export async function deleteAdminVendor(id) {

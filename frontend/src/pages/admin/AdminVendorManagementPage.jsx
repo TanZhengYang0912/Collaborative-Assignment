@@ -1,13 +1,14 @@
-import { Ban, Check, Eye, ImagePlus, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, Ban, Check, Eye, ImagePlus, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
-  createAdminVendor, deleteAdminVendor, getAdminVendors,
+  createAdminVendor, deleteAdminVendor, getAdminVendorDuplicates, getAdminVendors,
   updateAdminVendor, uploadVendorImage,
 } from "../../api/admin";
 import Toast from "../../components/engagement/Toast";
 import { useToast } from "../../lib/useToast";
+import { placeholderImage } from "../../lib/vendorDisplay";
 
 const MAPS_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
 
@@ -121,7 +122,14 @@ function makeForm(vendor) {
     phone: vendor.phone || "",
     status: (vendor.status || "draft").toLowerCase(),
     imageFile: null,
-    imagePreview: vendor.imageUrl || null,
+    // Seed the dropzone preview from the same resolver the public site uses —
+    // for a vendor with no real upload yet, this shows the curated/category
+    // photo currently displayed to users, not a blank box.
+    imagePreview: placeholderImage({
+      id: vendor.id, name: vendor.name,
+      storefront_image_url: vendor.imageUrl,
+      cuisine_types: vendor.category, signature_dishes: vendor.dishes?.join(", "),
+    }),
   };
 }
 
@@ -196,28 +204,30 @@ function FieldError({ message }) {
   return message ? <div className="admin-field-error">{message}</div> : null;
 }
 
-// Table-row thumbnail: the real storefront photo if one's been uploaded,
-// otherwise a tile with the vendor's first initial. Resets its error flag
-// whenever imageUrl changes so a freshly-uploaded photo always gets a fresh
-// load attempt instead of getting stuck on a stale failure.
+// Table-row thumbnail — uses the SAME resolver as the public site
+// (placeholderImage), so admin sees exactly what a user would see: the real
+// storefront photo if one's been uploaded, else the curated food-photo
+// manifest, else a category stock photo. Resets its error flag whenever
+// imageUrl changes so a freshly-uploaded photo always gets a fresh load
+// attempt instead of getting stuck on a stale failure.
 function VendorThumb({ vendor }) {
   const [errored, setErrored] = useState(false);
   useEffect(() => setErrored(false), [vendor.imageUrl]);
 
-  if (!vendor.imageUrl || errored) {
-    const initial = (vendor.name || "?").trim().charAt(0).toUpperCase();
-    return (
-      <div className="admin-table-thumb admin-table-thumb-initial" aria-hidden="true">
-        {initial}
-      </div>
-    );
-  }
+  const src = placeholderImage({
+    id: vendor.id,
+    name: vendor.name,
+    storefront_image_url: errored ? null : vendor.imageUrl,
+    cuisine_types: vendor.category,
+    signature_dishes: vendor.dishes?.join(", "),
+  });
 
   return (
     <img
-      src={vendor.imageUrl}
+      src={src}
       alt=""
       className="admin-table-thumb"
+      loading="lazy"
       onError={() => setErrored(true)}
     />
   );
@@ -461,6 +471,57 @@ function ConfirmDialog({ title, message, confirmLabel = "Delete", busy, onConfir
   );
 }
 
+// Read-only side-by-side review of fuzzy name/address matches — nothing here
+// deletes or merges anything automatically. `onDeleteRequest` hands off to a
+// ConfirmDialog in the parent; this panel only lists pairs and a Delete button.
+function DuplicatesPanel({ groups, onClose, onDeleteRequest }) {
+  return (
+    <div className="admin-modal-backdrop" onClick={onClose}>
+      <div className="admin-modal-card wide" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <div>
+            <h2>Possible Duplicate Vendors</h2>
+            <p>Fuzzy name/address matches — review each pair and delete one if it's a real duplicate.</p>
+          </div>
+          <button type="button" className="admin-icon-btn subtle" onClick={onClose}>×</button>
+        </div>
+        <div className="admin-modal-form">
+          {groups.length === 0 ? (
+            <div className="admin-empty-state">No possible duplicates found.</div>
+          ) : (
+            groups.map((g) => (
+              <div className="admin-duplicate-pair" key={`${g.a.id}-${g.b.id}`}>
+                {[g.a, g.b].map((v) => (
+                  <div className="admin-duplicate-pair-card" key={v.id}>
+                    <strong>{v.vendor_name}</strong>
+                    <div>{v.address || "No address on file"}</div>
+                    <div className="admin-duplicate-pair-meta">
+                      Status: {v.status || "draft"}
+                      {v.latitude != null ? ` · ${Number(v.latitude).toFixed(4)}, ${Number(v.longitude).toFixed(4)}` : ""}
+                      {" · "}{Math.round(g.match_score * 100)}% match ({g.match_type})
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-secondary-btn compact danger"
+                      style={{ marginTop: 8 }}
+                      onClick={() => onDeleteRequest(v.id)}
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-secondary-btn compact" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VendorDetailModal({ vendor, editing, form, errors, saving, error, onClose, onChange, onFileChange, onEditToggle, onSave }) {
   if (!vendor) return null;
 
@@ -516,43 +577,57 @@ function AddVendorModal({ onClose, onCreated }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Set when the server flags a fuzzy name/address match (409
+  // possible_duplicate) — shown as a warning with an "Add anyway" override
+  // instead of silently blocking, since same-named vendors do legitimately exist.
+  const [duplicates, setDuplicates] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setDuplicates(null); // edited the form — the last duplicate check is stale
   };
   const handleFileChange = (file) => setForm((prev) => ({ ...prev, imageFile: file }));
 
-  const handleSave = async () => {
-    const errs = validateForm(form);
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
+  const buildPayload = () => ({
+    vendor_name: form.vendor_name,
+    address: form.address,
+    cuisine_types: form.cuisine_types,
+    signature_dishes: form.signature_dishes,
+    price_range: formatPriceRange(form.priceMin, form.priceMax),
+    phone: form.phone,
+    latitude: form.latitude,
+    longitude: form.longitude,
+    operating_hours_raw: `${form.openSlot} - ${form.closeSlot}`,
+    status: form.status,
+  });
 
+  const doSave = async (force) => {
     setSaving(true);
     setError("");
     try {
-      const created = await createAdminVendor({
-        vendor_name: form.vendor_name,
-        address: form.address,
-        cuisine_types: form.cuisine_types,
-        signature_dishes: form.signature_dishes,
-        price_range: formatPriceRange(form.priceMin, form.priceMax),
-        phone: form.phone,
-        latitude: form.latitude,
-        longitude: form.longitude,
-        operating_hours_raw: `${form.openSlot} - ${form.closeSlot}`,
-        status: form.status,
-      });
+      const created = await createAdminVendor({ ...buildPayload(), force });
       if (form.imageFile && created?.id) {
         await uploadVendorImage(created.id, form.imageFile);
       }
       onCreated();
       onClose();
     } catch (err) {
-      setError(err.message);
+      if (err.status === 409 && err.payload?.error === "possible_duplicate") {
+        setDuplicates(err.payload.duplicates || []);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = () => {
+    const errs = validateForm(form);
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    doSave(false);
   };
 
   return (
@@ -568,6 +643,22 @@ function AddVendorModal({ onClose, onCreated }) {
         <div className="admin-modal-form">
           <VendorFormFields form={form} errors={errors} onChange={handleChange} onFileChange={handleFileChange} disabled={false} />
           {error && <div className="admin-feedback error">{error}</div>}
+          {duplicates && (
+            <div className="admin-feedback warning">
+              <strong>⚠ Possible duplicate{duplicates.length > 1 ? "s" : ""} found:</strong>
+              <ul className="admin-duplicate-list">
+                {duplicates.map((d) => (
+                  <li key={d.id}>
+                    {d.vendor_name}{d.address ? ` — ${d.address}` : ""}
+                    <span className="admin-duplicate-score"> ({Math.round(d.match_score * 100)}% match)</span>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="admin-secondary-btn compact" onClick={() => doSave(true)} disabled={saving}>
+                {saving ? "Adding…" : "Add anyway"}
+              </button>
+            </div>
+          )}
           <div className="admin-modal-actions">
             <button type="button" className="admin-secondary-btn compact" onClick={onClose}>Cancel</button>
             <button type="button" className="admin-primary-btn compact" onClick={handleSave} disabled={saving}>
@@ -603,6 +694,22 @@ export default function AdminVendorManagementPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [toast, notify] = useToast();
+  const [duplicateGroups, setDuplicateGroups] = useState([]);
+  const [showDuplicatesPanel, setShowDuplicatesPanel] = useState(false);
+  const [dupDeleteId, setDupDeleteId] = useState(null);
+  const [dupDeleting, setDupDeleting] = useState(false);
+
+  const loadDuplicates = () =>
+    getAdminVendorDuplicates()
+      .then((payload) => setDuplicateGroups(payload.groups || []))
+      .catch(() => {}); // read-only badge — a failed scan just hides quietly, doesn't block the page
+
+  // Scan once on load — this is a read-only badge, not tied to the current
+  // filter/page, so it doesn't need to re-run on every list refresh.
+  useEffect(() => {
+    loadDuplicates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Real-time search — debounce like VendorsPage.jsx, no Enter/submit needed.
   useEffect(() => {
@@ -719,6 +826,25 @@ export default function AdminVendorManagementPage() {
       notify(err.message, true);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Delete straight from the "possible duplicates" review panel — a separate
+  // path from handleDelete above since it's acting on a pair the admin is
+  // comparing side-by-side, not a table row. Never runs automatically:
+  // findAllDuplicateGroups only ever informs this button, nothing auto-merges.
+  const handleDeleteDuplicateVendor = async (id) => {
+    setDupDeleting(true);
+    try {
+      await deleteAdminVendor(id);
+      setDupDeleteId(null);
+      setDuplicateGroups((groups) => groups.filter((g) => g.a.id !== id && g.b.id !== id));
+      await refreshList();
+      notify("Vendor deleted.");
+    } catch (err) {
+      notify(err.message, true);
+    } finally {
+      setDupDeleting(false);
     }
   };
 
@@ -849,6 +975,13 @@ export default function AdminVendorManagementPage() {
             {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
+
+        {duplicateGroups.length > 0 && (
+          <button type="button" className="admin-duplicates-badge" onClick={() => setShowDuplicatesPanel(true)}>
+            <AlertTriangle size={13} />
+            {duplicateGroups.length} possible duplicate{duplicateGroups.length > 1 ? "s" : ""}
+          </button>
+        )}
       </div>
 
       {error ? (
@@ -1073,6 +1206,26 @@ export default function AdminVendorManagementPage() {
           busy={bulkBusy}
           onConfirm={bulkDelete}
           onCancel={() => setConfirmBulkDelete(false)}
+        />
+      )}
+
+      {showDuplicatesPanel && (
+        <DuplicatesPanel
+          groups={duplicateGroups}
+          onClose={() => setShowDuplicatesPanel(false)}
+          onDeleteRequest={setDupDeleteId}
+        />
+      )}
+
+      {dupDeleteId && (
+        <ConfirmDialog
+          title="Delete vendor?"
+          message={`This will permanently delete "${
+            duplicateGroups.flatMap((g) => [g.a, g.b]).find((v) => v.id === dupDeleteId)?.vendor_name || "this vendor"
+          }" along with its reviews, bookmarks, and storefront image. This can't be undone.`}
+          busy={dupDeleting}
+          onConfirm={() => handleDeleteDuplicateVendor(dupDeleteId)}
+          onCancel={() => setDupDeleteId(null)}
         />
       )}
 

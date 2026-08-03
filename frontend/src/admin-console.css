@@ -732,16 +732,6 @@
   display: block;
 }
 
-.admin-table-thumb-initial {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--admin-navy);
-  color: #fff;
-  font-weight: 800;
-  font-size: 17px;
-}
-
 /* Horizontal scroll wrapper so the 8-column table never breaks the layout on
    narrow screens. */
 .admin-table-scroll {
@@ -1229,6 +1219,65 @@
   background: #fff8eb;
   color: #9a6c00;
   border-color: #ffe1a3;
+}
+
+.admin-feedback.warning .admin-duplicate-list {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+}
+
+.admin-feedback.warning .admin-duplicate-score {
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.admin-duplicates-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ffe1a3;
+  background: #fff8eb;
+  color: #9a6c00;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-duplicates-badge:hover {
+  background: #fff1cf;
+}
+
+.admin-duplicate-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-duplicate-pair:last-child {
+  border-bottom: none;
+}
+
+.admin-duplicate-pair-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.admin-duplicate-pair-card strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.admin-duplicate-pair-meta {
+  color: var(--admin-muted);
+  font-size: 11px;
+  margin-top: 4px;
 }
 
 .admin-empty-state {

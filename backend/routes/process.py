@@ -14,7 +14,10 @@ from services.downloader import download_audio, validate_url, scrape_profile
 from services.transcriber import transcribe_audio
 from services.summarizer import summarize_transcript
 from services.extractor import extract_info
-from services.supabase_client import geocode_address, upsert_vendor, find_duplicate_vendors
+from services.supabase_client import (
+    geocode_address, upsert_vendor, find_duplicate_vendors,
+    upload_vendor_image_from_url, set_vendor_storefront_image,
+)
 
 router = APIRouter()
 
@@ -64,6 +67,10 @@ class VendorSaveEntry(BaseModel):
     state: Optional[str] = None
     price_range: Optional[str] = None
     operating_hours_raw: Optional[str] = None
+    # Mirrors DraftRequest.duplicate_acknowledged below — /save-to-database is a
+    # batch of several vendors, so each needs its own ack rather than one
+    # request-wide flag.
+    duplicate_acknowledged: bool = False
 
 
 class SaveToDatabaseRequest(BaseModel):
@@ -169,6 +176,32 @@ def _draft_vendor_row(job: dict, extracted: dict, summary: str):
         "status": "draft",
         "last_updated": datetime.now().isoformat(),
     }
+
+
+def _attach_ai_thumbnail(vendor_row: dict, thumbnail_url: str):
+    """
+    Best-effort: re-hosts the video thumbnail yt-dlp already fetched and attaches
+    it as the vendor's storefront_image_url, so admin-created-from-AI vendors
+    show a real photo on the public site instead of a placeholder.
+
+    Never overwrites an existing storefront_image_url — a manual admin upload
+    always takes precedence over an AI-derived thumbnail. Any failure here
+    (missing bucket, network error, etc.) is logged and swallowed: a broken
+    thumbnail must never fail vendor creation/save.
+    """
+    if not vendor_row or not thumbnail_url:
+        return
+    if vendor_row.get("storefront_image_url"):
+        return
+    vendor_id = vendor_row.get("id")
+    if not vendor_id:
+        return
+    try:
+        hosted_url = upload_vendor_image_from_url(vendor_id, thumbnail_url)
+        if hosted_url:
+            set_vendor_storefront_image(vendor_id, hosted_url)
+    except Exception as e:
+        print(f"[vendor-image] failed to attach AI thumbnail for vendor {vendor_id}: {e}")
 
 
 def update_job(job_id: str, **kwargs):
@@ -590,9 +623,12 @@ async def api_create_draft(job_id: str, req: DraftRequest):
         }
 
     try:
-        upsert_vendor(_draft_vendor_row(reviewed, extracted, reviewed.get("summary") or ""))
+        saved = upsert_vendor(_draft_vendor_row(reviewed, extracted, reviewed.get("summary") or ""))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Draft vendor save failed: {e}")
+
+    vendor_row = (saved or [None])[0]
+    _attach_ai_thumbnail(vendor_row, reviewed.get("thumbnail"))
 
     update_job(job_id, review_status="draft_created", draft_created_at=datetime.now().isoformat())
     return {
@@ -712,6 +748,20 @@ async def api_save_to_database(req: SaveToDatabaseRequest):
             failed.append({"job_id": entry.job_id, "reason": "missing vendor_name"})
             continue
 
+        # /create-draft always runs this fuzzy check (see api_create_draft above);
+        # this endpoint used to skip it entirely and rely only on upsert_vendor's
+        # exact-name guard, letting a near-duplicate ("Legend" vs "Kedai Legend")
+        # straight through. Same warn-then-allow-override pattern here.
+        if not entry.duplicate_acknowledged:
+            try:
+                dup_candidates = find_duplicate_vendors(vendor_name, address or "", city or "", state or "")
+            except Exception as e:
+                failed.append({"job_id": entry.job_id, "reason": f"duplicate check failed: {e}"})
+                continue
+            if dup_candidates:
+                failed.append({"job_id": entry.job_id, "reason": "duplicate", "candidates": dup_candidates})
+                continue
+
         geo = geocode_address(vendor_name, address or "", city or "", state or "")
         platform = "TikTok" if "tiktok" in (job.get("url") or "").lower() else "YouTube"
 
@@ -735,7 +785,9 @@ async def api_save_to_database(req: SaveToDatabaseRequest):
         }
 
         try:
-            upsert_vendor(row)
+            saved_rows = upsert_vendor(row)
+            vendor_row = (saved_rows or [None])[0]
+            _attach_ai_thumbnail(vendor_row, job.get("thumbnail"))
             saved.append(entry.job_id)
         except Exception as e:
             failed.append({"job_id": entry.job_id, "reason": str(e)})
