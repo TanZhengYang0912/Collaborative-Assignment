@@ -105,9 +105,13 @@ function hashStr(s) {
 
 // Deterministic (not random) so the same vendor always shows the same photo
 // across renders/reloads. A real uploaded image still takes precedence over the
-// bundled vendor image.
+// bundled vendor image. `storefront_image_url` is the real DB/API column (set by
+// an admin upload or the AI pipeline's video thumbnail); `imageUrl` is how the
+// admin console's API mapper names it; `image_url` is kept as a last-resort
+// legacy key in case anything else still produces it.
 export function placeholderImage(vendor) {
-  if (vendor.image_url) return vendor.image_url;
+  const real = vendor.storefront_image_url || vendor.imageUrl || vendor.image_url;
+  if (real) return real;
   const curatedImage = VENDOR_FOOD_IMAGES[String(vendor.id)];
   if (curatedImage) return curatedImage;
   const pool = PLACEHOLDER_IMAGES[categoryOf(vendor)] || PLACEHOLDER_IMAGES.local;

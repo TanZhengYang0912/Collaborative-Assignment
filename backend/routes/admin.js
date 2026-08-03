@@ -10,6 +10,7 @@ import {
   validateVendorPatch,
   storagePathFromUrl,
 } from "../lib/vendorValidation.js";
+import { findDuplicatesFor, findAllDuplicateGroups } from "../lib/vendorDuplicates.js";
 
 const router = Router();
 
@@ -342,6 +343,24 @@ router.get("/vendors", async (req, res) => {
   }
 });
 
+// Read-only fuzzy scan for the "possible duplicates" review panel — never
+// deletes or merges anything; the admin reviews each pair and decides.
+router.get("/vendors/duplicates", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("vendors")
+      .select("id, vendor_name, address, status, latitude, longitude, created_at")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+
+    const groups = findAllDuplicateGroups(data || []);
+    res.json({ groups });
+  } catch (error) {
+    console.error("GET /vendors/duplicates failed:", error);
+    res.status(500).json({ error: "Failed to scan for duplicate vendors" });
+  }
+});
+
 router.patch("/vendors/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -522,6 +541,25 @@ router.post("/vendors", async (req, res) => {
   }
 
   try {
+    // Fuzzy name+address match against existing vendors — warn, don't block.
+    // `force: true` (the admin clicked "Add anyway") skips straight past this.
+    if (req.body?.force !== true) {
+      const { data: candidates, error: candErr } = await supabase
+        .from("vendors")
+        .select("id, vendor_name, address, status")
+        .ilike("vendor_name", `%${clean.vendor_name.replace(/[%(),]/g, " ")}%`)
+        .limit(200);
+      if (candErr) throw candErr;
+
+      const duplicates = findDuplicatesFor(
+        { vendor_name: clean.vendor_name, address: clean.address },
+        candidates || [],
+      );
+      if (duplicates.length) {
+        return res.status(409).json({ error: "possible_duplicate", duplicates });
+      }
+    }
+
     const now = new Date().toISOString();
     const record = {
       ...clean,
