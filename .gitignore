@@ -70,3 +70,5 @@ design-qa.md
 .vite/
 *.tsbuildinfo
 /docs
+/frontend/after
+/frontend/baseline
