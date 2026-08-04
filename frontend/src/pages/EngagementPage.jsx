@@ -10,6 +10,7 @@ import Toast from "../components/engagement/Toast";
 import DiscoveryHeader from "../components/discovery/DiscoveryHeader";
 import { useToast, sleep } from "../lib/useToast";
 import VendorCard from "../components/discovery/VendorCard";
+import { customerSession } from "../lib/roles";
 import VendorDetailModal from "../components/discovery/VendorDetailModal";
 import FolderPickerModal from "../components/engagement/FolderPickerModal";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
@@ -36,7 +37,7 @@ export default function EngagementPage() {
   const bookmarkedVendorIds = new Set(bookmarks.map((b) => b.vendor_id));
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => setSession(customerSession(data.session)));
   }, []);
 
   useEffect(() => {

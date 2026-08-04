@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { randomDisplayName } from "../lib/randomName";
 import PasswordField from "../components/PasswordField";
 import TrueBitesLogo from "../components/TrueBitesLogo";
+import { isAdmin } from "../lib/roles";
 
 function GoogleIcon() {
   return (
@@ -134,9 +135,11 @@ export default function LoginPage() {
     if (error) setErrorMsg(error.message);
   }
 
-  // Already logged in — go back to the app (unless we're mid-redirect to onboarding)
+  // Already logged in — go back to the app (unless we're mid-redirect to onboarding).
+  // Admins land here whenever a customer surface asks a "guest" to sign in; send
+  // them to their console instead, so no page needs its own admin redirect.
   if (session && !justSignedUp) {
-    navigate("/map", { replace: true });
+    navigate(isAdmin(session) ? "/admin" : "/map", { replace: true });
     return null;
   }
 

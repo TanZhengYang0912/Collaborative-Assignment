@@ -10,6 +10,7 @@ import GuestPrompt from "./discovery/GuestPrompt";
 import { categoryMatches, creatorHandle } from "../lib/vendorDisplay";
 import { pageNumbers, paginate } from "../lib/pagination";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
+import { customerSession } from "../lib/roles";
 
 const PAGE_SIZE = 12;
 
@@ -37,8 +38,8 @@ export default function Dashboard({ vendors, bookmarks, onToggleBookmark, onOpen
   const guardedToggleBookmark = requireAuth(onToggleBookmark);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    supabase.auth.getSession().then(({ data }) => setSession(customerSession(data.session)));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(customerSession(s)));
     return () => listener.subscription.unsubscribe();
   }, []);
 

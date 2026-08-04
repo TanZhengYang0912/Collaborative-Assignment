@@ -2,6 +2,7 @@ import { Router } from "express";
 import express from "express";
 import { Filter } from "bad-words";
 import { supabase } from "../supabase.js";
+import { isAdminUser } from "../lib/customerAccess.js";
 
 const router = Router();
 
@@ -44,6 +45,14 @@ async function requireUser(req, res) {
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data?.user) {
     res.status(401).json({ error: "Invalid or expired session" });
+    return null;
+  }
+  // An admin account is not a customer account. Hiding the controls in the UI is
+  // not enough — this endpoint would still accept an admin's token from curl,
+  // and displayName() would fall through to their email address, publishing it
+  // as the review's author_name.
+  if (isAdminUser(data.user)) {
+    res.status(403).json({ error: "Admin accounts cannot use customer features" });
     return null;
   }
   return data.user;

@@ -46,6 +46,10 @@ function extractTransitLegs(route) {
 export default function DirectionsRenderer({ stops, travelMode, routeIndex = 0, onSummary, onRoutes, onTransitLegs }) {
   const map = useMap();
   const rendererRef = useRef(null);
+  // Which travel mode we have already centred for. Recentring belongs to
+  // "navigation started", not "the route was recomputed" — reordering stops
+  // recomputes the route and used to drag the camera with it.
+  const centredForModeRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
@@ -60,6 +64,7 @@ export default function DirectionsRenderer({ stops, travelMode, routeIndex = 0, 
 
     if (!stops || stops.length < 2 || !travelMode) {
       rendererRef.current.setMap(null);
+      centredForModeRef.current = null;
       return;
     }
 
@@ -82,11 +87,16 @@ export default function DirectionsRenderer({ stops, travelMode, routeIndex = 0, 
       const route = result.routes[Math.min(routeIndex, result.routes.length - 1)];
       rendererRef.current?.setDirections(result);
       rendererRef.current?.setRouteIndex(Math.min(routeIndex, result.routes.length - 1));
-      // Focus on the user's current position (always stops[0]) instead of
-      // leaving the camera wherever it was — matches how Google Maps
-      // centers on you once you start navigating.
-      map.panTo(origin);
-      map.setZoom(17);
+      // Centre once when navigation starts, then leave the camera alone — the
+      // user reorders stops constantly and every pan threw away their view.
+      // The origin is draggable, so stops[0] is not necessarily the user; centre
+      // on the stop that actually is.
+      if (centredForModeRef.current !== travelMode) {
+        centredForModeRef.current = travelMode;
+        const userStop = stops.find((stop) => stop.isMe);
+        map.panTo(userStop ? { lat: userStop.lat, lng: userStop.lng } : origin);
+        map.setZoom(17);
+      }
 
       const dist = route.legs.reduce((a, l) => a + l.distance.value, 0);
       const dur = route.legs.reduce((a, l) => a + l.duration.value, 0);
