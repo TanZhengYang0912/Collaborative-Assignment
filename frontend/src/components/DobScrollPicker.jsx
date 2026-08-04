@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
-import { C, FONT_BODY } from "../lib/theme";
 
+// ponytail: ITEM_H drives both the CSS box heights and the scroll maths below.
+// These heights stay inline because the snap calculation reads them back — a
+// utility class here could drift from the constant and silently break snapping.
 const ITEM_H = 40;
 const VISIBLE = 3;
 const PAD = ITEM_H * Math.floor(VISIBLE / 2);
@@ -67,15 +69,8 @@ function Column({ items, value, onChange, format = (v) => v }) {
       ref={ref}
       onScroll={handleScroll}
       onMouseDown={handleMouseDown}
-      style={{
-        height: ITEM_H * VISIBLE,
-        overflowY: "auto",
-        scrollSnapType: "y mandatory",
-        scrollbarWidth: "none",
-        width: 68,
-        cursor: "ns-resize",
-        userSelect: "none",
-      }}
+      className="min-w-0 flex-1 cursor-ns-resize select-none overflow-y-auto [scrollbar-width:none] [scroll-snap-type:y_mandatory]"
+      style={{ height: ITEM_H * VISIBLE }}
     >
       <div style={{ height: PAD }} />
       {items.map((item) => {
@@ -83,18 +78,10 @@ function Column({ items, value, onChange, format = (v) => v }) {
         return (
           <div
             key={item}
-            style={{
-              height: ITEM_H,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              scrollSnapAlign: "center",
-              fontFamily: FONT_BODY,
-              fontSize: active ? 17 : 14,
-              fontWeight: active ? 700 : 400,
-              color: active ? C.navy : C.muted,
-              transition: "color 0.15s, font-size 0.15s",
-            }}
+            className={active
+              ? "flex items-center justify-center text-[17px] font-bold text-forest transition-all duration-150 [scroll-snap-align:center] motion-reduce:transition-none"
+              : "flex items-center justify-center text-sm text-muted transition-all duration-150 [scroll-snap-align:center] motion-reduce:transition-none"}
+            style={{ height: ITEM_H }}
           >
             {format(item)}
           </div>
@@ -112,13 +99,13 @@ export default function DobScrollPicker({ value, onChange }) {
   const year = value?.year || CURRENT_YEAR - 18;
 
   return (
-    <div style={{ position: "relative" }}>
-      <div style={{
-        position: "absolute", top: ITEM_H, left: 0, right: 0, height: ITEM_H,
-        borderTop: `1.5px solid ${C.border}`, borderBottom: `1.5px solid ${C.border}`,
-        pointerEvents: "none", background: "rgba(184,147,63,0.06)",
-      }} />
-      <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
+    <div className="relative">
+      {/* Centre band highlighting the selected row — aligned to the item grid. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 border-y-[1.5px] border-sand bg-terracotta/6"
+        style={{ top: ITEM_H, height: ITEM_H }}
+      />
+      <div className="flex justify-center gap-1">
         <Column items={DAYS} value={day} format={pad2} onChange={(d) => onChange({ day: d, month, year })} />
         <Column items={MONTHS} value={month} format={pad2} onChange={(m) => onChange({ day, month: m, year })} />
         <Column items={YEARS} value={year} onChange={(y) => onChange({ day, month, year: y })} />

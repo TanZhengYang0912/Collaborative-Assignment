@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { C, FONT_DISPLAY, FONT_BODY } from "../lib/theme";
 import DobScrollPicker from "../components/DobScrollPicker";
+import { AUTH_INPUT, AUTH_PRIMARY, AUTH_ERROR } from "./LoginPage";
 
 const STEPS = ["Full Name", "Date of Birth", "Gender"];
 const CURRENT_YEAR = new Date().getFullYear();
 const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
+
+const BACK_BUTTON = "min-h-11 rounded-lg border border-sand bg-white px-4 text-sm font-semibold text-forest";
 
 function parseDobIso(iso) {
   if (!iso) return null;
@@ -108,76 +110,71 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: C.cream, fontFamily: FONT_BODY, padding: 24,
-    }}>
-      <div style={{
-        width: "100%", maxWidth: 380, background: C.card, borderRadius: 16,
-        padding: "32px 28px", boxShadow: "0 20px 60px rgba(27,42,74,0.2)",
-      }}>
+    <div className="flex min-h-dvh items-center justify-center overflow-y-auto bg-chalk px-4 py-6 font-body text-ink sm:py-10">
+      <div className="mx-auto w-full max-w-[380px] rounded-2xl border border-sand bg-white p-5 shadow-[0_20px_60px_rgba(64,84,74,0.2)] sm:p-8">
         {/* Step progression line */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 28 }}>
+        <div className="mb-7 flex items-center">
           {STEPS.map((label, i) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "0 0 auto" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: i <= step ? C.navy : C.cream,
-                  border: `1.5px solid ${i <= step ? C.navy : C.border}`,
-                  color: i <= step ? "#fff" : C.muted,
-                  fontSize: 12.5, fontWeight: 700, flexShrink: 0,
-                }}>
+            <div
+              key={label}
+              className={i < STEPS.length - 1 ? "flex flex-1 items-center" : "flex flex-none items-center"}
+            >
+              <div className="flex flex-col items-center gap-1.5">
+                <div
+                  className={i <= step
+                    ? "flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] border-forest bg-forest text-[12.5px] font-bold text-white"
+                    : "flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] border-sand bg-chalk text-[12.5px] font-bold text-muted"}
+                >
                   {i + 1}
                 </div>
-                <span style={{ fontSize: 10.5, color: i === step ? C.navy : C.muted, fontWeight: i === step ? 600 : 400, whiteSpace: "nowrap" }}>
+                <span
+                  className={i === step
+                    ? "whitespace-nowrap text-[10.5px] font-semibold text-forest"
+                    : "whitespace-nowrap text-[10.5px] text-muted"}
+                >
                   {label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div style={{ flex: 1, height: 2, background: i < step ? C.navy : C.border, margin: "0 8px 18px" }} />
+                <div className={i < step ? "mx-2 mb-4.5 h-0.5 min-w-3 flex-1 bg-forest" : "mx-2 mb-4.5 h-0.5 min-w-3 flex-1 bg-sand"} />
               )}
             </div>
           ))}
         </div>
 
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, color: C.navy, margin: "0 0 4px" }}>
+        <h2 className="mb-1 mt-0 font-display text-xl text-forest">
           {step === 0 ? "What's your name?" : step === 1 ? "When were you born?" : "What's your gender?"}
         </h2>
-        <p style={{ fontSize: 13, color: C.muted, margin: "0 0 20px" }}>
+        <p className="mb-5 mt-0 text-[13px] text-muted">
           {step === 0
             ? "Let's personalize your TrueBites experience."
             : "Used to tailor recommendations — kept private."}
         </p>
 
         {step === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="flex flex-col gap-3">
             <input
               autoFocus
               placeholder="First name"
               value={firstName}
               onChange={(e) => { setFirstName(e.target.value); setErrorMsg(""); }}
               maxLength={50}
-              style={{ padding: 10, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 6, fontFamily: FONT_BODY }}
+              className={AUTH_INPUT}
             />
             <input
               placeholder="Last name"
               value={lastName}
               onChange={(e) => { setLastName(e.target.value); setErrorMsg(""); }}
               maxLength={50}
-              style={{ padding: 10, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 6, fontFamily: FONT_BODY }}
+              className={AUTH_INPUT}
             />
-            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+            {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
             <button
               onClick={handleContinue}
               disabled={!canContinueStep0}
-              style={{
-                marginTop: 8, padding: "12px 16px", borderRadius: 8, border: "none",
-                background: canContinueStep0 ? C.navy : C.border, color: "#fff",
-                fontSize: 14, fontWeight: 600, cursor: canContinueStep0 ? "pointer" : "default",
-                fontFamily: FONT_BODY,
-              }}
+              className={canContinueStep0
+                ? `mt-2 ${AUTH_PRIMARY}`
+                : "mt-2 min-h-11 w-full rounded-lg bg-sand px-4 text-[15px] font-semibold text-white"}
             >
               Continue
             </button>
@@ -185,35 +182,21 @@ export default function OnboardingPage() {
         )}
 
         {step === 1 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", justifyContent: "center", gap: 4, fontSize: 11, color: C.muted, fontWeight: 600 }}>
-              <span style={{ width: 68, textAlign: "center" }}>DAY</span>
-              <span style={{ width: 68, textAlign: "center" }}>MONTH</span>
-              <span style={{ width: 68, textAlign: "center" }}>YEAR</span>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-3 place-items-center gap-1 text-[11px] font-semibold text-muted">
+              <span>DAY</span>
+              <span>MONTH</span>
+              <span>YEAR</span>
             </div>
             <DobScrollPicker value={dob} onChange={setDob} />
 
-            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+            {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setStep(0)}
-                style={{
-                  padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: "#fff", color: C.navy, fontSize: 14, fontWeight: 600,
-                  cursor: "pointer", fontFamily: FONT_BODY,
-                }}
-              >
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <button onClick={() => setStep(0)} className={`flex-1 ${BACK_BUTTON}`}>
                 Back
               </button>
-              <button
-                onClick={handleContinueStep1}
-                style={{
-                  flex: 1, padding: "12px 16px", borderRadius: 8, border: "none",
-                  background: C.navy, color: "#fff", fontSize: 14, fontWeight: 600,
-                  cursor: "pointer", fontFamily: FONT_BODY,
-                }}
-              >
+              <button onClick={handleContinueStep1} className={`flex-1 ${AUTH_PRIMARY}`}>
                 Continue
               </button>
             </div>
@@ -221,49 +204,29 @@ export default function OnboardingPage() {
         )}
 
         {step === 2 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {GENDER_OPTIONS.map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => { setGender(option); setErrorMsg(""); }}
-                  style={{
-                    padding: "10px 14px", borderRadius: 8, textAlign: "left",
-                    border: `1.5px solid ${gender === option ? C.navy : C.border}`,
-                    background: gender === option ? C.navy : "#fff",
-                    color: gender === option ? "#fff" : C.navy,
-                    fontSize: 14, fontWeight: gender === option ? 600 : 400,
-                    cursor: "pointer", fontFamily: FONT_BODY,
-                  }}
+                  className={gender === option
+                    ? "min-h-11 rounded-lg border-[1.5px] border-forest bg-forest px-3.5 text-left text-sm font-semibold text-white"
+                    : "min-h-11 rounded-lg border-[1.5px] border-sand bg-white px-3.5 text-left text-sm text-forest"}
                 >
                   {option}
                 </button>
               ))}
             </div>
 
-            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, margin: 0 }}>{errorMsg}</p>}
+            {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setStep(1)}
-                style={{
-                  padding: "12px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: "#fff", color: C.navy, fontSize: 14, fontWeight: 600,
-                  cursor: "pointer", fontFamily: FONT_BODY,
-                }}
-              >
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <button onClick={() => setStep(1)} className={`flex-1 ${BACK_BUTTON}`}>
                 Back
               </button>
-              <button
-                onClick={finish}
-                disabled={saving}
-                style={{
-                  flex: 1, padding: "12px 16px", borderRadius: 8, border: "none",
-                  background: C.navy, color: "#fff", fontSize: 14, fontWeight: 600,
-                  cursor: saving ? "default" : "pointer", fontFamily: FONT_BODY,
-                }}
-              >
+              <button onClick={finish} disabled={saving} className={`flex-1 ${AUTH_PRIMARY}`}>
                 {saving ? "Saving…" : "Finish"}
               </button>
             </div>
@@ -273,10 +236,7 @@ export default function OnboardingPage() {
         {/* Onboarding is optional — you can always complete it later in Profile. */}
         <button
           onClick={skip}
-          style={{
-            display: "block", margin: "18px auto 0", background: "none", border: "none",
-            color: C.muted, fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY, textDecoration: "underline",
-          }}
+          className="mx-auto mt-4 block min-h-11 text-[13px] text-muted underline"
         >
           Skip for now — you can add these later in your profile
         </button>

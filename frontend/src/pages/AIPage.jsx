@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../ai-module.css';
 import { adminHomePath } from '../lib/adminNav';
 import StepIndicator       from '../components/ai/StepIndicator';
 import URLSubmissionStep   from '../components/ai/URLSubmissionStep';

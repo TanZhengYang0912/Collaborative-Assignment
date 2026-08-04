@@ -4,79 +4,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { C as THEME, FONT_DISPLAY } from "../lib/theme";
 import PasswordField from "../components/PasswordField";
-
-const C = {
-  cream: THEME.cream,
-  card: THEME.card,
-  accent: THEME.navy,
-  accentDark: THEME.navyLight,
-  text: THEME.text,
-  muted: THEME.muted,
-  border: THEME.border,
-};
-
-const styles = {
-  page: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    fontFamily: "system-ui",
-    background: C.cream,
-    position: "relative",
-  },
-  card: {
-    width: 320,
-    padding: 32,
-    borderRadius: 8,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-    background: C.card,
-  },
-  tabs: { display: "flex", gap: 8, marginBottom: 8 },
-  tab: {
-    flex: 1,
-    padding: 8,
-    textAlign: "center",
-    cursor: "pointer",
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: C.border,
-    borderRadius: 4,
-    background: "#f5f5f5",
-    color: C.text,
-  },
-  tabActive: { background: C.accent, color: "#fff", borderColor: C.accent, borderStyle: "solid", borderWidth: 1 },
-  input: { padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4 },
-  button: {
-    padding: 10,
-    fontSize: 14,
-    border: "none",
-    borderRadius: 4,
-    background: C.accent,
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-  backLink: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    fontSize: 13,
-    color: C.accent,
-    fontFamily: "system-ui",
-    padding: 0,
-    marginTop: 8,
-    textAlign: "center",
-    textDecoration: "underline",
-  },
-  error: { color: "#c0392b", fontSize: 13 },
-  info: { color: "#2c7a4b", fontSize: 13 },
-};
+import { AUTH_PAGE, AUTH_STACK, AUTH_CARD, AUTH_INPUT, AUTH_PRIMARY, AUTH_LINK, AUTH_ERROR } from "./LoginPage";
 
 export default function AdminLoginPage() {
   const [session, setSession] = useState(null);
@@ -158,46 +87,39 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-        <h1 style={{
-        fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 500,
-          color: C.text, margin: 0, lineHeight: 1.2, textAlign: "center",
-        }}>
+    <div className={AUTH_PAGE}>
+      <div className={AUTH_STACK}>
+        <h1 className="m-0 text-center font-display text-[clamp(24px,7vw,30px)] font-medium leading-tight text-ink">
           Admin login
         </h1>
-        <div style={styles.card}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input
-            style={styles.input}
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <PasswordField
-              style={styles.input}
-              iconColor={C.muted}
+        <div className={AUTH_CARD}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              className={AUTH_INPUT}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <PasswordField
+              className={AUTH_INPUT}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
             />
-          <button style={styles.button} type="submit" disabled={loading}>
-            {loading ? "Please wait…" : "Sign In"}
+            <button className={AUTH_PRIMARY} type="submit" disabled={loading}>
+              {loading ? "Please wait…" : "Sign In"}
+            </button>
+          </form>
+
+          {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
+
+          <button className={AUTH_LINK} onClick={() => navigate("/map")}>
+            Return to main page
           </button>
-        </form>
-
-        {errorMsg && <p style={styles.error}>{errorMsg}</p>}
-
-        <button
-          onClick={() => navigate("/map")}
-          style={styles.backLink}
-        >
-          Return to main page
-        </button>
         </div>
       </div>
     </div>

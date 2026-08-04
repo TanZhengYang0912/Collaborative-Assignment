@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Store } from "lucide-react";
 import { adminHomePath } from "../lib/adminNav";
-import { C as THEME, FONT_BODY } from "../lib/theme";
 
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const API = `${BASE}/api/vendors`;
@@ -59,34 +58,24 @@ function validateForm(f) {
   return e;
 }
 
-const C = {
-  cream: THEME.cream,
-  card: THEME.card,
-  accent: THEME.navy,
-  accentDark: THEME.navyLight,
-  text: THEME.text,
-  muted: THEME.muted,
-  border: THEME.border,
-};
-
-const S = {
-  page: { minHeight: "100vh", background: C.cream, fontFamily: FONT_BODY, color: C.text },
-  wrap: { maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" },
-  input: { width: "100%", padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, background: C.card, color: C.text, boxSizing: "border-box", outline: "none" },
-  label: { display: "block", fontSize: 12.5, fontWeight: 600, color: C.text, marginBottom: 5 },
-  err: { color: "#dc2626", fontSize: 12, marginTop: 4 },
-  btn: { padding: "9px 16px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: 14, cursor: "pointer", fontWeight: 500 },
-  btnPrimary: { padding: "9px 18px", borderRadius: 8, border: "none", background: C.accent, color: "#fff", fontSize: 14, cursor: "pointer", fontWeight: 600 },
-  th: { textAlign: "left", padding: "10px 14px", fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" },
-  td: { padding: "12px 14px", fontSize: 13.5, borderBottom: `1px solid ${C.border}`, verticalAlign: "middle" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(62,44,35,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 },
-};
+// Shared literal class strings — repeated often enough to name, complete
+// enough for Tailwind's scanner to see every utility.
+const INPUT = "min-h-11 w-full rounded-lg border border-sand bg-white px-3 text-sm text-ink outline-none focus:border-forest";
+const BTN = "inline-flex min-h-11 items-center justify-center rounded-lg border border-sand bg-white px-4 text-sm font-medium text-ink hover:border-forest disabled:opacity-60";
+const BTN_PRIMARY = "inline-flex min-h-11 items-center justify-center rounded-lg bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-light disabled:opacity-60";
+const BTN_DANGER = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#dc2626] px-4 text-sm font-semibold text-white disabled:opacity-60";
+const TH = "whitespace-nowrap border-b border-sand px-3.5 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.4px] text-muted";
+const TD = "border-b border-sand px-3.5 py-3 align-middle text-[13.5px]";
+const OVERLAY = "fixed inset-0 z-[1000] flex items-end justify-center bg-[rgba(62,44,35,.5)] p-0 sm:items-center sm:p-5";
 
 function StatusBadge({ status }) {
   const m = STATUS_META[status] || STATUS_META.draft;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: m.bg, color: m.fg, padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
-      <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.dot }} />
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ background: m.bg, color: m.fg }}
+    >
+      <span className="size-1.5 rounded-full" style={{ background: m.dot }} />
       {m.label}
     </span>
   );
@@ -95,9 +84,11 @@ function StatusBadge({ status }) {
 function Field({ label, error, required, children }) {
   return (
     <div>
-      <label style={S.label}>{label}{required && <span style={{ color: "#dc2626" }}> *</span>}</label>
+      <label className="mb-1.5 block text-[12.5px] font-semibold text-ink">
+        {label}{required && <span className="text-[#dc2626]"> *</span>}
+      </label>
       {children}
-      {error && <div style={S.err}>{error}</div>}
+      {error && <div className="mt-1 text-xs text-[#dc2626]">{error}</div>}
     </div>
   );
 }
@@ -174,73 +165,73 @@ function VendorFormModal({ vendor, onClose, onSaved, notify }) {
   }
 
   return (
-    <div style={S.overlay} onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
-      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 640, maxHeight: "92vh", overflowY: "auto", padding: 26, boxShadow: "0 20px 50px rgba(0,0,0,.25)" }}>
-        <h2 style={{ margin: "0 0 18px", fontSize: 19 }}>{isEdit ? "Edit vendor" : "Add new vendor"}</h2>
+    <div className={OVERLAY} onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
+      <div className="max-h-dvh w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,.25)] sm:max-h-[92dvh] sm:max-w-[640px] sm:rounded-2xl sm:p-6">
+        <h2 className="mb-4 mt-0 text-[19px] font-semibold">{isEdit ? "Edit vendor" : "Add new vendor"}</h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div style={{ gridColumn: "1 / -1" }}>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <Field label="Business name" required error={errors.vendor_name}>
-              <input style={S.input} value={form.vendor_name} onChange={set("vendor_name")} placeholder="e.g. Nyonya Kitchen Melaka" />
+              <input className={INPUT} value={form.vendor_name} onChange={set("vendor_name")} placeholder="e.g. Nyonya Kitchen Melaka" />
             </Field>
           </div>
 
-          <div style={{ gridColumn: "1 / -1" }}>
+          <div className="sm:col-span-2">
             <Field label="Address" required error={errors.address}>
-              <input style={S.input} value={form.address} onChange={set("address")} placeholder="Street address, Melaka" />
+              <input className={INPUT} value={form.address} onChange={set("address")} placeholder="Street address, Melaka" />
             </Field>
           </div>
 
           <Field label="Latitude" required error={errors.latitude}>
-            <input style={S.input} value={form.latitude} onChange={set("latitude")} placeholder="2.1946" />
+            <input className={INPUT} value={form.latitude} onChange={set("latitude")} placeholder="2.1946" />
           </Field>
           <Field label="Longitude" required error={errors.longitude}>
-            <input style={S.input} value={form.longitude} onChange={set("longitude")} placeholder="102.2485" />
+            <input className={INPUT} value={form.longitude} onChange={set("longitude")} placeholder="102.2485" />
           </Field>
 
           <Field label="Cuisine types (comma-separated)" required error={errors.cuisine_types}>
-            <input style={S.input} value={form.cuisine_types} onChange={set("cuisine_types")} placeholder="Nyonya, Malay" />
+            <input className={INPUT} value={form.cuisine_types} onChange={set("cuisine_types")} placeholder="Nyonya, Malay" />
           </Field>
           <Field label="Operating hours" required error={errors.operating_hours_raw}>
-            <input style={S.input} value={form.operating_hours_raw} onChange={set("operating_hours_raw")} placeholder="Mon–Sun 9:00am – 10:00pm" />
+            <input className={INPUT} value={form.operating_hours_raw} onChange={set("operating_hours_raw")} placeholder="Mon–Sun 9:00am – 10:00pm" />
           </Field>
 
           <Field label="Contact number" required error={errors.phone}>
-            <input style={S.input} value={form.phone} onChange={set("phone")} placeholder="06-283 1234" />
+            <input className={INPUT} value={form.phone} onChange={set("phone")} placeholder="06-283 1234" />
           </Field>
           <Field label="Price range" required error={errors.price_range}>
-            <input style={S.input} value={form.price_range} onChange={set("price_range")} placeholder="RM10–RM30" />
+            <input className={INPUT} value={form.price_range} onChange={set("price_range")} placeholder="RM10–RM30" />
           </Field>
 
-          <div style={{ gridColumn: "1 / -1" }}>
+          <div className="sm:col-span-2">
             <Field label="Signature dishes" required error={errors.signature_dishes}>
-              <input style={S.input} value={form.signature_dishes} onChange={set("signature_dishes")} placeholder="Cendol, Chicken Rice Balls" />
+              <input className={INPUT} value={form.signature_dishes} onChange={set("signature_dishes")} placeholder="Cendol, Chicken Rice Balls" />
             </Field>
           </div>
 
           <Field label="Status" error={errors.status}>
-            <select style={S.input} value={form.status} onChange={set("status")}>
+            <select className={INPUT} value={form.status} onChange={set("status")}>
               {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
             </select>
           </Field>
 
           <Field label="Storefront image">
-            <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickImage} style={{ display: "none" }} />
-            <button type="button" style={{ ...S.btn, width: "100%" }} onClick={() => fileInput.current?.click()}>
+            <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickImage} className="hidden" />
+            <button type="button" className={`${BTN} w-full`} onClick={() => fileInput.current?.click()}>
               {imageFile ? imageFile.name : preview ? "Replace image…" : "Choose image…"}
             </button>
           </Field>
 
           {preview && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <img src={preview} alt="Storefront preview" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, border: "1px solid #EADBCB" }} />
+            <div className="sm:col-span-2">
+              <img src={preview} alt="Storefront preview" className="max-h-[220px] w-full rounded-[10px] border border-sand object-cover" />
             </div>
           )}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-          <button style={S.btn} onClick={onClose} disabled={saving}>Cancel</button>
-          <button style={{ ...S.btnPrimary, opacity: saving ? 0.6 : 1 }} onClick={save} disabled={saving}>
+        <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+          <button className={BTN} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className={BTN_PRIMARY} onClick={save} disabled={saving}>
             {saving ? "Saving…" : isEdit ? "Save changes" : "Create vendor"}
           </button>
         </div>
@@ -267,15 +258,15 @@ function DeleteModal({ vendor, onClose, onDeleted, notify }) {
   }
 
   return (
-    <div style={S.overlay} onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
-      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, padding: 26, boxShadow: "0 20px 50px rgba(0,0,0,.25)" }}>
-        <h3 style={{ margin: "0 0 10px", fontSize: 17 }}>Delete vendor?</h3>
-        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#6B5A4E", lineHeight: 1.5 }}>
+    <div className={OVERLAY} onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}>
+      <div className="w-full rounded-t-2xl bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,.25)] sm:max-w-[420px] sm:rounded-2xl sm:p-6">
+        <h3 className="mb-2.5 mt-0 text-[17px] font-semibold">Delete vendor?</h3>
+        <p className="mb-5 mt-0 text-sm leading-normal text-[#6B5A4E]">
           <strong>{vendor.vendor_name}</strong> and its storefront image will be permanently removed. This cannot be undone.
         </p>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button style={S.btn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button style={{ ...S.btnPrimary, background: "#dc2626", opacity: busy ? 0.6 : 1 }} onClick={confirm} disabled={busy}>
+        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+          <button className={BTN} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={BTN_DANGER} onClick={confirm} disabled={busy}>
             {busy ? "Deleting…" : "Delete"}
           </button>
         </div>
@@ -378,137 +369,142 @@ export default function VendorsPage() {
 
   const counts = meta.statusCounts || {};
   const stats = [
-    { label: "Total vendors", value: meta.total ?? 0, color: C.text },
+    { label: "Total vendors", value: meta.total ?? 0, color: "#202A35" },
     { label: "Active", value: counts.active ?? 0, color: STATUS_META.active.dot },
     { label: "Draft", value: counts.draft ?? 0, color: STATUS_META.draft.dot },
     { label: "Suspended", value: counts.suspended ?? 0, color: STATUS_META.suspended.dot },
   ];
 
   return (
-    <div style={S.page}>
+    <div className="min-h-dvh bg-chalk font-body text-ink">
       {/* Brand top bar — same look as the user-facing Dashboard header */}
-      <header style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.accentDark, fontSize: 18, fontWeight: 600 }}><Store size={18} strokeWidth={1.7} /> TrueBites</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 13, color: C.muted }}>Admin · Vendor Management</span>
-          <button style={S.btn} onClick={handleBack}>← Back</button>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-sand bg-white px-4 py-3 md:px-6">
+        <div className="flex items-center gap-2 text-lg font-semibold text-forest"><Store size={18} strokeWidth={1.7} /> TrueBites</div>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-[13px] text-muted sm:inline">Admin · Vendor Management</span>
+          <button className={BTN} onClick={handleBack}>← Back</button>
         </div>
       </header>
 
-      <div style={S.wrap}>
+      <div className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 22 }}>
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 style={{ margin: 0, fontSize: 24, color: C.accentDark }}>Vendor Management</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 14, color: C.muted }}>
+            <h1 className="m-0 text-2xl text-forest">Vendor Management</h1>
+            <p className="mb-0 mt-1 text-sm text-muted">
               Create, review and publish eatery records for the TrueBites tourist map.
             </p>
           </div>
-          <button style={S.btnPrimary} onClick={() => setModal({ mode: "create" })}>+ Add vendor</button>
+          <button className={BTN_PRIMARY} onClick={() => setModal({ mode: "create" })}>+ Add vendor</button>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
+        <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "1px solid #EADBCB" }}>
-              <div style={{ fontSize: 12.5, color: "#9A8478", fontWeight: 600 }}>{s.label}</div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: s.color, marginTop: 2 }}>{s.value}</div>
+            <div key={s.label} className="rounded-xl border border-sand bg-white px-4 py-3.5">
+              <div className="text-[12.5px] font-semibold text-[#9A8478]">{s.label}</div>
+              <div className="mt-0.5 text-[26px] font-bold" style={{ color: s.color }}>{s.value}</div>
             </div>
           ))}
         </div>
 
-        {/* Search & filters */}
-        <div style={{ background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #EADBCB", marginBottom: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "center" }}>
-            <input style={S.input} placeholder="🔍 Search business name…" value={search} onChange={(ev) => setSearch(ev.target.value)} />
-            <select style={S.input} value={cuisine} onChange={(ev) => { setCuisine(ev.target.value); setPage(1); }}>
+        {/* Search & filters — one column on phones, the original six-across from lg */}
+        <div className="mb-4.5 rounded-xl border border-sand bg-white p-4">
+          <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]">
+            <input className={INPUT} placeholder="🔍 Search business name…" value={search} onChange={(ev) => setSearch(ev.target.value)} />
+            <select className={INPUT} value={cuisine} onChange={(ev) => { setCuisine(ev.target.value); setPage(1); }}>
               <option value="">All cuisines</option>
               {meta.cuisines.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select style={S.input} value={status} onChange={(ev) => { setStatus(ev.target.value); setPage(1); }}>
+            <select className={INPUT} value={status} onChange={(ev) => { setStatus(ev.target.value); setPage(1); }}>
               <option value="">All statuses</option>
               {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
             </select>
-            <input style={S.input} placeholder="Location…" value={location}
+            <input className={INPUT} placeholder="Location…" value={location}
               onChange={(ev) => setLocation(ev.target.value)} onBlur={() => setPage(1)}
               onKeyDown={(ev) => ev.key === "Enter" && setPage(1)} />
-            <input style={S.input} placeholder="Hours, e.g. 9am…" value={hours}
+            <input className={INPUT} placeholder="Hours, e.g. 9am…" value={hours}
               onChange={(ev) => setHours(ev.target.value)} onBlur={() => setPage(1)}
               onKeyDown={(ev) => ev.key === "Enter" && setPage(1)} />
-            <button style={{ ...S.btn, visibility: hasFilters ? "visible" : "hidden" }} onClick={clearFilters}>Clear</button>
+            <button
+              className={hasFilters
+                ? `${BTN} w-full sm:col-span-2 lg:col-span-1 lg:w-auto`
+                : `${BTN} invisible w-full sm:col-span-2 lg:col-span-1 lg:w-auto`}
+              onClick={clearFilters}
+            >
+              Clear
+            </button>
           </div>
         </div>
 
         {/* Table */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #EADBCB", overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="overflow-hidden rounded-xl border border-sand bg-white">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[920px] border-collapse text-sm">
               <thead>
                 <tr>
-                  <th style={S.th}>Vendor</th>
-                  <th style={S.th}>Cuisine</th>
-                  <th style={S.th}>Location</th>
-                  <th style={S.th}>Hours</th>
-                  <th style={S.th}>Status</th>
-                  <th style={{ ...S.th, textAlign: "right" }}>Actions</th>
+                  <th className={TH}>Vendor</th>
+                  <th className={TH}>Cuisine</th>
+                  <th className={TH}>Location</th>
+                  <th className={TH}>Hours</th>
+                  <th className={TH}>Status</th>
+                  <th className={`${TH} text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td style={{ ...S.td, textAlign: "center", padding: 40, color: "#9A8478" }} colSpan={6}>Loading vendors…</td></tr>
+                  <tr><td className={`${TD} p-10 text-center text-[#9A8478]`} colSpan={6}>Loading vendors…</td></tr>
                 ) : loadError ? (
-                  <tr><td style={{ ...S.td, textAlign: "center", padding: 40, color: "#dc2626" }} colSpan={6}>
+                  <tr><td className={`${TD} p-10 text-center text-[#dc2626]`} colSpan={6}>
                     Failed to load vendors: {loadError} — is the backend running on {BASE}?
                   </td></tr>
                 ) : vendors.length === 0 ? (
-                  <tr><td style={{ ...S.td, textAlign: "center", padding: 40, color: "#9A8478" }} colSpan={6}>
+                  <tr><td className={`${TD} p-10 text-center text-[#9A8478]`} colSpan={6}>
                     {hasFilters ? "No vendors match your search or filters." : "No vendors yet — click “+ Add vendor” to create the first record."}
                   </td></tr>
                 ) : (
                   vendors.map((v) => (
-                    <tr key={v.id}
-                      onMouseEnter={(ev) => (ev.currentTarget.style.background = C.cream)}
-                      onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}>
-                      <td style={S.td}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <tr key={v.id} className="hover:bg-chalk">
+                      <td className={TD}>
+                        <div className="flex min-w-[220px] items-center gap-3">
                           {v.storefront_image_url ? (
                             <img src={v.storefront_image_url} alt="" loading="lazy"
-                              style={{ width: 46, height: 46, borderRadius: 8, objectFit: "cover", border: "1px solid #EADBCB", flexShrink: 0 }} />
+                              className="size-[46px] shrink-0 rounded-lg border border-sand object-cover" />
                           ) : (
-                            <div style={{ width: 46, height: 46, borderRadius: 8, background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Store size={20} color={C.accent} strokeWidth={1.6} /></div>
+                            <div className="flex size-[46px] shrink-0 items-center justify-center rounded-lg bg-chalk"><Store size={20} color="#40544A" strokeWidth={1.6} /></div>
                           )}
                           <div>
-                            <div style={{ fontWeight: 600 }}>{v.vendor_name}</div>
-                            {v.phone && <div style={{ fontSize: 12, color: "#9A8478" }}>📞 {v.phone}</div>}
+                            <div className="font-semibold">{v.vendor_name}</div>
+                            {v.phone && <div className="text-xs text-[#9A8478]">📞 {v.phone}</div>}
                           </div>
                         </div>
                       </td>
-                      <td style={S.td}>{v.cuisine_types || <span style={{ color: "#B9A99B" }}>—</span>}</td>
-                      <td style={{ ...S.td, maxWidth: 240 }}>
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={v.address}>{v.address}</div>
-                        <div style={{ fontSize: 11.5, color: "#B9A99B" }}>{Number(v.latitude)?.toFixed(4)}, {Number(v.longitude)?.toFixed(4)}</div>
+                      <td className={TD}>{v.cuisine_types || <span className="text-[#B9A99B]">—</span>}</td>
+                      <td className={`${TD} max-w-[240px]`}>
+                        <div className="break-words" title={v.address}>{v.address}</div>
+                        <div className="text-[11.5px] text-[#B9A99B]">{Number(v.latitude)?.toFixed(4)}, {Number(v.longitude)?.toFixed(4)}</div>
                       </td>
-                      <td style={{ ...S.td, maxWidth: 170 }}>
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={v.operating_hours_raw}>
-                          {v.operating_hours_raw || <span style={{ color: "#B9A99B" }}>—</span>}
+                      <td className={`${TD} max-w-[170px]`}>
+                        <div className="truncate" title={v.operating_hours_raw}>
+                          {v.operating_hours_raw || <span className="text-[#B9A99B]">—</span>}
                         </div>
                       </td>
-                      <td style={S.td}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <td className={TD}>
+                        <div className="flex items-center gap-2">
                           <StatusBadge status={v.status || "draft"} />
                           <select
                             value={v.status || "draft"}
                             onChange={(ev) => changeStatus(v, ev.target.value)}
                             title="Change visibility status"
-                            style={{ border: "1px solid #d1d5db", borderRadius: 6, fontSize: 12, padding: "3px 4px", background: "#fff", cursor: "pointer" }}
+                            className="min-h-11 rounded-md border border-[#d1d5db] bg-white px-1 text-xs"
                           >
                             {Object.entries(STATUS_META).map(([val, m]) => <option key={val} value={val}>{m.label}</option>)}
                           </select>
                         </div>
                       </td>
-                      <td style={{ ...S.td, textAlign: "right", whiteSpace: "nowrap" }}>
-                        <button style={{ ...S.btn, padding: "6px 12px", fontSize: 13 }} onClick={() => setModal({ mode: "edit", vendor: v })}>Edit</button>
-                        <button style={{ ...S.btn, padding: "6px 12px", fontSize: 13, marginLeft: 8, color: "#dc2626", borderColor: "#fca5a5" }} onClick={() => setModal({ mode: "delete", vendor: v })}>Delete</button>
+                      <td className={`${TD} whitespace-nowrap text-right`}>
+                        <button className={`${BTN} px-3 text-[13px]`} onClick={() => setModal({ mode: "edit", vendor: v })}>Edit</button>
+                        <button className={`${BTN} ml-2 border-[#fca5a5] px-3 text-[13px] text-[#dc2626]`} onClick={() => setModal({ mode: "delete", vendor: v })}>Delete</button>
                       </td>
                     </tr>
                   ))
@@ -519,14 +515,14 @@ export default function VendorsPage() {
 
           {/* Pagination */}
           {!loading && !loadError && total > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid #EADBCB", fontSize: 13, color: "#9A8478" }}>
+            <div className="flex flex-col gap-3 border-t border-sand px-4 py-3 text-[13px] text-[#9A8478] sm:flex-row sm:items-center sm:justify-between">
               <span>
                 Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total} vendor{total === 1 ? "" : "s"}
               </span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button style={{ ...S.btn, padding: "6px 12px", fontSize: 13, opacity: page <= 1 ? 0.5 : 1 }} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</button>
+              <div className="flex items-center justify-center gap-2">
+                <button className={`${BTN} px-3 text-[13px]`} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</button>
                 <span>Page {page} / {totalPages}</span>
-                <button style={{ ...S.btn, padding: "6px 12px", fontSize: 13, opacity: page >= totalPages ? 0.5 : 1 }} disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</button>
+                <button className={`${BTN} px-3 text-[13px]`} disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</button>
               </div>
             </div>
           )}
@@ -546,12 +542,9 @@ export default function VendorsPage() {
 
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: toast.isError ? "#B44E4E" : C.text, color: "#fff",
-          padding: "11px 20px", borderRadius: 10, fontSize: 14, zIndex: 2000,
-          boxShadow: "0 8px 24px rgba(0,0,0,.3)", maxWidth: "90vw",
-        }}>
+        <div className={toast.isError
+          ? "fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[2000] mx-auto w-fit max-w-[90vw] break-words rounded-[10px] bg-danger px-5 py-2.5 text-sm text-white shadow-[0_8px_24px_rgba(0,0,0,.3)] sm:left-auto sm:right-5 sm:mx-0"
+          : "fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[2000] mx-auto w-fit max-w-[90vw] break-words rounded-[10px] bg-ink px-5 py-2.5 text-sm text-white shadow-[0_8px_24px_rgba(0,0,0,.3)] sm:left-auto sm:right-5 sm:mx-0"}>
           {toast.msg}
         </div>
       )}

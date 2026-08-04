@@ -6,7 +6,6 @@ import StatsBand from "../components/landing/StatsBand";
 import QuoteSection from "../components/landing/QuoteSection";
 import LocalGemsCta from "../components/landing/LocalGemsCta";
 import LandingFooter from "../components/landing/LandingFooter";
-import { C } from "../lib/theme";
 
 // The editorial Melaka Tourism landing page at "/".
 // Sections in order:
@@ -19,11 +18,11 @@ import { C } from "../lib/theme";
 //   7. LandingFooter      — navy footer
 export default function LandingPage() {
   return (
-    <div style={{ background: C.cream, minHeight: "100vh" }}>
+    <div className="min-h-dvh bg-chalk font-body text-ink">
       {/* Fixed nav — transparent over hero, solid on scroll */}
       <LandingNav />
 
-      {/* Full-bleed hero — 100vh */}
+      {/* Full-bleed hero — fills the dynamic viewport */}
       <HeroCarousel />
 
       {/* Editorial sections */}

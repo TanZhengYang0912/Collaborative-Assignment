@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import { HERO_SLIDES } from "../../lib/landingImages";
 
 // 4-slide full-bleed hero carousel.
 // - Giant "MELAKA" Playfair wordmark (always visible)
-// - Per-slide: gold eyebrow caption + short description (top-left)
+// - Per-slide: terracotta eyebrow caption + short description
 // - Persistent "600 Years of Culture, Heritage & Flavour" italic tagline
 // - "SCROLL TO EXPLORE" label + "01/4" counter + dot pagination
 // - Auto-advance every 5 s; dots are manual override
 // - Crossfade transition; respects prefers-reduced-motion
+//
+// Uses dvh rather than vh so mobile browser chrome cannot clip the bottom row.
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0);
   const [fading, setFading] = useState(false);
@@ -39,117 +40,75 @@ export default function HeroCarousel() {
   }, [current, goTo]);
 
   const slide = HERO_SLIDES[current];
+  const fade = fading ? "opacity-0" : "opacity-100";
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden" }}>
+    <div className="relative min-h-dvh w-full overflow-hidden bg-ink">
       {/* Background image */}
-      <div style={{
-        position: "absolute", inset: 0,
-        opacity: fading ? 0 : 1,
-        transition: reducedMotion ? "none" : "opacity 0.4s ease-in-out",
-      }}>
+      <div className={`absolute inset-0 transition-opacity duration-400 ease-in-out motion-reduce:transition-none ${fade}`}>
         <img
           key={slide.id}
           src={slide.url}
           alt={slide.alt}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          className="block size-full object-cover"
         />
-        {/* Dark gradient overlays */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 40%, rgba(27,42,74,0.7) 100%)",
-        }} />
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.35)_0%,transparent_40%,rgba(32,42,53,0.7)_100%)]" />
       </div>
 
       {/* Giant MELAKA wordmark — centred */}
-      <div style={{
-        position: "absolute", inset: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        pointerEvents: "none",
-      }}>
-        <div style={{
-          fontFamily: FONT_DISPLAY, fontWeight: 800,
-          fontSize: "clamp(72px, 14vw, 160px)",
-          color: "rgba(255,255,255,0.08)",
-          letterSpacing: "0.12em",
-          userSelect: "none",
-          lineHeight: 1,
-        }}>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="select-none font-display text-[clamp(48px,14vw,160px)] font-extrabold leading-none tracking-[0.12em] text-white/8">
           MELAKA
-        </div>
+        </span>
       </div>
 
-      {/* Slide caption — top-left */}
-      <div style={{
-        position: "absolute", top: "50%", left: 48,
-        transform: "translateY(-50%)",
-        maxWidth: 480,
-        opacity: fading ? 0 : 1,
-        transition: reducedMotion ? "none" : "opacity 0.4s ease-in-out",
-      }}>
-        {/* Gold eyebrow */}
-        <div style={{
-          fontFamily: FONT_BODY, fontWeight: 600, fontSize: 12,
-          color: C.gold, letterSpacing: 2.5, textTransform: "uppercase",
-          marginBottom: 12,
-        }}>
+      {/* Slide caption */}
+      <div className={`absolute left-5 top-1/2 max-w-[480px] -translate-y-1/2 pr-5 transition-opacity duration-400 ease-in-out motion-reduce:transition-none md:left-12 md:pr-0 ${fade}`}>
+        <div className="mb-3 font-body text-xs font-semibold uppercase tracking-[2.5px] text-terracotta">
           {slide.eyebrow}
         </div>
-        {/* Caption */}
-        <div style={{
-          fontFamily: FONT_DISPLAY, fontSize: "clamp(22px, 3.5vw, 36px)",
-          fontWeight: 600, color: "#fff", lineHeight: 1.2,
-        }}>
+        <div className="font-display text-[clamp(22px,3.5vw,36px)] font-semibold leading-tight text-white">
           {slide.caption}
         </div>
       </div>
 
-      {/* Tagline + CTA — bottom-left */}
-      <div style={{
-        position: "absolute", bottom: 60, left: 48,
-      }}>
-        <div style={{
-          fontFamily: FONT_DISPLAY, fontStyle: "italic", fontSize: "clamp(16px, 2vw, 22px)",
-          color: "rgba(255,255,255,0.85)", marginBottom: 24, lineHeight: 1.4,
-        }}>
-          600 Years of Culture, Heritage & Flavour
+      {/* Bottom bar — stacked on phones so the tagline and dots never collide */}
+      <div className="absolute inset-x-5 bottom-6 flex flex-col gap-5 md:inset-x-12 md:bottom-15 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="mb-5 font-display text-[clamp(16px,2vw,22px)] italic leading-snug text-white/85">
+            600 Years of Culture, Heritage &amp; Flavour
+          </div>
+          <div className="font-body text-[10.5px] uppercase tracking-[3px] text-white/55">
+            ↓ SCROLL TO EXPLORE
+          </div>
         </div>
-        <div style={{
-          fontFamily: FONT_BODY, fontSize: 10.5, color: "rgba(255,255,255,0.55)",
-          letterSpacing: 3, textTransform: "uppercase",
-        }}>
-          ↓ SCROLL TO EXPLORE
-        </div>
-      </div>
 
-      {/* Slide counter + pagination dots — bottom-right */}
-      <div style={{
-        position: "absolute", bottom: 60, right: 48,
-        display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14,
-      }}>
-        {/* Counter */}
-        <div style={{ fontFamily: FONT_BODY, color: "rgba(255,255,255,0.7)", fontSize: 12, letterSpacing: 1 }}>
-          <span style={{ fontWeight: 700, color: "#fff", fontSize: 16 }}>
-            {String(current + 1).padStart(2, "0")}
-          </span>
-          <span style={{ margin: "0 5px" }}>/</span>
-          {String(HERO_SLIDES.length).padStart(2, "0")}
-        </div>
-        {/* Dots */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {HERO_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => { clearInterval(timerRef.current); goTo(i); }}
-              aria-label={`Slide ${i + 1}`}
-              style={{
-                width: i === current ? 28 : 8, height: 8, borderRadius: 4,
-                background: i === current ? C.gold : "rgba(255,255,255,0.4)",
-                border: "none", cursor: "pointer", padding: 0,
-                transition: reducedMotion ? "none" : "width 0.3s ease, background 0.3s ease",
-              }}
-            />
-          ))}
+        <div className="flex flex-col items-start gap-2 md:items-end md:gap-3.5">
+          {/* Counter */}
+          <div className="font-body text-xs tracking-[1px] text-white/70">
+            <span className="text-base font-bold text-white">{String(current + 1).padStart(2, "0")}</span>
+            <span className="mx-[5px]">/</span>
+            {String(HERO_SLIDES.length).padStart(2, "0")}
+          </div>
+          {/* Dots — 44px hit areas around small visual bars */}
+          <div className="-ml-2 flex md:-mr-2 md:ml-0">
+            {HERO_SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { clearInterval(timerRef.current); goTo(i); }}
+                aria-label={`Slide ${i + 1}`}
+                aria-current={i === current}
+                className="grid size-11 place-items-center"
+              >
+                <span
+                  className={i === current
+                    ? "block h-2 w-7 rounded-full bg-terracotta transition-all duration-300 motion-reduce:transition-none"
+                    : "block h-2 w-2 rounded-full bg-white/40 transition-all duration-300 motion-reduce:transition-none"}
+                />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

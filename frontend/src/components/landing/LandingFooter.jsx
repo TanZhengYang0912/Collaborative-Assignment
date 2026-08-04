@@ -1,48 +1,26 @@
-import { C, FONT_BODY } from "../../lib/theme";
 import TrueBitesLogo from "../TrueBitesLogo";
 
-// Navy footer: TRUEBITES wordmark + official tagline + location/AI/year.
+// Forest footer: TRUEBITES wordmark + official tagline + location/AI/year.
+const LINKS = ["About", "Privacy", "Contact Melaka Tourism"];
+
 export default function LandingFooter() {
   return (
-    <footer style={{
-      background: C.navy,
-      padding: "64px 48px",
-      boxSizing: "border-box",
-    }}>
-      <div style={{
-        maxWidth: 1280, margin: "0 auto",
-        display: "flex", flexDirection: "column", gap: 32,
-      }}>
+    <footer className="bg-forest px-5 py-12 md:px-12 md:py-16">
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-8">
         {/* Top row: wordmark + nav links */}
-        <div style={{
-          display: "flex", alignItems: "flex-start",
-          justifyContent: "space-between", flexWrap: "wrap", gap: 32,
-          }}>
-            {/* Wordmark */}
+        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+          {/* Wordmark */}
           <div>
             <TrueBitesLogo size="footer" tone="light" />
-            <div style={{
-              fontFamily: FONT_BODY, fontSize: 12, color: C.gold,
-              letterSpacing: 1.1, textTransform: "uppercase", marginTop: 14,
-            }}>
+            <div className="mt-3.5 font-body text-xs uppercase tracking-[1.1px] text-terracotta">
               Official Food Discovery Platform · Melaka Tourism
             </div>
           </div>
 
           {/* Footer links */}
-          <div style={{ display: "flex", gap: 36, flexWrap: "wrap", alignItems: "center" }}>
-            {[
-              "About",
-              "Privacy",
-              "Contact Melaka Tourism",
-            ].map((link) => (
-              <span
-                key={link}
-                style={{
-                  fontFamily: FONT_BODY, fontSize: 12, color: "rgba(255,255,255,0.5)",
-                  letterSpacing: 0.5, cursor: "pointer",
-                }}
-              >
+          <div className="flex flex-wrap items-center gap-x-9 gap-y-3">
+            {LINKS.map((link) => (
+              <span key={link} className="cursor-pointer font-body text-xs tracking-[0.5px] text-white/50">
                 {link}
               </span>
             ))}
@@ -50,30 +28,16 @@ export default function LandingFooter() {
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+        <div className="h-px bg-white/8" />
 
         {/* Bottom row */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          justifyContent: "space-between", flexWrap: "wrap", gap: 16,
-        }}>
-          <div style={{
-            fontFamily: FONT_BODY, fontSize: 12,
-            color: "rgba(255,255,255,0.4)", letterSpacing: 0.3,
-          }}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="font-body text-xs tracking-[0.3px] text-white/40">
             Melaka, Malaysia · AI-Powered · Est. 2024
           </div>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: "50%", background: C.gold,
-              display: "inline-block",
-            }} />
-            <span style={{
-              fontFamily: FONT_BODY, fontSize: 11,
-              color: "rgba(255,255,255,0.35)", letterSpacing: 0.5,
-            }}>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block size-1.5 rounded-full bg-terracotta" />
+            <span className="font-body text-[11px] tracking-[0.5px] text-white/35">
               © 2024 TrueBites. Built for Melaka.
             </span>
           </div>

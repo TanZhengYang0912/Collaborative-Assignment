@@ -14,7 +14,6 @@ import BatchProgressStep from "../../components/ai/BatchProgressStep";
 import BatchResultsStep  from "../../components/ai/BatchResultsStep";
 
 // Import the ai-module styles (needed for step components)
-import "../../ai-module.css";
 
 const AI_BASE  = getAiApiBase(import.meta.env.VITE_AI_API_BASE);
 const POLL_MS  = 2000;

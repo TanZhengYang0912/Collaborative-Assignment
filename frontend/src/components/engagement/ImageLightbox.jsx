@@ -15,20 +15,12 @@ export default function ImageLightbox({ src, onClose }) {
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 1300, padding: 24, cursor: "zoom-out",
-      }}
+      className="fixed inset-0 z-[1300] flex cursor-zoom-out items-center justify-center bg-black/85 p-3 sm:p-8"
     >
       <button
         onClick={onClose}
         aria-label="Close"
-        style={{
-          position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%",
-          background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
+        className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-white/15"
       >
         <X size={20} color="#fff" />
       </button>
@@ -36,7 +28,7 @@ export default function ImageLightbox({ src, onClose }) {
         src={src}
         alt="Review attachment enlarged"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain", borderRadius: 8, cursor: "default" }}
+        className="max-h-[calc(100dvh-6rem)] max-w-full cursor-default rounded-lg object-contain"
       />
     </div>
   );

@@ -18,7 +18,7 @@ import Toast from "../components/engagement/Toast";
 import { useToast, sleep } from "../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { loadTrip, saveTrip } from "../lib/tripStorage";
-import { C } from "../lib/theme";
+import { MAP_COLORS } from "../lib/mapColors";
 import { selectVisibleVendors, haversineKm } from "../lib/mapVisibility";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
@@ -307,8 +307,8 @@ export default function MapPage() {
 
   if (!API_KEY) {
     return (
-      <div style={{ padding: 24, fontFamily: "system-ui" }}>
-        <h2>Missing browser API key</h2>
+      <div className="p-6 font-body">
+        <h2 className="mb-2 font-display text-xl text-ink">Missing browser API key</h2>
         <p>Set <code>VITE_MAPS_BROWSER_KEY</code> in <code>frontend/.env</code>, then restart the dev server.</p>
       </div>
     );
@@ -374,14 +374,14 @@ export default function MapPage() {
 
   return (
     <APIProvider apiKey={API_KEY} libraries={["geometry", "marker", "places"]}>
-      <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+      <div className="relative h-dvh w-full overflow-hidden bg-chalk">
         <GMap
           defaultCenter={MELAKA_CENTER}
           defaultZoom={13}
           mapId={MAP_ID}
           colorScheme={isDark ? "DARK" : "LIGHT"}
           gestureHandling="greedy"
-          style={{ width: "100%", height: "100%" }}
+          className="size-full"
         >
           <MelakaHighlight />
           {/* FocusOnUser must commit before FocusOnVendor — React runs effects in
@@ -420,7 +420,7 @@ export default function MapPage() {
         </GMap>
 
         {!mapFullscreen && (
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}>
+          <div className="absolute inset-x-0 top-0 z-10">
             <DiscoveryHeader
               session={session} userEmail={userEmail} initials={initials} firstName={firstName} avatarUrl={avatarUrl}
               savedCount={bookmarks.size}
@@ -438,24 +438,20 @@ export default function MapPage() {
         <button
           onClick={() => setMapFullscreen((v) => !v)}
           title={mapFullscreen ? "Exit fullscreen" : "Fullscreen map"}
-          style={{ position: "absolute", top: mapFullscreen ? 16 : 84, right: 16, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.12)" }}
+          aria-label={mapFullscreen ? "Exit fullscreen" : "Fullscreen map"}
+          className={mapFullscreen
+            ? "absolute right-4 top-4 z-10 grid size-11 place-items-center rounded-lg border border-sand bg-white shadow-[0_2px_8px_rgba(64,84,74,0.12)]"
+            : "absolute right-4 top-44 z-10 grid size-11 place-items-center rounded-lg border border-sand bg-white shadow-[0_2px_8px_rgba(64,84,74,0.12)] md:top-20"}
         >
-          {mapFullscreen ? <Minimize2 size={16} color={C.navy} /> : <Maximize2 size={16} color={C.navy} />}
+          {mapFullscreen ? <Minimize2 size={16} color={MAP_COLORS.forest} /> : <Maximize2 size={16} color={MAP_COLORS.forest} />}
         </button>
 
         <button
           onClick={() => setIsDark((v) => !v)}
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          style={{
-            position: "absolute", top: 90, left: 10, zIndex: 10,
-            background: isDark ? "#1f1f1f" : "#fff",
-            border: `1px solid ${isDark ? "#444" : "#ccc"}`,
-            borderRadius: 6, padding: "4px 10px",
-            cursor: "pointer", fontFamily: "system-ui", fontSize: 12,
-            color: isDark ? "#fff" : "#333",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-            display: "flex", alignItems: "center", gap: 5,
-          }}
+          className={isDark
+            ? "absolute left-3 top-44 z-10 flex min-h-11 items-center gap-1.5 rounded-md border border-[#444] bg-[#1f1f1f] px-2.5 text-xs text-white shadow-[0_2px_6px_rgba(0,0,0,0.2)] md:top-22"
+            : "absolute left-3 top-44 z-10 flex min-h-11 items-center gap-1.5 rounded-md border border-[#ccc] bg-white px-2.5 text-xs text-[#333] shadow-[0_2px_6px_rgba(0,0,0,0.2)] md:top-22"}
         >
           {isDark ? "☀️ Light" : "🌙 Dark"}
         </button>
@@ -463,7 +459,8 @@ export default function MapPage() {
         <button
           onClick={() => locateMe()}
           title="Get current location"
-          style={{ position: "absolute", bottom: 20, left: 10, zIndex: 10, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(27,42,74,0.18)", fontSize: 18 }}
+          aria-label="Get current location"
+          className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 z-10 grid size-11 place-items-center rounded-lg border border-sand bg-white text-lg shadow-[0_2px_8px_rgba(64,84,74,0.18)] md:bottom-5"
         >
           📍
         </button>
