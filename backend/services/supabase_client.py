@@ -1,6 +1,7 @@
 import os
 import re
 from difflib import SequenceMatcher
+from datetime import datetime
 import httpx
 from dotenv import load_dotenv
 
@@ -103,6 +104,85 @@ def geocode_address(vendor_name: str, address: str = "", city: str = "", state: 
         # city/state-only queries resolve to a city-centroid, not the real vendor location.
         "precision": "exact" if address and address.strip() else "city_level",
     }
+
+
+STORAGE_BUCKET = "vendor-images"
+# Mirrors ALLOWED_IMAGE_TYPES in backend/routes/vendors.js so the AI-thumbnail
+# path and the admin manual-upload path accept exactly the same formats.
+_ALLOWED_IMAGE_EXT = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+
+
+def upload_vendor_image_from_url(vendor_id: str, image_url: str):
+    """
+    Downloads a thumbnail (e.g. the TikTok/YouTube video thumbnail yt-dlp already
+    fetched) and re-hosts it in the same `vendor-images` Supabase Storage bucket
+    the admin console's manual upload uses (backend/routes/vendors.js), so the
+    photo is durable instead of a hotlink to a CDN URL that can expire or get
+    rate-limited.
+
+    Returns the new public URL on success. On ANY failure — thumbnail download
+    error, bad content-type, missing bucket, storage error — returns the
+    original `image_url` unchanged and lets the caller log it, so a hiccup here
+    degrades to "use the raw hotlink" rather than breaking vendor creation.
+    """
+    if not image_url:
+        return image_url
+
+    try:
+        download = httpx.get(image_url, timeout=15, follow_redirects=True)
+        download.raise_for_status()
+        content_type = download.headers.get("content-type", "").split(";")[0].strip().lower()
+        ext = _ALLOWED_IMAGE_EXT.get(content_type)
+        if not ext:
+            print(f"[vendor-image] skipping thumbnail for {vendor_id}: unsupported content-type {content_type!r}")
+            return image_url
+
+        file_path = f"vendors/{vendor_id}/storefront-{int(datetime.now().timestamp() * 1000)}.{ext}"
+        upload = httpx.post(
+            f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{file_path}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": content_type,
+            },
+            content=download.content,
+            timeout=20,
+        )
+        if upload.status_code >= 400:
+            print(f"[vendor-image] storage upload failed for {vendor_id}: {upload.status_code} {upload.text[:200]}")
+            return image_url
+
+        return f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{file_path}"
+    except Exception as e:
+        print(f"[vendor-image] thumbnail re-host failed for {vendor_id}: {e}")
+        return image_url
+
+
+def set_vendor_storefront_image(vendor_id: str, image_url: str):
+    """
+    Sets storefront_image_url on an already-existing vendor row, touching
+    nothing else. Used to attach the AI pipeline's video thumbnail once the
+    vendor row exists (so the storage path in upload_vendor_image_from_url can
+    be keyed by the real vendor id, mirroring the manual-upload flow).
+    """
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
+    resp = httpx.patch(
+        f"{SUPABASE_URL}/rest/v1/vendors",
+        params={"id": f"eq.{vendor_id}"},
+        headers=headers,
+        json={"storefront_image_url": image_url},
+        timeout=10,
+    )
+    resp.raise_for_status()
 
 
 def upsert_vendor(row: dict):

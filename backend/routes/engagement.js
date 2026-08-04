@@ -176,7 +176,7 @@ const BOOKMARK_SELECT = `
   folder:bookmark_folders(id, name, is_default),
   vendor:vendors(id, vendor_name, address, latitude, longitude, cuisine_types,
     signature_dishes, price_range, ai_review_summary, source_video_url,
-    source_platform, average_rating, review_count)
+    source_platform, average_rating, review_count, storefront_image_url)
 `;
 
 router.get("/engagement/bookmarks", async (req, res) => {
@@ -317,7 +317,7 @@ router.get("/engagement/reviews/mine", async (req, res) => {
       id, vendor_id, rating, body, is_hidden, hidden_reason, created_at, updated_at, review_photos(id, url),
       vendor:vendors(id, vendor_name, address, latitude, longitude, cuisine_types,
         signature_dishes, price_range, ai_review_summary, source_video_url,
-        source_platform, average_rating, review_count)
+        source_platform, average_rating, review_count, storefront_image_url)
     `)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
