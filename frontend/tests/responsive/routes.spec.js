@@ -190,6 +190,26 @@ for (const [routeName, route] of routes) {
             };
           }));
       expect.soft(undersized, "touch targets must be at least 44×44px at 375px").toEqual([]);
+
+      // A wide admin table is only usable if something between it and the body
+      // scrolls. Page-level overflow does not catch this: the table overflows
+      // inside a clipped panel, so the document stays exactly 375px wide while
+      // the Actions column sits off-screen with no way to reach it.
+      const trappedTables = await page.locator("#root table.admin-table").evaluateAll((tables) =>
+        tables
+          .filter((table) => {
+            // Compare against the viewport, not the table's own scrollWidth: the
+            // table is forced to 900px by min-width, so it never overflows
+            // *itself* and that test would silently never run.
+            if (table.getBoundingClientRect().width <= document.documentElement.clientWidth) return false;
+            for (let node = table.parentElement; node && node !== document.body; node = node.parentElement) {
+              const overflowX = getComputedStyle(node).overflowX;
+              if (overflowX === "auto" || overflowX === "scroll") return false;
+            }
+            return true;
+          })
+          .map((table) => table.className));
+      expect.soft(trappedTables, "wide admin tables need a scrollable ancestor").toEqual([]);
     });
   }
 }
@@ -218,4 +238,21 @@ if (assertResponsive) {
       });
     }
   }
+}
+
+if (assertResponsive) {
+  test("admin drawer nav is a single column at 375", async ({ page }) => {
+    await stubApi(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin", { waitUntil: "domcontentloaded" });
+    await page.click(".admin-drawer-toggle");
+    const nav = page.locator(".admin-nav");
+    await expect(nav).toBeVisible();
+    const { direction, wrap } = await nav.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { direction: style.flexDirection, wrap: style.flexWrap };
+    });
+    expect(direction, "drawer nav must stack").toBe("column");
+    expect(wrap, "drawer nav must not wrap").toBe("nowrap");
+  });
 }
