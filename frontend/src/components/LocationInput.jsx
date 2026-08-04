@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { C, FONT_BODY } from "../lib/theme";
 
 // Google Places Autocomplete box for typing a start location manually,
 // instead of relying on GPS. Restricted to Malaysia to match app coverage.
@@ -31,21 +30,7 @@ export default function LocationInput({ onSelect, placeholder = "Search start ad
       ref={inputRef}
       type="text"
       placeholder={placeholder}
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        padding: "8px 10px",
-        marginBottom: 8,
-        borderRadius: 8,
-        border: `1px solid ${C.border}`,
-        background: C.cream,
-        color: C.text,
-        fontSize: 13,
-        fontFamily: FONT_BODY,
-        outline: "none",
-      }}
-      onFocus={(e) => (e.target.style.borderColor = C.accent)}
-      onBlur={(e) => (e.target.style.borderColor = C.border)}
+      className="mb-2 min-h-11 w-full rounded-lg border border-sand bg-chalk px-2.5 text-[13px] text-ink outline-none focus:border-forest"
     />
   );
 }

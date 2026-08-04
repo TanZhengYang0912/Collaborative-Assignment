@@ -14,7 +14,6 @@ import BatchProgressStep from "../../components/ai/BatchProgressStep";
 import BatchResultsStep  from "../../components/ai/BatchResultsStep";
 
 // Import the ai-module styles (needed for step components)
-import "../../ai-module.css";
 
 const AI_BASE  = getAiApiBase(import.meta.env.VITE_AI_API_BASE);
 const POLL_MS  = 2000;
@@ -352,6 +351,7 @@ export default function AdminAIProcessingConsolePage() {
           </div>
         )}
 
+        <div className="admin-table-scroll">
         <table className="admin-table admin-results-table">
           <thead>
             <tr>
@@ -417,6 +417,7 @@ export default function AdminAIProcessingConsolePage() {
             )}
           </tbody>
         </table>
+        </div>
 
         <div className="admin-pagination">
           <div className="admin-pagination-meta">

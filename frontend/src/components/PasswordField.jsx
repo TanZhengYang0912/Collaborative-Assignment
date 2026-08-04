@@ -12,7 +12,7 @@ function EyeIcon() {
 // The password is visible only while the user holds the eye control. This
 // keeps the behavior intentional and avoids leaving a password exposed after
 // a click, while allowing the existing page styles to remain unchanged.
-export default function PasswordField({ style, className, iconColor = "#888", ...inputProps }) {
+export default function PasswordField({ className = "", ...inputProps }) {
   const [visible, setVisible] = useState(false);
 
   const show = () => setVisible(true);
@@ -30,12 +30,11 @@ export default function PasswordField({ style, className, iconColor = "#888", ..
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       <input
         {...inputProps}
         type={visible ? "text" : "password"}
-        className={className}
-        style={{ ...style, width: "100%", boxSizing: "border-box", paddingRight: 40 }}
+        className={`${className} pr-11`}
       />
       <button
         type="button"
@@ -50,11 +49,7 @@ export default function PasswordField({ style, className, iconColor = "#888", ..
         onPointerLeave={hide}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
-        style={{
-          position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-          background: "none", border: "none", cursor: "pointer", padding: 2,
-          color: iconColor, lineHeight: 1, display: "flex", alignItems: "center",
-        }}
+        className="absolute inset-y-0 right-0 flex min-h-11 w-11 items-center justify-center text-[#888]"
       >
         <EyeIcon />
       </button>

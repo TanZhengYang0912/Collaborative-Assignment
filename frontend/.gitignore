@@ -1,0 +1,7 @@
+# Responsive migration screenshots — regenerated on demand via
+# `npm run capture:baseline` / `npm run capture:after`. 96 full-page PNGs do not
+# belong in history; the recorded API fixtures are what make them reproducible.
+baseline/
+after/
+test-results/
+playwright-report/

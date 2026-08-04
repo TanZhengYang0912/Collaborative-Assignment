@@ -3,8 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { deleteAccount, uploadAvatar } from "../api";
-import { C as THEME, FONT_BODY } from "../lib/theme";
 import DobScrollPicker from "../components/DobScrollPicker";
+import { customerSession } from "../lib/roles";
+import { AUTH_INPUT, AUTH_ERROR } from "./LoginPage";
+
+// Profile action buttons — full width on every screen, 44px minimum height.
+const ACTION_OUTLINE = "min-h-11 w-full rounded-md border-[1.5px] border-forest bg-white px-4 text-sm font-medium text-forest";
+const ACTION_MUTED = "min-h-11 w-full rounded-md border border-sand bg-white px-4 text-sm font-medium text-forest";
+const ACTION_DANGER = "min-h-11 w-full rounded-md border-[1.5px] border-[#D64545] bg-white px-4 text-[13.5px] font-medium text-[#D64545]";
+const ROW_CANCEL = "min-h-11 flex-1 rounded-md border border-sand bg-white px-4 text-[13.5px] font-medium text-ink";
+const ROW_CONFIRM = "min-h-11 flex-1 rounded-md bg-forest px-4 text-[13.5px] font-semibold text-white";
 
 function parseDob(iso) {
   if (!iso) return null;
@@ -17,16 +25,6 @@ function formatDob({ day, month, year }) {
 }
 
 const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
-
-const C = {
-  cream: THEME.cream,
-  card: THEME.card,
-  accent: THEME.navy,
-  accentDark: THEME.navyLight,
-  text: THEME.text,
-  muted: THEME.muted,
-  border: THEME.border,
-};
 
 export default function ProfilePage() {
   const [session, setSession] = useState(null);
@@ -52,18 +50,18 @@ export default function ProfilePage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+      setSession(customerSession(data.session));
       setLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
+      setSession(customerSession(s));
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="flex min-h-dvh items-center justify-center bg-chalk text-muted">
         <div>Loading...</div>
       </div>
     );
@@ -251,53 +249,20 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="profile-page" style={{ minHeight: "100svh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
-      <div className="profile-card" style={{
-        background: C.card,
-        border: `1px solid ${C.border}`,
-        borderRadius: 16,
-        padding: "40px",
-        width: "100%",
-        maxWidth: 560,
-        boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)",
-        textAlign: "left",
-        fontFamily: "Inter, system-ui, sans-serif",
-        position: "relative",
-      }}>
-        <div className="profile-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-          <button
-            onClick={() => navigate("/map")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 20,
-              color: C.accentDark,
-              padding: 0,
-            }}
-          >
+    <div className="flex min-h-dvh items-center justify-center overflow-y-auto bg-chalk px-4 py-8 font-body text-ink sm:py-10">
+      <div className="relative mx-auto w-full max-w-[560px] rounded-2xl border border-sand bg-white p-5 text-left shadow-[0_18px_48px_rgba(32,42,53,0.09)] sm:p-8">
+        <div className="mb-7 flex items-center justify-between">
+          <button onClick={() => navigate("/map")} className="grid size-11 place-items-center text-xl text-forest">
             ←
           </button>
-          <h2 style={{ margin: 0, color: C.text, fontSize: 20, fontWeight: 700 }}>My Profile</h2>
-          <div style={{ width: 20 }} />
+          <h2 className="m-0 text-xl font-bold text-ink">My Profile</h2>
+          <div className="size-11" />
         </div>
 
-        <div className="profile-avatar-wrap" style={{ position: "relative", width: 72, margin: "0 auto 28px" }}>
-          <div style={{
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            background: C.accent,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 24,
-            fontWeight: 600,
-            overflow: "hidden",
-          }}>
+        <div className="relative mx-auto mb-7 w-18">
+          <div className="flex size-18 items-center justify-center overflow-hidden rounded-full bg-forest text-2xl font-semibold text-white">
             {avatarUrl
-              ? <img src={avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ? <img src={avatarUrl} alt="Profile" className="size-full object-cover" />
               : initials}
           </div>
 
@@ -307,13 +272,8 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
                 title="Change photo"
-                style={{
-                  position: "absolute", bottom: -2, right: -2,
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: C.accent, color: "#fff", border: `2px solid ${C.card}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: uploadingAvatar ? "default" : "pointer",
-                }}
+                aria-label="Change photo"
+                className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full border-2 border-white bg-forest text-white disabled:opacity-60"
               >
                 <Camera size={13} />
               </button>
@@ -322,106 +282,67 @@ export default function ProfilePage() {
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarChange}
-                style={{ display: "none" }}
+                className="hidden"
               />
             </>
           )}
         </div>
         {editing && uploadingAvatar && (
-          <div style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 16 }}>Uploading…</div>
+          <div className="-mt-4 mb-4 text-xs text-muted">Uploading…</div>
         )}
 
         {!editing ? (
           <>
-            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Email</div>
-              <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{userEmail}</div>
+            <div className="mb-4">
+              <div className="mb-2 text-sm text-muted">Email</div>
+              <div className="break-words text-base font-medium text-ink">{userEmail}</div>
             </div>
 
-            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Full Name</div>
-              <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{fullName || "Not set"}</div>
+            <div className="mb-4">
+              <div className="mb-2 text-sm text-muted">Full Name</div>
+              <div className="break-words text-base font-medium text-ink">{fullName || "Not set"}</div>
             </div>
 
-            <div className="profile-detail-row" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Date of Birth</div>
-              <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{savedDob ? formatDob(savedDob) : "Not set"}</div>
+            <div className="mb-4">
+              <div className="mb-2 text-sm text-muted">Date of Birth</div>
+              <div className="text-base font-medium text-ink">{savedDob ? formatDob(savedDob) : "Not set"}</div>
             </div>
 
-            <div className="profile-detail-row" style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 14, color: C.muted, marginBottom: 8 }}>Gender</div>
-              <div style={{ fontSize: 16, color: C.text, fontWeight: 500 }}>{meta.gender || "Not set"}</div>
+            <div className="mb-7">
+              <div className="mb-2 text-sm text-muted">Gender</div>
+              <div className="text-base font-medium text-ink">{meta.gender || "Not set"}</div>
             </div>
 
-            <button className="profile-action profile-action-primary"
-              onClick={startEditing}
-              style={{
-                width: "100%", padding: "12px 16px", fontSize: 14,
-                background: "#fff", color: C.accent, border: `1.5px solid ${C.accent}`,
-                borderRadius: 6, cursor: "pointer", fontWeight: 500,
-                fontFamily: "system-ui", marginBottom: 10,
-              }}
-            >
+            <button onClick={startEditing} className={`mb-2.5 ${ACTION_OUTLINE}`}>
               Edit Profile
             </button>
 
             {hasPassword && (
-              <button className="profile-action profile-action-secondary"
-                onClick={startResettingPassword}
-                style={{
-                  width: "100%", padding: "12px 16px", fontSize: 14,
-                  background: "#fff", color: C.accentDark, border: `1.5px solid ${C.border}`,
-                  borderRadius: 6, cursor: "pointer", fontWeight: 500,
-                  fontFamily: "system-ui", marginBottom: 10,
-                }}
-              >
+              <button onClick={startResettingPassword} className={`mb-2.5 ${ACTION_MUTED}`}>
                 Reset Password
               </button>
             )}
 
             {resettingPassword && (
-              <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, marginBottom: 10, textAlign: "left" }}>
+              <div className="mb-2.5 rounded-lg border border-sand bg-chalk p-3.5 text-left">
                 {resetDone ? (
                   <>
-                    <p style={{ margin: "0 0 12px", fontSize: 13, color: C.text }}>Your password has been updated.</p>
-                    <button
-                      onClick={() => setResettingPassword(false)}
-                      style={{
-                        width: "100%", padding: "10px 16px", fontSize: 13.5,
-                        background: C.accent, color: "#fff", border: "none",
-                        borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                      }}
-                    >
+                    <p className="mb-3 mt-0 text-[13px] text-ink">Your password has been updated.</p>
+                    <button onClick={() => setResettingPassword(false)} className={ROW_CONFIRM + " w-full"}>
                       Done
                     </button>
                   </>
                 ) : (
                   <>
-                    <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5, color: C.text }}>
+                    <p className="mb-3 mt-0 text-[13px] leading-normal text-ink">
                       We’ll email you a secure link to choose a new password.
                     </p>
-                    {resetError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 12px" }}>{resetError}</p>}
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        onClick={() => setResettingPassword(false)}
-                        disabled={resetSaving}
-                        style={{
-                          flex: 1, padding: "10px 16px", fontSize: 13.5,
-                          background: "#fff", color: C.text, border: `1px solid ${C.border}`,
-                          borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                        }}
-                      >
+                    {resetError && <p className={`mb-3 ${AUTH_ERROR}`}>{resetError}</p>}
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                      <button onClick={() => setResettingPassword(false)} disabled={resetSaving} className={ROW_CANCEL}>
                         Cancel
                       </button>
-                      <button
-                        onClick={handleResetPassword}
-                        disabled={resetSaving}
-                        style={{
-                          flex: 1, padding: "10px 16px", fontSize: 13.5,
-                          background: C.accent, color: "#fff", border: "none",
-                          borderRadius: 6, cursor: resetSaving ? "default" : "pointer", fontWeight: 600, fontFamily: "system-ui",
-                        }}
-                      >
+                      <button onClick={handleResetPassword} disabled={resetSaving} className={ROW_CONFIRM}>
                         {resetSaving ? "Saving…" : "Save"}
                       </button>
                     </div>
@@ -430,68 +351,37 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <button className="profile-action profile-action-danger"
-              onClick={handleLogout}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                fontSize: 14,
-                background: "#fff",
-                color: C.accentDark,
-                border: `1px solid ${C.border}`,
-                borderRadius: 6,
-                cursor: "pointer",
-                fontWeight: 500,
-                fontFamily: "system-ui",
-                marginBottom: 24,
-              }}
-            >
+            <button onClick={handleLogout} className={`mb-6 ${ACTION_MUTED}`}>
               Log out
             </button>
 
-            <div className="profile-danger-zone" style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, textAlign: "left" }}>
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>
+            <div className="border-t border-sand pt-5 text-left">
+              <div className="mb-2.5 text-xs font-semibold uppercase tracking-[0.4px] text-muted">
                 Danger Zone
               </div>
 
               {!confirmingDelete ? (
-                <button className="profile-action profile-action-danger-outline"
+                <button
                   onClick={() => { setConfirmingDelete(true); setDeleteError(""); }}
-                  style={{
-                    width: "100%", padding: "10px 16px", fontSize: 13.5,
-                    background: "#fff", color: "#D64545", border: "1.5px solid #D64545",
-                    borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                  }}
+                  className={ACTION_DANGER}
                 >
                   Delete Account Permanently
                 </button>
               ) : (
-                <div style={{ background: "#FDEDEC", border: "1px solid #F3B8B3", borderRadius: 8, padding: 14 }}>
-                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#8C2E24", lineHeight: 1.4 }}>
+                <div className="rounded-lg border border-[#F3B8B3] bg-[#FDEDEC] p-3.5">
+                  <p className="mb-3 mt-0 text-[13px] leading-snug text-[#8C2E24]">
                     This permanently deletes your account and all its data from Supabase.
                     This cannot be undone.
                   </p>
-                  {deleteError && <p style={{ color: "#c0392b", fontSize: 13, margin: "0 0 10px" }}>{deleteError}</p>}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => setConfirmingDelete(false)}
-                      disabled={deleting}
-                      style={{
-                        flex: 1, padding: "10px 16px", fontSize: 13.5,
-                        background: "#fff", color: C.text, border: `1px solid ${C.border}`,
-                        borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                      }}
-                    >
+                  {deleteError && <p className={`mb-2.5 ${AUTH_ERROR}`}>{deleteError}</p>}
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button onClick={() => setConfirmingDelete(false)} disabled={deleting} className={ROW_CANCEL}>
                       Cancel
                     </button>
                     <button
                       onClick={handleDeleteAccount}
                       disabled={deleting}
-                      style={{
-                        flex: 1, padding: "10px 16px", fontSize: 13.5,
-                        background: "#D64545", color: "#fff", border: "none",
-                        borderRadius: 6, cursor: deleting ? "default" : "pointer", fontWeight: 600, fontFamily: "system-ui",
-                      }}
+                      className="min-h-11 flex-1 rounded-md bg-[#D64545] px-4 text-[13.5px] font-semibold text-white"
                     >
                       {deleting ? "Deleting…" : "Yes, Delete Forever"}
                     </button>
@@ -502,40 +392,40 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16, textAlign: "left" }}>
-              <label style={{ fontSize: 13, color: C.muted }}>
+            <div className="mb-4 flex flex-col gap-2.5 text-left">
+              <label className="text-[13px] text-muted">
                 First name
                 <input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   maxLength={50}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
+                  className={`mt-1 ${AUTH_INPUT}`}
                 />
               </label>
-              <label style={{ fontSize: 13, color: C.muted }}>
+              <label className="text-[13px] text-muted">
                 Last name
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   maxLength={50}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY }}
+                  className={`mt-1 ${AUTH_INPUT}`}
                 />
               </label>
 
-              <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Date of birth</div>
-              <div style={{ display: "flex", justifyContent: "center", gap: 4, fontSize: 10.5, color: C.muted, fontWeight: 600 }}>
-                <span style={{ width: 68, textAlign: "center" }}>DAY</span>
-                <span style={{ width: 68, textAlign: "center" }}>MONTH</span>
-                <span style={{ width: 68, textAlign: "center" }}>YEAR</span>
+              <div className="mt-1.5 text-[13px] text-muted">Date of birth</div>
+              <div className="grid grid-cols-3 place-items-center gap-1 text-[10.5px] font-semibold text-muted">
+                <span>DAY</span>
+                <span>MONTH</span>
+                <span>YEAR</span>
               </div>
               <DobScrollPicker value={dob} onChange={setDob} />
 
-              <label style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+              <label className="mt-1.5 text-[13px] text-muted">
                 Gender
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 4, boxSizing: "border-box", fontFamily: FONT_BODY, background: "#fff" }}
+                  className={`mt-1 ${AUTH_INPUT}`}
                 >
                   <option value="" disabled>Select gender</option>
                   {GENDER_OPTIONS.map((option) => (
@@ -545,29 +435,13 @@ export default function ProfilePage() {
               </label>
             </div>
 
-            {errorMsg && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{errorMsg}</p>}
+            {errorMsg && <p className={`mb-3 ${AUTH_ERROR}`}>{errorMsg}</p>}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setEditing(false)}
-                disabled={saving}
-                style={{
-                  flex: 1, padding: "12px 16px", fontSize: 14,
-                  background: "#fff", color: C.text, border: `1px solid ${C.border}`,
-                  borderRadius: 6, cursor: "pointer", fontWeight: 500, fontFamily: "system-ui",
-                }}
-              >
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <button onClick={() => setEditing(false)} disabled={saving} className={ROW_CANCEL}>
                 Cancel
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  flex: 1, padding: "12px 16px", fontSize: 14,
-                  background: C.accent, color: "#fff", border: "none",
-                  borderRadius: 6, cursor: saving ? "default" : "pointer", fontWeight: 500, fontFamily: "system-ui",
-                }}
-              >
+              <button onClick={handleSave} disabled={saving} className={ROW_CONFIRM}>
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>

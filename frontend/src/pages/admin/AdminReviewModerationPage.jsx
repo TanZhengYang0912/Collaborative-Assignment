@@ -209,6 +209,7 @@ export default function AdminReviewModerationPage() {
             </div>
           </div>
         )}
+        <div className="admin-table-scroll">
         <table className="admin-table">
           <thead>
             <tr>
@@ -278,6 +279,7 @@ export default function AdminReviewModerationPage() {
             )}
           </tbody>
         </table>
+        </div>
         <Pagination pagination={data.pagination} onPageChange={handlePageChange} />
       </section>
 

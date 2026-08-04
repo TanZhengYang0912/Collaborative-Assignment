@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Camera } from "lucide-react";
-import { C, FONT_BODY } from "../../lib/theme";
 import { createReview, updateReview, uploadReviewPhoto } from "../../api/engagement";
 import StarRating from "./StarRating";
 
@@ -55,35 +54,32 @@ export default function ReviewForm({ vendorId, initial, onSaved, onCancel, notif
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
       <StarRating value={rating} onChange={setRating} size={22} />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Share what you tried and how it was…"
         rows={3}
-        style={{
-          resize: "vertical", padding: "10px 12px", borderRadius: 10,
-          border: `1px solid ${C.border}`, fontFamily: FONT_BODY, fontSize: 13.5,
-        }}
+        className="w-full resize-y rounded-[10px] border border-sand px-3 py-2.5 text-[13.5px] outline-none focus:border-forest"
       />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.muted, cursor: "pointer" }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[12.5px] text-muted">
           <Camera size={15} />
-          {photoFile ? photoFile.name : "Add a photo"}
+          <span className="truncate">{photoFile ? photoFile.name : "Add a photo"}</span>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handlePhotoChange}
-            style={{ display: "none" }}
+            className="hidden"
           />
         </label>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY }}
+              className="min-h-11 rounded-lg border border-sand bg-white px-4 text-[13px]"
             >
               Cancel
             </button>
@@ -91,13 +87,13 @@ export default function ReviewForm({ vendorId, initial, onSaved, onCancel, notif
           <button
             type="submit"
             disabled={saving}
-            style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: C.navy, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}
+            className="min-h-11 rounded-lg bg-forest px-4 text-[13px] font-semibold text-white disabled:opacity-60"
           >
             {saving ? "Saving…" : initial ? "Save changes" : "Post review"}
           </button>
         </div>
       </div>
-      {error && <div style={{ fontSize: 12.5, color: "#c0392b" }}>{error}</div>}
+      {error && <div className="text-[12.5px] text-[#c0392b]">{error}</div>}
     </form>
   );
 }

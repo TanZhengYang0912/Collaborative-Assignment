@@ -1,50 +1,35 @@
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
 import { BENTO_IMAGES } from "../../lib/landingImages";
 
 // "EXPERIENCE MELAKA / A city like no other." bento photo grid.
-// Layout: 2-column CSS Grid with the first image spanning 2 rows (large hero cell),
-// then 3 regular cells filling the right column.
+// From md: 2-column grid with the first image spanning both rows.
+// Below md: a single column of fixed-height cells, with the two smallest
+// sharing a row so the stack does not run absurdly long on a phone.
 export default function ExperienceGrid() {
   return (
-    <section
-      id="experience-section"
-      style={{ background: C.navy, padding: "100px 48px", boxSizing: "border-box" }}
-    >
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+    <section id="experience-section" className="bg-forest px-5 py-14 md:px-12 md:py-25">
+      <div className="mx-auto max-w-[1280px]">
         {/* Section header */}
-        <div style={{ marginBottom: 48 }}>
-          <div style={{
-            fontFamily: FONT_BODY, fontWeight: 600, fontSize: 11,
-            color: C.gold, letterSpacing: 3, textTransform: "uppercase",
-            marginBottom: 16, display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <span style={{ display: "block", width: 28, height: 1.5, background: C.gold }} />
+        <div className="mb-8 md:mb-12">
+          <div className="mb-4 flex items-center gap-2.5 font-body text-[11px] font-semibold uppercase tracking-[3px] text-terracotta">
+            <span className="block h-px w-7 bg-terracotta" />
             Experience Melaka
           </div>
-          <h2 style={{
-            fontFamily: FONT_DISPLAY, fontSize: "clamp(30px, 4vw, 52px)",
-            fontWeight: 700, color: "#fff", margin: 0, lineHeight: 1.15,
-          }}>
+          <h2 className="font-display text-[clamp(30px,4vw,52px)] font-bold leading-[1.15] text-white">
             A city like no other.
           </h2>
         </div>
 
         {/* Bento grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1.4fr 1fr",
-          gridTemplateRows: "300px 300px",
-          gap: 12,
-        }}>
-          {/* Large hero cell — spans 2 rows */}
-          <BentoCell img={BENTO_IMAGES[0]} rowSpan />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr] md:grid-rows-[300px_300px]">
+          {/* Large hero cell — spans both rows from md */}
+          <BentoCell img={BENTO_IMAGES[0]} large className="h-[220px] md:h-auto md:row-span-2" />
 
           {/* Two smaller cells stacked */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, gridRow: "1 / -1", minHeight: 0 }}>
-            <BentoCell img={BENTO_IMAGES[1]} grow />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, flex: 1 }}>
-              <BentoCell img={BENTO_IMAGES[2]} />
-              <BentoCell img={BENTO_IMAGES[3]} />
+          <div className="flex min-h-0 flex-col gap-3 md:row-span-2">
+            <BentoCell img={BENTO_IMAGES[1]} className="h-[180px] md:h-auto md:flex-1" />
+            <div className="grid grid-cols-2 gap-3 md:flex-1">
+              <BentoCell img={BENTO_IMAGES[2]} className="h-[140px] md:h-auto" />
+              <BentoCell img={BENTO_IMAGES[3]} className="h-[140px] md:h-auto" />
             </div>
           </div>
         </div>
@@ -53,31 +38,18 @@ export default function ExperienceGrid() {
   );
 }
 
-function BentoCell({ img, rowSpan, grow }) {
+function BentoCell({ img, large, className = "" }) {
   return (
-    <div style={{
-      position: "relative", overflow: "hidden", borderRadius: 4,
-      gridRow: rowSpan ? "1 / -1" : undefined,
-      flex: grow ? "1 1 0" : undefined,
-      minHeight: 0,
-    }}>
-      <img
-        src={img.url}
-        alt={img.alt}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-      />
+    <div className={`relative min-h-0 overflow-hidden rounded ${className}`}>
+      <img src={img.url} alt={img.alt} className="block size-full object-cover" />
       {/* Overlay gradient */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "linear-gradient(to top, rgba(27,42,74,0.75) 0%, transparent 50%)",
-      }} />
+      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(64,84,74,0.75)_0%,transparent_50%)]" />
       {/* Label */}
-      <div style={{
-        position: "absolute", bottom: 16, left: 16,
-        fontFamily: FONT_DISPLAY, fontWeight: 700,
-        fontSize: rowSpan ? 22 : 15, color: "#fff",
-        letterSpacing: 0.5,
-      }}>
+      <div
+        className={large
+          ? "absolute bottom-4 left-4 font-display text-[22px] font-bold tracking-[0.5px] text-white"
+          : "absolute bottom-4 left-4 font-display text-[15px] font-bold tracking-[0.5px] text-white"}
+      >
         {img.label}
       </div>
     </div>

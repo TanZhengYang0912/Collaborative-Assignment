@@ -7,7 +7,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
-import { C } from "../lib/theme";
+import { MAP_COLORS } from "../lib/mapColors";
 
 // Renders vendor pins with clustering, plus numbered pins for trip stops and a
 // "you are here" marker. Vendor data comes from Supabase: { id, name, address,
@@ -79,10 +79,10 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
           center={radiusCenter}
           radius={radiusKm * 1000}
           clickable={false}
-          strokeColor={C.navy}
+          strokeColor={MAP_COLORS.forest}
           strokeOpacity={0.5}
           strokeWeight={1.5}
-          fillColor={C.navy}
+          fillColor={MAP_COLORS.forest}
           fillOpacity={0.06}
         />
       )}
@@ -114,7 +114,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
               zIndex={isSelected ? 999 : undefined}
             >
               <Pin
-                background={isSelected ? C.danger : stopNum ? C.terracotta : isApproximate ? C.warning : C.success}
+                background={isSelected ? MAP_COLORS.danger : stopNum ? MAP_COLORS.terracotta : isApproximate ? MAP_COLORS.warning : MAP_COLORS.success}
                 glyphColor="#fff"
                 borderColor="#fff"
                 scale={isSelected ? 1.5 : 1}
@@ -134,11 +134,11 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
               position={displayPosition(v)}
               onCloseClick={() => onOpenChange(null)}
             >
-              <div style={{ fontFamily: "system-ui", maxWidth: 220 }}>
-                <strong>{v.name}</strong>
-                {v.address && <div style={{ fontSize: 12, color: "#555", margin: "2px 0" }}>{v.address}</div>}
+              <div className="max-w-[220px] font-body">
+                <strong className="break-words">{v.name}</strong>
+                {v.address && <div className="my-0.5 break-words text-xs text-[#555]">{v.address}</div>}
                 {(v.location_precision === "city_level" || v.location_precision === "unknown") && (
-                  <div style={{ fontSize: 11, color: "#b35c00", margin: "2px 0" }}>
+                  <div className="my-0.5 text-[11px] text-[#b35c00]">
                     ⚠️ Approximate location — exact address not confirmed
                   </div>
                 )}
@@ -148,7 +148,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: "inline-block", marginTop: 8, padding: "6px 12px", background: C.navy, color: "#fff", borderRadius: 4, fontSize: 12, textDecoration: "none" }}
+                  className="mt-2 inline-flex min-h-11 items-center rounded bg-forest px-3 text-xs text-white no-underline"
                 >
                   View details ↗
                 </a>
@@ -156,13 +156,9 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
                   <button
                     onClick={() => onAddStop(v)}
                     disabled={tripOrder?.has(v.id)}
-                    style={{
-                      display: "inline-block", marginTop: 8, marginLeft: 6, padding: "6px 12px",
-                      background: tripOrder?.has(v.id) ? "#eee" : C.success,
-                      color: tripOrder?.has(v.id) ? "#777" : "#fff",
-                      border: "none", borderRadius: 6, fontSize: 12,
-                      cursor: tripOrder?.has(v.id) ? "default" : "pointer",
-                    }}
+                    className={tripOrder?.has(v.id)
+                      ? "ml-1.5 mt-2 inline-flex min-h-11 items-center rounded-md bg-[#eee] px-3 text-xs text-[#777]"
+                      : "ml-1.5 mt-2 inline-flex min-h-11 items-center rounded-md bg-success px-3 text-xs text-white"}
                   >
                     {tripOrder?.has(v.id) ? `✓ Stop ${tripOrder.get(v.id)}` : "➕ Add stop"}
                   </button>
@@ -179,7 +175,7 @@ export default function VendorMarkers({ vendors, userPos, onSelect, onAddStop, t
       {userPos && (
         <AdvancedMarker position={userPos} title="You are here">
           {userStopNumber
-            ? <Pin background={C.terracotta} glyphColor="#fff" borderColor="#fff" glyph={String(userStopNumber)} />
+            ? <Pin background={MAP_COLORS.terracotta} glyphColor="#fff" borderColor="#fff" glyph={String(userStopNumber)} />
             : <div className="user-loc-dot" />}
         </AdvancedMarker>
       )}

@@ -4,10 +4,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { C as THEME, FONT_DISPLAY } from "../lib/theme";
 import { randomDisplayName } from "../lib/randomName";
 import PasswordField from "../components/PasswordField";
 import TrueBitesLogo from "../components/TrueBitesLogo";
+import { isAdmin } from "../lib/roles";
 
 function GoogleIcon() {
   return (
@@ -20,104 +20,21 @@ function GoogleIcon() {
   );
 }
 
-const C = {
-  cream: THEME.cream,
-  card: THEME.card,
-  accent: THEME.navy,
-  accentDark: THEME.navyLight,
-  text: THEME.text,
-  muted: THEME.muted,
-  border: THEME.border,
-};
+// Shared auth vocabulary — also used by the admin login, reset and set-password
+// pages so every account screen reflows identically.
+export const AUTH_PAGE = "flex min-h-dvh items-center justify-center bg-chalk px-4 py-10 font-body text-ink";
+export const AUTH_STACK = "mx-auto flex w-full max-w-[460px] flex-col items-center gap-5";
+export const AUTH_CARD = "flex w-full flex-col gap-4 rounded-2xl border border-sand bg-white p-5 shadow-[0_18px_48px_rgba(32,42,53,0.09)] sm:p-8";
+export const AUTH_INPUT = "min-h-11 w-full rounded-lg border border-sand bg-white px-3 text-[15px] outline-none focus:border-forest";
+export const AUTH_PRIMARY = "min-h-11 w-full rounded-lg bg-forest px-4 text-[15px] font-semibold text-white transition-colors hover:bg-forest-light disabled:opacity-60 motion-reduce:transition-none";
+export const AUTH_SECONDARY = "flex min-h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-sand bg-white px-4 text-[15px] font-semibold text-ink transition-colors hover:border-forest motion-reduce:transition-none";
+export const AUTH_LINK = "min-h-11 text-center text-[13px] text-forest underline";
+export const AUTH_ERROR = "m-0 break-words rounded-lg border border-[#f5c6c0] bg-[#fdecea] px-3 py-2.5 text-[13px] leading-snug text-[#9a2820]";
+export const AUTH_INFO = "m-0 break-words rounded-lg border border-[#b9e3c6] bg-[#e9f7ee] px-3 py-2.5 text-[13px] leading-snug text-[#1f6b40]";
 
-const styles = {
-  page: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "100svh",
-    padding: "40px 16px",
-    fontFamily: "Inter, system-ui, sans-serif",
-    background: C.cream,
-    position: "relative",
-  },
-  card: {
-    width: "min(100%, 460px)",
-    padding: 32,
-    border: `1px solid ${C.border}`,
-    borderRadius: 16,
-    boxShadow: "0 18px 48px rgba(32, 42, 53, 0.09)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    background: C.card,
-  },
-  tabs: { display: "flex", gap: 8, marginBottom: 4 },
-  tab: {
-    flex: 1,
-    minHeight: 52,
-    padding: "12px 14px",
-    textAlign: "center",
-    cursor: "pointer",
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: C.border,
-    borderRadius: 8,
-    background: "#F7F6F3",
-    color: C.text,
-    fontSize: 14,
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabActive: { background: C.accent, color: "#fff", borderColor: C.accent, borderStyle: "solid", borderWidth: 1 },
-  input: { padding: "12px 13px", fontSize: 15, border: `1px solid ${C.border}`, borderRadius: 8, width: "100%", boxSizing: "border-box" },
-  button: {
-    minHeight: 46,
-    padding: "12px 16px",
-    fontSize: 15,
-    border: "none",
-    borderRadius: 8,
-    background: C.accent,
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  googleButton: {
-    minHeight: 46,
-    padding: "12px 16px",
-    fontSize: 15,
-    border: `1px solid ${C.border}`,
-    borderRadius: 8,
-    background: C.card,
-    cursor: "pointer",
-    color: C.text,
-    fontWeight: 600,
-  },
-  backLink: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    fontSize: 13,
-    color: C.accent,
-    fontFamily: "system-ui",
-    padding: 0,
-    marginTop: 8,
-    textAlign: "center",
-    textDecoration: "underline",
-  },
-  divider: { textAlign: "center", color: C.muted, fontSize: 12 },
-  error: {
-    color: "#9a2820", fontSize: 13, lineHeight: 1.45, margin: 0,
-    background: "#fdecea", border: "1px solid #f5c6c0", borderRadius: 8, padding: "10px 12px",
-  },
-  info: {
-    color: "#1f6b40", fontSize: 13, lineHeight: 1.45, margin: 0,
-    background: "#e9f7ee", border: "1px solid #b9e3c6", borderRadius: 8, padding: "10px 12px",
-  },
-};
+const TAB = "flex min-h-13 flex-1 items-center justify-center whitespace-nowrap rounded-lg border px-3.5 py-3 text-sm font-semibold transition-colors motion-reduce:transition-none";
+const TAB_IDLE = `${TAB} border-sand bg-[#F7F6F3] text-ink hover:border-forest`;
+const TAB_ACTIVE = `${TAB} border-forest bg-forest text-white`;
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -218,152 +135,133 @@ export default function LoginPage() {
     if (error) setErrorMsg(error.message);
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-  }
-
-  // Already logged in — go back to the app (unless we're mid-redirect to onboarding)
+  // Already logged in — go back to the app (unless we're mid-redirect to onboarding).
+  // Admins land here whenever a customer surface asks a "guest" to sign in; send
+  // them to their console instead, so no page needs its own admin redirect.
   if (session && !justSignedUp) {
-    navigate("/map", { replace: true });
+    navigate(isAdmin(session) ? "/admin" : "/map", { replace: true });
     return null;
   }
 
   return (
-    <div className="auth-page" style={styles.page}>
-      <div className="auth-stack" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, width: "100%" }}>
-        <Link className="auth-brand" to="/" aria-label="Back to TrueBites home">
+    <div className={AUTH_PAGE}>
+      <div className={AUTH_STACK}>
+        <Link to="/" aria-label="Back to TrueBites home">
           <TrueBitesLogo />
         </Link>
-        <h1 style={{
-          fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 700,
-          color: C.text, margin: 0, lineHeight: 1.2, textAlign: "center",
-        }} className="auth-heading">
+        <h1 className="m-0 text-center font-display text-[clamp(24px,7vw,32px)] font-bold leading-tight text-ink">
           One step closer for a
           <br />
-          <span style={{ color: THEME.gold, fontStyle: "italic" }}>better experience</span>...
+          <span className="italic text-terracotta">better experience</span>...
         </h1>
-        <div className="auth-card" style={styles.card}>
+
+        <div className={AUTH_CARD}>
           {mode !== "forgot" && (
-          <div className="auth-tabs" style={styles.tabs} role="tablist" aria-label="Account access">
-            <button
-              className={`auth-tab${mode === "signin" ? " is-active" : ""}`}
-              style={{ ...styles.tab, ...(mode === "signin" ? styles.tabActive : {}) }}
-              role="tab"
-              aria-selected={mode === "signin"}
-              type="button"
-              onClick={() => {
-                setMode("signin");
-                setErrorMsg("");
-                setInfoMsg("");
-              }}
-            >
-              Sign In
-            </button>
-            <button
-              className={`auth-tab${mode === "signup" ? " is-active" : ""}`}
-              style={{ ...styles.tab, ...(mode === "signup" ? styles.tabActive : {}) }}
-              role="tab"
-              aria-selected={mode === "signup"}
-              type="button"
-              onClick={() => {
-                setMode("signup");
-                setErrorMsg("");
-                setInfoMsg("");
-              }}
-            >
-              Create Account
-            </button>
-          </div>
-        )}
+            <div className="flex gap-2" role="tablist" aria-label="Account access">
+              <button
+                className={mode === "signin" ? TAB_ACTIVE : TAB_IDLE}
+                role="tab"
+                aria-selected={mode === "signin"}
+                type="button"
+                onClick={() => {
+                  setMode("signin");
+                  setErrorMsg("");
+                  setInfoMsg("");
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                className={mode === "signup" ? TAB_ACTIVE : TAB_IDLE}
+                role="tab"
+                aria-selected={mode === "signup"}
+                type="button"
+                onClick={() => {
+                  setMode("signup");
+                  setErrorMsg("");
+                  setInfoMsg("");
+                }}
+              >
+                Create Account
+              </button>
+            </div>
+          )}
 
-        {mode === "forgot" ? (
-          <form onSubmit={handleForgotPassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
-              Enter your account email and we'll send you a link to reset your password.
-            </p>
-            <input
-              className="auth-control"
-              style={styles.input}
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <button className="auth-primary-button" style={styles.button} type="submit" disabled={loading}>
-              {loading ? "Sending…" : "Send reset link"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <input
-              className="auth-control"
-              style={styles.input}
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <PasswordField
-              className="auth-control"
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-            <button
-              className="auth-primary-button"
-              style={mode === "signup" ? { ...styles.button, background: THEME.gold } : styles.button}
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In"}
-            </button>
-          </form>
-        )}
+          {mode === "forgot" ? (
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+              <p className="m-0 text-[13px] text-muted">
+                Enter your account email and we'll send you a link to reset your password.
+              </p>
+              <input
+                className={AUTH_INPUT}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <button className={AUTH_PRIMARY} type="submit" disabled={loading}>
+                {loading ? "Sending…" : "Send reset link"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <input
+                className={AUTH_INPUT}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <PasswordField
+                className={AUTH_INPUT}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+              <button
+                className={mode === "signup"
+                  ? "min-h-11 w-full rounded-lg bg-terracotta px-4 text-[15px] font-semibold text-white transition-colors hover:bg-terracotta-light disabled:opacity-60 motion-reduce:transition-none"
+                  : AUTH_PRIMARY}
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In"}
+              </button>
+            </form>
+          )}
 
-        {mode === "signin" && (
-          <button
-            onClick={() => { setMode("forgot"); setErrorMsg(""); setInfoMsg(""); }}
-            style={styles.backLink}
-          >
-            Forgot password?
+          {mode === "signin" && (
+            <button className={AUTH_LINK} onClick={() => { setMode("forgot"); setErrorMsg(""); setInfoMsg(""); }}>
+              Forgot password?
+            </button>
+          )}
+          {mode === "forgot" && (
+            <button className={AUTH_LINK} onClick={() => { setMode("signin"); setErrorMsg(""); setInfoMsg(""); }}>
+              Back to Sign In
+            </button>
+          )}
+
+          {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
+          {infoMsg && <p className={AUTH_INFO}>{infoMsg}</p>}
+
+          {mode !== "forgot" && (
+            <>
+              <div className="text-center text-xs text-muted">— or —</div>
+              <button className={AUTH_SECONDARY} onClick={handleGoogleLogin}>
+                <GoogleIcon />
+                Continue with Google
+              </button>
+            </>
+          )}
+
+          <button className={AUTH_LINK} onClick={() => navigate("/map")}>
+            Return to main page
           </button>
-        )}
-        {mode === "forgot" && (
-          <button
-            onClick={() => { setMode("signin"); setErrorMsg(""); setInfoMsg(""); }}
-            style={styles.backLink}
-          >
-            Back to Sign In
-          </button>
-        )}
-
-        {errorMsg && <p style={styles.error}>{errorMsg}</p>}
-        {infoMsg && <p style={styles.info}>{infoMsg}</p>}
-
-        {mode !== "forgot" && (
-          <>
-            <div style={styles.divider}>— or —</div>
-
-            <button className="auth-google-button" style={{ ...styles.googleButton, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
-              <GoogleIcon />
-              Continue with Google
-            </button>
-          </>
-        )}
-
-        <button
-          onClick={() => navigate("/map")}
-          style={styles.backLink}
-        >
-          Return to main page
-        </button>
         </div>
-
       </div>
     </div>
   );

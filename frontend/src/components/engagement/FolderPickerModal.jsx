@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { X, FolderPlus } from "lucide-react";
-import { C, FONT_DISPLAY, FONT_BODY } from "../../lib/theme";
-
 
 export default function FolderPickerModal({ vendorName, folders, onClose, onSave, onCreateFolder }) {
   const [newFolderName, setNewFolderName] = useState("");
@@ -46,81 +44,57 @@ export default function FolderPickerModal({ vendorName, folders, onClose, onSave
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(27,42,74,0.6)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 1100, padding: 20,
-      }}
+      className="fixed inset-0 z-[1100] flex items-end justify-center bg-forest/60 p-0 animate-backdrop-in sm:items-center sm:p-5"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: 340, background: C.card, borderRadius: 16,
-          fontFamily: FONT_BODY, boxShadow: "0 20px 60px rgba(27,42,74,0.35)",
-          padding: "18px 18px 16px",
-        }}
+        className="max-h-dvh w-full overflow-y-auto rounded-t-2xl bg-white p-4 shadow-[0_20px_60px_rgba(64,84,74,0.35)] animate-modal-in sm:max-h-[88dvh] sm:max-w-[340px] sm:rounded-2xl"
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 17, color: C.navy, margin: 0 }}>Save to folder</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <X size={18} color={C.muted} />
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="m-0 font-display text-[17px] text-forest">Save to folder</h3>
+          <button onClick={onClose} aria-label="Close" className="grid size-11 place-items-center text-muted">
+            <X size={18} />
           </button>
         </div>
-        {vendorName && <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12 }}>{vendorName}</div>}
+        {vendorName && <div className="mb-3 break-words text-[12.5px] text-muted">{vendorName}</div>}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+        <div className="flex max-h-[220px] flex-col gap-1.5 overflow-y-auto">
           <button
             onClick={() => handleSave(null)}
             disabled={saving !== null}
-            style={{
-              textAlign: "left", padding: "10px 12px", borderRadius: 10,
-              border: `1px solid ${C.border}`, background: C.cream, cursor: "pointer",
-              fontSize: 13.5, color: C.navy, fontFamily: FONT_BODY, fontWeight: 600,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-            }}
+            className="flex min-h-11 items-center justify-between gap-2 rounded-[10px] border border-sand bg-chalk px-3 text-left text-[13.5px] font-semibold text-forest disabled:opacity-60"
           >
             <span>Save without folder</span>
-            {saving === "default" && <span style={{ fontSize: 11.5, color: C.muted, fontWeight: 400 }}>Saving…</span>}
+            {saving === "default" && <span className="text-[11.5px] font-normal text-muted">Saving…</span>}
           </button>
           {customFolders.map((f) => (
             <button
               key={f.id}
               onClick={() => handleSave(f.id)}
               disabled={saving !== null}
-              style={{
-                textAlign: "left", padding: "10px 12px", borderRadius: 10,
-                border: `1px solid ${C.border}`, background: "#fff", cursor: "pointer",
-                fontSize: 13.5, color: C.navy, fontFamily: FONT_BODY,
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-[10px] border border-sand bg-white px-3 text-left text-[13.5px] text-forest disabled:opacity-60"
             >
-              <span>{f.name}</span>
-              {saving === f.id && <span style={{ fontSize: 11.5, color: C.muted }}>Saving…</span>}
+              <span className="min-w-0 truncate">{f.name}</span>
+              {saving === f.id && <span className="shrink-0 text-[11.5px] text-muted">Saving…</span>}
             </button>
           ))}
         </div>
 
-        <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+        <div className="mt-3 border-t border-sand pt-3">
           {creating ? (
-            <div style={{ display: "flex", gap: 6 }}>
+            <div className="flex min-w-0 gap-1.5">
               <input
                 autoFocus
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="Folder name"
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                style={{
-                  flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.border}`,
-                  fontSize: 13.5, fontFamily: FONT_BODY,
-                }}
+                className="min-h-11 min-w-0 flex-1 rounded-lg border border-sand px-3 text-[13.5px] outline-none focus:border-forest"
               />
               <button
                 onClick={handleCreate}
                 disabled={saving !== null}
-                style={{
-                  padding: "8px 14px", borderRadius: 8, border: "none", background: C.navy,
-                  color: "#fff", fontSize: 13, cursor: "pointer", fontFamily: FONT_BODY,
-                }}
+                className="min-h-11 shrink-0 rounded-lg bg-forest px-4 text-[13px] text-white disabled:opacity-60"
               >
                 {saving === "new" ? "…" : "Create"}
               </button>
@@ -128,17 +102,14 @@ export default function FolderPickerModal({ vendorName, folders, onClose, onSave
           ) : (
             <button
               onClick={() => setCreating(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
-                color: C.gold, fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY, padding: 0,
-              }}
+              className="flex min-h-11 items-center gap-1.5 text-[13.5px] font-semibold text-terracotta"
             >
               <FolderPlus size={15} /> New folder
             </button>
           )}
         </div>
 
-        {error && <div style={{ marginTop: 10, fontSize: 12.5, color: "#c0392b" }}>{error}</div>}
+        {error && <div className="mt-2.5 text-[12.5px] text-[#c0392b]">{error}</div>}
       </div>
     </div>
   );

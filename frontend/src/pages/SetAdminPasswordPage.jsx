@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import PasswordField from "../components/PasswordField";
-import "../ai-module.css";
+import { AUTH_PAGE, AUTH_STACK, AUTH_CARD, AUTH_INPUT, AUTH_PRIMARY, AUTH_ERROR } from "./LoginPage";
 
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
@@ -56,35 +56,41 @@ export default function SetAdminPasswordPage() {
   if (!session) return null;
 
   return (
-    <div className="app-bg">
-      <div className="app-container" style={{ maxWidth: 440, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "40px 24px" }}>
-        <header className="app-header">
-          <div className="badge"><span>🔑</span> Admin Account</div>
-          <h1 style={{ fontSize: 32 }}>Set your password</h1>
-          <p>Your admin account has been created. Set a new password to continue.</p>
+    <div className={AUTH_PAGE}>
+      <div className={AUTH_STACK}>
+        <header className="text-center">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sand bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[1.5px] text-terracotta">
+            <span>🔑</span> Admin Account
+          </div>
+          <h1 className="m-0 font-display text-[clamp(24px,7vw,32px)] font-bold leading-tight text-ink">
+            Set your password
+          </h1>
+          <p className="mx-auto mb-0 mt-2 max-w-[380px] text-sm text-muted">
+            Your admin account has been created. Set a new password to continue.
+          </p>
         </header>
 
-        <div className="card" style={{ width: "100%" }}>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className={AUTH_CARD}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
             <PasswordField
-              className="url-input"
+              className={AUTH_INPUT}
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             <PasswordField
-              className="url-input"
+              className={AUTH_INPUT}
               placeholder="Confirm password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
             />
-            <button className="btn" type="submit" disabled={loading} style={{ background: "var(--accent-gradient)", color: "#fff" }}>
+            <button className={AUTH_PRIMARY} type="submit" disabled={loading}>
               {loading ? "Saving…" : "Set password & continue"}
             </button>
           </form>
-          {errorMsg && <p style={{ color: "var(--error)", fontSize: 13, marginTop: 12 }}>{errorMsg}</p>}
+          {errorMsg && <p className={AUTH_ERROR}>{errorMsg}</p>}
         </div>
       </div>
     </div>
