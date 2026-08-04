@@ -2926,9 +2926,14 @@
     }
     .admin-sidebar.is-open { transform: translateX(0); }
 
+    /* The legacy ≤1080px tablet rule turns the nav into a wrapping row, which
+       was right when the sidebar collapsed into a horizontal strip. Inside the
+       drawer it reads as a jumbled grid, and that block still owns the shell
+       grid so it cannot simply be deleted. */
+    .admin-nav { flex-direction: column; flex-wrap: nowrap; }
+
     /* Dense admin tables scroll inside their wrapper rather than widening the
        page; the restored rules only set overflow on some of them. */
-    .admin-table-wrap,
     .admin-table-scroll { width: 100%; overflow-x: auto; }
     .admin-table { min-width: 900px; }
 

@@ -70,3 +70,4 @@ design-qa.md
 .vite/
 *.tsbuildinfo
 /docs
+/frontend/responsive-output

@@ -164,12 +164,22 @@ export default function TripPanel({
                   <span className={s.isMe
                     ? "flex size-4.5 shrink-0 items-center justify-center rounded-full bg-success text-[10.5px] text-white"
                     : "flex size-4.5 shrink-0 items-center justify-center rounded-full bg-forest text-[10.5px] text-white"}>{i + 1}</span>
-                  {s.vendor && (
+                  {s.vendor ? (
                     <img
                       src={placeholderImage(s.vendor)} alt=""
                       className="size-8.5 shrink-0 rounded-full object-cover"
                     />
-                  )}
+                  ) : s.isMe ? (
+                    // Fills the photo slot so the origin shares a left edge with
+                    // every vendor row. The missing thumbnail — not the green
+                    // tint — was what made this read as a different kind of card.
+                    <span
+                      aria-hidden="true"
+                      className="flex size-8.5 shrink-0 items-center justify-center rounded-full bg-[#CDE9D6] text-success"
+                    >
+                      <LocateFixed size={16} />
+                    </span>
+                  ) : null}
                   <span className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-medium text-ink">
                       {s.name}

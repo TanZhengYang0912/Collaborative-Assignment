@@ -10,6 +10,7 @@ import { getReviews, deleteReview, voteReview, removeVote } from "../../api/enga
 import ReviewForm from "../engagement/ReviewForm";
 import ReviewList from "../engagement/ReviewList";
 import Toast from "../engagement/Toast";
+import { customerSession } from "../../lib/roles";
 import { useToast } from "../../lib/useToast";
 import { ENGAGEMENT_TEST_MODE } from "../../lib/testMode";
 
@@ -25,8 +26,8 @@ export default function VendorDetailModal({ vendor, inTrip, bookmarked, onToggle
   const [toast, notify] = useToast();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    supabase.auth.getSession().then(({ data }) => setSession(customerSession(data.session)));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(customerSession(s)));
     return () => listener.subscription.unsubscribe();
   }, []);
 

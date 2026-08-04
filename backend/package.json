@@ -5,7 +5,8 @@
   "description": "TrueBites backend — Supabase + Geocoding + Haversine + Directions",
   "scripts": {
     "dev": "node --watch server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test lib/*.test.mjs"
   },
   "dependencies": {
     "@googlemaps/polyline-codec": "^1.0.28",

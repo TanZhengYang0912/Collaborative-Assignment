@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { deleteAccount, uploadAvatar } from "../api";
 import DobScrollPicker from "../components/DobScrollPicker";
+import { customerSession } from "../lib/roles";
 import { AUTH_INPUT, AUTH_ERROR } from "./LoginPage";
 
 // Profile action buttons — full width on every screen, 44px minimum height.
@@ -49,11 +50,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+      setSession(customerSession(data.session));
       setLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
+      setSession(customerSession(s));
     });
     return () => listener.subscription.unsubscribe();
   }, []);

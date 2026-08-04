@@ -351,6 +351,7 @@ export default function AdminAIProcessingConsolePage() {
           </div>
         )}
 
+        <div className="admin-table-scroll">
         <table className="admin-table admin-results-table">
           <thead>
             <tr>
@@ -416,6 +417,7 @@ export default function AdminAIProcessingConsolePage() {
             )}
           </tbody>
         </table>
+        </div>
 
         <div className="admin-pagination">
           <div className="admin-pagination-meta">

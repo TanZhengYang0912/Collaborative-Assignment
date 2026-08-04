@@ -20,6 +20,8 @@ import { ENGAGEMENT_TEST_MODE } from "../lib/testMode";
 import { loadTrip, saveTrip } from "../lib/tripStorage";
 import { MAP_COLORS } from "../lib/mapColors";
 import { selectVisibleVendors, haversineKm } from "../lib/mapVisibility";
+import { shortPlaceName } from "../lib/placeName";
+import { customerSession } from "../lib/roles";
 
 const MELAKA_CENTER = { lat: 2.1896, lng: 102.2501 };
 const API_KEY = import.meta.env.VITE_MAPS_BROWSER_KEY;
@@ -120,8 +122,8 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    supabase.auth.getSession().then(({ data }) => setSession(customerSession(data.session)));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSession(customerSession(s)));
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -259,12 +261,30 @@ export default function MapPage() {
   // trip stop) without moving the camera — used when locating happens as a
   // side effect of picking a vendor, so it doesn't hijack that vendor's focus
   // once geolocation resolves a moment later.
+  // Best-effort reverse geocode so the origin stop reads as a real place. Always
+  // resolves — a failure returns the bare position and the stop keeps its
+  // generic name. Never let this block the stop from being added.
+  function labelForPosition(pos) {
+    const Geocoder = window.google?.maps?.Geocoder;
+    if (!Geocoder) return Promise.resolve(pos);
+    return new Promise((resolve) => {
+      new Geocoder().geocode({ location: pos }, (results, status) => {
+        if (status !== "OK" || !results?.length) { resolve(pos); return; }
+        const label = shortPlaceName(results[0]);
+        resolve(label ? { ...pos, label } : pos);
+      });
+    });
+  }
+
   function locateMe(silent = false) {
     navigator.geolocation.getCurrentPosition(
       (p) => {
         const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setUserPos(pos);
         if (!silent) setLocateTarget(pos);
+        // Label first, then set userPos once. The [userPos] effect re-plans the
+        // trip with optimize=true, so setting it twice would silently reorder
+        // the user's stops the moment the geocode came back.
+        labelForPosition(pos).then(setUserPos);
       },
       () => {
         setUserPos(MELAKA_CENTER);
