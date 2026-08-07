@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Heart, Trash2, FolderInput, Plus } from "lucide-react";
-import { supabase } from "../supabaseClient";
+import { useSession } from "../lib/SessionContext";
 import {
   getBookmarks, getFolders, addBookmark, removeBookmark, moveBookmark, createFolder, deleteFolder,
   getMyReviews,
@@ -21,7 +21,8 @@ const MUTED = "#69717A";
 export default function EngagementPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [session, setSession] = useState(undefined); // undefined = not checked yet
+  const { session: authSession, loading: sessionLoading } = useSession();
+  const session = customerSession(authSession);
   const [tab, setTab] = useState(searchParams.get("tab") === "reviews" ? "reviews" : "bookmarks");
 
   const [bookmarks, setBookmarks] = useState([]);
@@ -35,10 +36,6 @@ export default function EngagementPage() {
   const [pendingSaveVendor, setPendingSaveVendor] = useState(null); // vendor awaiting a folder pick
   const [toast, notify] = useToast();
   const bookmarkedVendorIds = new Set(bookmarks.map((b) => b.vendor_id));
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(customerSession(data.session)));
-  }, []);
 
   useEffect(() => {
     if (!session && !ENGAGEMENT_TEST_MODE) return;
@@ -55,7 +52,7 @@ export default function EngagementPage() {
     getMyReviews().then((r) => setReviews(r.reviews)).catch((e) => { console.error(e.message); notify("Couldn't load your reviews.", true); });
   }
 
-  if (session === undefined) return null;
+  if (sessionLoading) return null;
 
   if (!session && !ENGAGEMENT_TEST_MODE) {
     return (

@@ -3,6 +3,7 @@ import express from "express";
 import { Filter } from "bad-words";
 import { supabase } from "../supabase.js";
 import { isAdminUser } from "../lib/customerAccess.js";
+import { logActivity } from "../lib/auditLog.js";
 
 const router = Router();
 
@@ -148,6 +149,7 @@ router.post("/engagement/folders", async (req, res) => {
     return res.status(500).json({ error: "database insert failed", details: error.message });
   }
 
+  await logActivity({ actor: user, action: "bookmark_folder.create", entityType: "bookmark_folder", entityId: data.id, metadata: { name } });
   res.status(201).json({ folder: data });
 });
 
@@ -175,6 +177,7 @@ router.delete("/engagement/folders/:id", async (req, res) => {
   const { error } = await supabase.from("bookmark_folders").delete().eq("id", folder.id);
   if (error) return res.status(500).json({ error: "database delete failed", details: error.message });
 
+  await logActivity({ actor: user, action: "bookmark_folder.delete", entityType: "bookmark_folder", entityId: folder.id });
   res.json({ deleted: true, id: folder.id });
 });
 
@@ -234,6 +237,7 @@ router.post("/engagement/bookmarks", async (req, res) => {
     .single();
   if (error) return res.status(500).json({ error: "database insert failed", details: error.message });
 
+  await logActivity({ actor: user, action: "bookmark.add", entityType: "vendor", entityId: vendorId, metadata: { folder_id: folderId } });
   res.status(201).json({ bookmark: data });
 });
 
@@ -262,6 +266,7 @@ router.patch("/engagement/bookmarks/:vendorId", async (req, res) => {
   if (error) return res.status(500).json({ error: "database update failed", details: error.message });
   if (!data) return res.status(404).json({ error: "Bookmark not found" });
 
+  await logActivity({ actor: user, action: "bookmark.move", entityType: "vendor", entityId: req.params.vendorId, metadata: { folder_id: folderId } });
   res.json({ bookmark: data });
 });
 
@@ -276,6 +281,7 @@ router.delete("/engagement/bookmarks/:vendorId", async (req, res) => {
     .eq("vendor_id", req.params.vendorId);
   if (error) return res.status(500).json({ error: "database delete failed", details: error.message });
 
+  await logActivity({ actor: user, action: "bookmark.remove", entityType: "vendor", entityId: req.params.vendorId });
   res.json({ deleted: true });
 });
 
@@ -373,6 +379,7 @@ router.post("/engagement/vendors/:vendorId/reviews", async (req, res) => {
   }
 
   if (!profane) await recomputeVendorRating(req.params.vendorId);
+  await logActivity({ actor: user, action: "review.create", entityType: "review", entityId: data.id, metadata: { vendor_id: req.params.vendorId, rating } });
   res.status(201).json({ review: { ...data, isOwn: true, likes: 0, dislikes: 0, myVote: null } });
 });
 
@@ -414,6 +421,7 @@ router.patch("/engagement/reviews/:id", async (req, res) => {
   if (error) return res.status(500).json({ error: "database update failed", details: error.message });
 
   await recomputeVendorRating(existing.vendor_id);
+  await logActivity({ actor: user, action: "review.update", entityType: "review", entityId: existing.id, metadata: { vendor_id: existing.vendor_id } });
   res.json({ review: { ...data, isOwn: true } });
 });
 
@@ -438,6 +446,7 @@ router.delete("/engagement/reviews/:id", async (req, res) => {
   if (paths.length) await supabase.storage.from(REVIEW_PHOTO_BUCKET).remove(paths);
 
   await recomputeVendorRating(existing.vendor_id);
+  await logActivity({ actor: user, action: "review.delete", entityType: "review", entityId: existing.id, metadata: { vendor_id: existing.vendor_id } });
   res.json({ deleted: true, id: existing.id });
 });
 
@@ -494,6 +503,7 @@ router.post(
       .single();
     if (error) return res.status(500).json({ error: "database insert failed", details: error.message });
 
+    await logActivity({ actor: user, action: "review.photo_upload", entityType: "review", entityId: review.id });
     res.status(201).json({ photo: data });
   }
 );
@@ -516,6 +526,7 @@ router.post("/engagement/reviews/:id/vote", async (req, res) => {
     .upsert({ review_id: review.id, user_id: user.id, is_like: isLike }, { onConflict: "review_id,user_id" });
   if (error) return res.status(500).json({ error: "database insert failed", details: error.message });
 
+  await logActivity({ actor: user, action: "review.vote", entityType: "review", entityId: review.id, metadata: { is_like: isLike } });
   res.json({ voted: true });
 });
 
@@ -530,6 +541,7 @@ router.delete("/engagement/reviews/:id/vote", async (req, res) => {
     .eq("user_id", user.id);
   if (error) return res.status(500).json({ error: "database delete failed", details: error.message });
 
+  await logActivity({ actor: user, action: "review.unvote", entityType: "review", entityId: req.params.id });
   res.json({ deleted: true });
 });
 
